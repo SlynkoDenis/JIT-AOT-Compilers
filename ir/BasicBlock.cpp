@@ -18,13 +18,29 @@ BasicBlock::BasicBlock(Graph *graph)
 
 void BasicBlock::AddPredecessor(BasicBlock *bblock) {
     ASSERT(bblock);
+    ASSERT(std::find(preds.begin(), preds.end(), bblock) == preds.end());
     preds.push_back(bblock);
 }
 
 void BasicBlock::AddSuccessor(BasicBlock *bblock) {
     ASSERT(bblock);
     ASSERT(succs.size() < 2);
+    ASSERT(std::find(succs.begin(), succs.end(), bblock) == succs.end());
     succs.push_back(bblock);
+}
+
+void BasicBlock::RemovePredecessor(BasicBlock *bblock) {
+    ASSERT(bblock);
+    auto it = std::find(preds.begin(), preds.end(), bblock);
+    ASSERT(it != preds.end());
+    preds.erase(it);
+}
+
+void BasicBlock::RemoveSuccessor(BasicBlock *bblock) {
+    ASSERT(bblock);
+    auto it = std::find(succs.begin(), succs.end(), bblock);
+    ASSERT(it != succs.end());
+    succs.erase(it);
 }
 
 template <bool PushBack>
@@ -38,11 +54,26 @@ void BasicBlock::pushInstruction(InstructionBase *instr) {
     } else {
         if constexpr (PushBack) {
             instr->SetPrevInstruction(lastInst);
+            lastInst->SetNextInstruction(instr);
             lastInst = instr;
         } else {
             instr->SetNextInstruction(firstInst);
+            firstInst->SetPrevInstruction(instr);
             firstInst = instr;
         }
+    }
+
+    updateIfPhi(instr);
+}
+
+void BasicBlock::updateFirstPhi() {
+    InstructionBase *instr = GetFirstInstruction();
+    while (instr != nullptr) {
+        if (instr->GetOpcode() == Opcode::PHI) {
+            firstPhi = instr;
+            break;
+        }
+        instr = instr->GetNextInstruction();
     }
 }
 
@@ -66,6 +97,8 @@ void BasicBlock::InsertBefore(InstructionBase *before, InstructionBase *target) 
     if (!prev) {
         firstInst = target;
     }
+
+    updateIfPhi(target);
 }
 
 void BasicBlock::InsertAfter(InstructionBase *after, InstructionBase *target) {
@@ -80,6 +113,8 @@ void BasicBlock::InsertAfter(InstructionBase *after, InstructionBase *target) {
     if (!next) {
         lastInst = target;
     }
+
+    updateIfPhi(target);
 }
 
 void BasicBlock::UnlinkInstruction(InstructionBase *target) {
@@ -90,11 +125,17 @@ void BasicBlock::UnlinkInstruction(InstructionBase *target) {
     target->SetPrevInstruction(nullptr);
     target->SetNextInstruction(nullptr);
 
-    if (!prev) {
+    if (prev) {
+        prev->SetNextInstruction(next);
+    } else {
         firstInst = next;
     }
-    if (!next) {
+    if (next) {
+        next->SetPrevInstruction(prev);
+    } else {
         lastInst = prev;
     }
+
+    updateIfPhi(target);
 }
 }   // namespace

@@ -5,59 +5,78 @@
 namespace ir {
 void Graph::AddBasicBlock(BasicBlock *bblock) {
     ASSERT(bblock);
-    if (bblocks.empty()) {
-        firstBlock = bblock;
-        lastBlock = bblock;
-    }
     bblock->SetId(bblocks.size());
     bblocks.push_back(bblock);
     bblock->SetGraph(this);
 }
 
-void Graph::AddAsPredecessor(BasicBlock *newSuccessor, BasicBlock *bblock) {
-    ASSERT((newSuccessor) && (newSuccessor->GetGraph() == this));
-    ASSERT((bblock) && (bblock->GetGraph() == nullptr));
+void Graph::AddBasicBlockBefore(BasicBlock *before, BasicBlock *bblock) {
+    ASSERT((before) && (before->GetGraph() == this));
+    ASSERT(bblock);
+    ASSERT(bblock->GetPredecessors().empty() && bblock->GetSuccessors().empty());
+
     bblock->SetGraph(this);
-    bblock->AddSuccessor(newSuccessor);
-    newSuccessor->AddPredecessor(bblock);
-    if (firstBlock == newSuccessor) {
-        firstBlock = bblock;
+    for (auto *b : before->GetPredecessors()) {
+        b->RemoveSuccessor(before);
+        b->AddSuccessor(bblock);
+        bblock->AddPredecessor(b);
     }
+    before->GetPredecessors().clear();
+    before->AddPredecessor(bblock);
+
+    bblock->AddSuccessor(before);
 }
 
-void Graph::AddAsSuccessor(BasicBlock *newPredecessor, BasicBlock *bblock) {
-    ASSERT((newPredecessor) && (newPredecessor->GetGraph() == this));
-    ASSERT((bblock) && (bblock->GetGraph() == nullptr));
+void Graph::AddBasicBlockAfter(BasicBlock *after, BasicBlock *bblock) {
+    ASSERT((after) && (after->GetGraph() == this));
+    ASSERT(bblock);
+    ASSERT(bblock->GetPredecessors().empty() && bblock->GetSuccessors().empty());
+
     bblock->SetGraph(this);
-    bblock->AddPredecessor(newPredecessor);
-    newPredecessor->AddSuccessor(bblock);
-    if (lastBlock == newPredecessor) {
+    for (auto *b : after->GetSuccessors()) {
+        b->RemovePredecessor(after);
+        b->AddPredecessor(bblock);
+        bblock->AddSuccessor(b);
+    }
+    after->GetSuccessors().clear();
+    after->AddSuccessor(bblock);
+
+    bblock->AddPredecessor(after);
+    if (lastBlock == after) {
         lastBlock = bblock;
     }
 }
 
 void Graph::UnlinkBasicBlock(BasicBlock *bblock) {
     ASSERT((bblock) && (bblock->GetGraph() == this));
-    ASSERT(std::find(bblocks.begin(), bblocks.end(), bblock) != bblocks.end());
-    bblocks.at(bblock->GetId()) = nullptr;
+    auto id = bblock->GetId();
+    ASSERT(id < bblocks.size() && bblocks[id] == bblock);
+    bblocks[id] = nullptr;
     bblock->SetId(BasicBlock::INVALID_ID);
+
+    if (bblock == lastBlock) {
+        SetLastBasicBlock(nullptr);
+    }
+
+    removePredecessors(bblock);
+    removeSuccessors(bblock);
 }
 
 void Graph::RemoveUnlinkedBlocks() {
-    std::vector<BasicBlock *> newBBlocks;
-    newBBlocks.reserve(bblocks.size());
-    std::copy_if(bblocks.cbegin(), bblocks.cend(), newBBlocks.begin(), [](auto *b){ return b != nullptr; });
-    for (size_t i = 0; i < newBBlocks.size(); ++i) {
-        newBBlocks[i]->SetId(i);
+    UNREACHABLE("TBD");
+}
+
+void Graph::removePredecessors(BasicBlock *bblock) {
+    for (auto *b : bblock->GetPredecessors()) {
+        b->RemoveSuccessor(bblock);
     }
-    bblocks = newBBlocks;
+    bblock->GetPredecessors().clear();
 }
 
-void Graph::removePredecessors(BasicBlock * /* bblock */) {
-    UNREACHABLE("NOT IMPLEMENTED YET");
-}
-
-void Graph::removeSuccessors(BasicBlock * /* bblock */) {
-    UNREACHABLE("NOT IMPLEMENTED YET");
+void Graph::removeSuccessors(BasicBlock *bblock) {
+    for (auto *b : bblock->GetSuccessors()) {
+        b->RemovePredecessor(bblock);
+    }
+    bblock->GetSuccessors().clear();
 }
 }   // namespace ir

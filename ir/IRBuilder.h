@@ -14,7 +14,8 @@ public:
     virtual DEFAULT_DTOR(IRBuilderBase);
 
     virtual BasicBlock *CreateEmptyBasicBlock() = 0;
-    virtual Graph *GetGraph() const = 0;
+    virtual Graph *GetGraph() = 0;
+    virtual const Graph *GetGraph() const = 0;
     virtual void Clear() noexcept = 0;
 };
 
@@ -37,12 +38,15 @@ public:
         return bblock;
     }
 
-    Graph *GetGraph() const override {
+    Graph *GetGraph() override {
+        return graph;
+    }
+    const Graph *GetGraph() const override {
         return graph;
     }
 
     void Clear() noexcept override {
-        for (auto &bblock : bblocks) {
+        for (auto *bblock : bblocks) {
             delete bblock;
         }
         bblocks.clear();

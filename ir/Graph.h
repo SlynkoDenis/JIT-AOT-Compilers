@@ -13,15 +13,36 @@ public:
     NO_MOVE_SEMANTIC(Graph);
     virtual DEFAULT_DTOR(Graph);
 
+    BasicBlock *GetFirstBasicBlock() {
+        return firstBlock;
+    }
+    const BasicBlock *GetFirstBasicBlock() const {
+        return firstBlock;
+    }
+    BasicBlock *GetLastBasicBlock() {
+        return lastBlock;
+    }
+    const BasicBlock *GetLastBasicBlock() const {
+        return lastBlock;
+    }
+
+    void SetFirstBasicBlock(BasicBlock *bblock) {
+        firstBlock = bblock;
+    }
+    void SetLastBasicBlock(BasicBlock *bblock) {
+        lastBlock = bblock;
+    }
+
     void AddBasicBlock(BasicBlock *bblock);
-    void AddAsPredecessor(BasicBlock *newSuccessor, BasicBlock *bblock);
-    void AddAsSuccessor(BasicBlock *newPredecessor, BasicBlock *bblock);
+    void AddBasicBlockBefore(BasicBlock *before, BasicBlock *bblock);
+    void AddBasicBlockAfter(BasicBlock *after, BasicBlock *bblock);
     void UnlinkBasicBlock(BasicBlock *bblock);
     void RemoveUnlinkedBlocks();
 
 protected:
     void removePredecessors(BasicBlock *bblock);
     void removeSuccessors(BasicBlock *bblock);
+    void updatePhiInstructions();
 
 private:
     BasicBlock *firstBlock;

@@ -44,12 +44,12 @@ public:
         CREATE_INST(BinaryRegInstruction, Opcode::MUL, type, vdest, v1, v2);
     }
     template <ValidOpType T>
-    BinaryImmInstruction<T> *CreateAddi(OperandType type, VReg vdest, VReg vreg, T imm) {
+    BinaryImmInstruction *CreateAddi(OperandType type, VReg vdest, VReg vreg, T imm) {
         CREATE_INST(BinaryImmInstruction, Opcode::ADDI, type, vdest, vreg, imm);
     }
     template <ValidOpType T>
-    BinaryImmInstruction<T> *CreateMovi(OperandType type, VReg vdest, VReg vreg, T imm) {
-        CREATE_INST(BinaryImmInstruction, Opcode::MOVI, type, vdest, vreg, imm);
+    MoveImmediateInstruction *CreateMovi(OperandType type, VReg vdest, T imm) {
+        CREATE_INST(MoveImmediateInstruction, Opcode::MOVI, type, vdest, imm);
     }
     CastInstruction *CreateCast(OperandType fromType, OperandType toType, VReg vdest, VReg vreg) {
         CREATE_INST(CastInstruction, fromType, toType, vdest, vreg);
@@ -57,24 +57,26 @@ public:
     CompareInstruction *CreateCmp(OperandType type, CondCode ccode, VReg v1, VReg v2) {
         CREATE_INST(CompareInstruction, Opcode::CMP, type, ccode, v1, v2);
     }
-    template <ValidOpType T>
-    JumpInstruction<T> *CreateJa(OperandType type, T imm) {
-        CREATE_INST(JumpInstruction, Opcode::JA, type, imm);
+    JumpInstruction *CreateJa(int64_t imm) {
+        CREATE_INST(JumpInstruction, Opcode::JA, imm);
     }
-    template <ValidOpType T>
-    JumpInstruction<T> *CreateJmp(OperandType type, T imm) {
-        CREATE_INST(JumpInstruction, Opcode::JMP, type, imm);
+    JumpInstruction *CreateJmp(int64_t imm) {
+        CREATE_INST(JumpInstruction, Opcode::JMP, imm);
     }
     RetInstruction *CreateRet(OperandType type, VReg vreg) {
         CREATE_INST(RetInstruction, type, vreg);
+    }
+    PhiInstruction *CreatePhi(OperandType type, VReg vdest, VReg vreg1, VReg vreg2) {
+        CREATE_INST(PhiInstruction, type, vdest, vreg1, vreg2);
     }
 
 #undef CREATE_INST
 
     void Clear() noexcept {
-        for (auto &instr : instrs) {
+        for (auto *instr : instrs) {
             delete instr;
         }
+        instrs.clear();
     }
 
 private:

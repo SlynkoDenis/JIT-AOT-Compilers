@@ -20,7 +20,8 @@ class BasicBlock;
     DEF(CMP)            \
     DEF(JA)             \
     DEF(JMP)            \
-    DEF(RET)
+    DEF(RET)            \
+    DEF(PHI)
 
 enum class Opcode {
 #define OPCODE_DEF(name, ...) name,
@@ -46,13 +47,17 @@ public:
 
     VReg(uint8_t value) : value(value) {}
 
-    explicit operator uint8_t() {
+    auto GetValue() const {
         return value;
     }
 
 private:
     Type value;
 };
+
+inline bool operator==(const VReg& lhs, const VReg& rhs) {
+    return lhs.GetValue() == rhs.GetValue();
+}
 
 // Instructions
 class InstructionBase {
@@ -63,17 +68,29 @@ public:
     NO_MOVE_SEMANTIC(InstructionBase);
     virtual DEFAULT_DTOR(InstructionBase);
 
-    InstructionBase *GetPrevInstruction() const {
+    InstructionBase *GetPrevInstruction() {
         return prev;
     }
-    InstructionBase *GetNextInstruction() const {
+    const InstructionBase *GetPrevInstruction() const {
+        return prev;
+    }
+    InstructionBase *GetNextInstruction() {
         return next;
     }
-    BasicBlock *GetBasicBlock() const {
+    const InstructionBase *GetNextInstruction() const {
+        return next;
+    }
+    BasicBlock *GetBasicBlock() {
+        return parent;
+    }
+    const BasicBlock *GetBasicBlock() const {
         return parent;
     }
     auto GetOpcode() const {
         return opcode;
+    }
+    auto GetType() const {
+        return type;
     }
     const char *GetOpcodeName() const {
         return getOpcodeName(opcode);
@@ -87,6 +104,9 @@ public:
     }
     void SetBasicBlock(BasicBlock *bblock) {
         parent = bblock;
+    }
+    void SetType(OperandType newType) {
+        type = newType;
     }
     void UnlinkFromParent();
     void InsertBefore(InstructionBase *inst);
@@ -154,8 +174,11 @@ public:
     UnaryRegInstruction(Opcode opcode, OperandType type, VReg vdest, VReg vreg)
         : InstructionBase(opcode, type), DestVRegMixin(vdest), vreg(vreg) {}
 
-    VReg GetReg() const {
+    auto GetVReg() const {
         return vreg;
+    }
+    void SetVReg(VReg newVReg) {
+        vreg = newVReg;
     }
 
 private:
@@ -167,11 +190,17 @@ public:
     BinaryRegInstruction(Opcode opcode, OperandType type, VReg vdest, VReg vreg1, VReg vreg2)
         : InstructionBase(opcode, type), DestVRegMixin(vdest), vreg1(vreg1), vreg2(vreg2) {}
 
-    VReg GetReg1() const {
+    auto GetVReg1() const {
         return vreg1;
     }
-    VReg GetReg2() const {
+    auto GetVReg2() const {
         return vreg2;
+    }
+    void SetVReg1(VReg newVReg) {
+        vreg1 = newVReg;
+    }
+    void SetVReg2(VReg newVReg) {
+        vreg2 = newVReg;
     }
 
 private:
@@ -179,26 +208,47 @@ private:
     VReg vreg2;
 };
 
-template <ValidOpType T>
-class BinaryImmInstruction : public InstructionBase, public DestVRegMixin, public ImmediateMixin<T> {
+class BinaryImmInstruction : public InstructionBase, public DestVRegMixin, public ImmediateMixin<uint64_t> {
 public:
-    BinaryImmInstruction(Opcode opcode, OperandType type, VReg vdest, VReg vreg, T imm)
-        : InstructionBase(opcode, type), DestVRegMixin(vdest), ImmediateMixin<T>(imm), vreg(vreg) {
-        ASSERT(type == getOperandType<T>());
+    BinaryImmInstruction(Opcode opcode, OperandType type, VReg vdest, VReg vreg, uint64_t imm)
+        : InstructionBase(opcode, type), DestVRegMixin(vdest), ImmediateMixin<uint64_t>(imm), vreg(vreg) {
     }
 
-    VReg GetReg() const {
+    auto GetVReg() const {
         return vreg;
+    }
+    void SetVReg(VReg newVReg) {
+        vreg = newVReg;
     }
 
 private:
     VReg vreg;
 };
 
+class MoveImmediateInstruction : public InstructionBase, public DestVRegMixin, public ImmediateMixin<uint64_t> {
+public:
+    MoveImmediateInstruction(Opcode opcode, OperandType type, VReg vdest, uint64_t imm)
+        : InstructionBase(opcode, type), DestVRegMixin(vdest), ImmediateMixin<uint64_t>(imm) {
+    }
+};
+
 class CompareInstruction : public InstructionBase, public ConditionMixin {
 public:
     CompareInstruction(Opcode opcode, OperandType type, CondCode ccode, VReg v1, VReg v2)
         : InstructionBase(opcode, type), ConditionMixin(ccode), vreg1(v1), vreg2(v2) {}
+
+    auto GetVReg1() const {
+        return vreg1;
+    }
+    auto GetVReg2() const {
+        return vreg2;
+    }
+    void SetVReg1(VReg newVReg) {
+        vreg1 = newVReg;
+    }
+    void SetVReg2(VReg newVReg) {
+        vreg2 = newVReg;
+    }
 
 private:
     VReg vreg1;
@@ -210,24 +260,21 @@ public:
     explicit CastInstruction(OperandType fromType, OperandType toType, VReg vdest, VReg vreg)
         : UnaryRegInstruction(Opcode::CAST, fromType, vdest, vreg), toType(toType) {}
 
-    OperandType GetTargetType() const {
+    auto GetTargetType() const {
         return toType;
+    }
+    void SetTargetType(OperandType newType) {
+        toType = newType;
     }
 
 private:
     OperandType toType;
 };
 
-template <ValidOpType T>
-class JumpInstruction : public InstructionBase, public ImmediateMixin<T> {
+class JumpInstruction : public InstructionBase, public ImmediateMixin<uint64_t> {
 public:
-    JumpInstruction(Opcode opcode, OperandType type, T imm)
-        : InstructionBase(opcode, type), ImmediateMixin<T>(imm) {
-        ASSERT(type == getOperandType<T>());
-    }
-
-private:
-    T dest;
+    JumpInstruction(Opcode opcode, uint64_t imm)
+        : InstructionBase(opcode, OperandType::I64), ImmediateMixin<uint64_t>(imm) {}
 };
 
 class RetInstruction : public InstructionBase {
@@ -235,8 +282,21 @@ public:
     RetInstruction(OperandType type, VReg vreg)
         : InstructionBase(Opcode::RET, type), vreg(vreg) {}
 
+    auto GetVReg() const {
+        return vreg;
+    }
+    void SetVReg(VReg newVReg) {
+        vreg = newVReg;
+    }
+
 private:
     VReg vreg;
+};
+
+class PhiInstruction : public BinaryRegInstruction {
+public:
+    PhiInstruction(OperandType type, VReg vdest, VReg vreg1, VReg vreg2)
+        : BinaryRegInstruction(Opcode::PHI, type, vdest, vreg1, vreg2) {}
 };
 }   // namespace ir
 

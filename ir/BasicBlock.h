@@ -20,22 +20,40 @@ public:
     size_t GetId() const {
         return id;
     }
-    std::vector<BasicBlock *> GetPredecessors() const {
+    std::vector<BasicBlock *> &GetPredecessors() {
         return preds;
     }
-    std::vector<BasicBlock *> GetSuccessors() const {
+    const std::vector<BasicBlock *> &GetPredecessors() const {
+        return preds;
+    }
+    std::vector<BasicBlock *> &GetSuccessors() {
         return succs;
     }
-    InstructionBase *GetFirstInstruction() const {
+    const std::vector<BasicBlock *> &GetSuccessors() const {
+        return succs;
+    }
+    InstructionBase *GetFirstInstruction() {
+        return firstInst;
+    }
+    const InstructionBase *GetFirstInstruction() const {
         return firstInst;
     }
     InstructionBase *GetLastInstruction() const {
         return lastInst;
     }
-    InstructionBase *GetFirstPhiInstruction() const {
+    const InstructionBase *GetLastInstruction() {
+        return lastInst;
+    }
+    InstructionBase *GetFirstPhiInstruction() {
         return firstPhi;
     }
-    Graph *GetGraph() const {
+    const InstructionBase *GetFirstPhiInstruction() const {
+        return firstPhi;
+    }
+    Graph *GetGraph() {
+        return graph;
+    }
+    const Graph *GetGraph() const {
         return graph;
     }
 
@@ -44,6 +62,8 @@ public:
     }
     void AddPredecessor(BasicBlock *bblock);
     void AddSuccessor(BasicBlock *bblock);
+    void RemovePredecessor(BasicBlock *bblock);
+    void RemoveSuccessor(BasicBlock *bblock);
     void SetGraph(Graph *g) {
         graph = g;
     }
@@ -59,6 +79,13 @@ public:
 private:
     template <bool PushBack>
     void pushInstruction(InstructionBase *instr);
+
+    void updateIfPhi(InstructionBase *instr) {
+        if (instr->GetOpcode() == Opcode::PHI) {
+            updateFirstPhi();
+        }
+    }
+    void updateFirstPhi();
 
 private:
     size_t id;

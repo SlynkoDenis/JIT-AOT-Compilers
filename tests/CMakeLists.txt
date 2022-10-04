@@ -1,6 +1,6 @@
 set(BINARY tests)
 
-set(SOURCES InstructionsTest.cpp main.cpp)
+set(SOURCES BasicBlockTest.cpp GraphTest.cpp InstructionsTest.cpp main.cpp)
 
 add_executable(${BINARY} ${SOURCES})
 
