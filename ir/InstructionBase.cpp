@@ -1,5 +1,6 @@
+#include <array>
 #include "BasicBlock.h"
-#include "Instruction.h"
+#include "InstructionBase.h"
 
 
 namespace ir {

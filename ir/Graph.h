@@ -33,9 +33,9 @@ public:
         lastBlock = bblock;
     }
 
+    void ConnectBasicBlocks(BasicBlock *lhs, BasicBlock *rhs);
     void AddBasicBlock(BasicBlock *bblock);
     void AddBasicBlockBefore(BasicBlock *before, BasicBlock *bblock);
-    void AddBasicBlockAfter(BasicBlock *after, BasicBlock *bblock);
     void UnlinkBasicBlock(BasicBlock *bblock);
     void RemoveUnlinkedBlocks();
 

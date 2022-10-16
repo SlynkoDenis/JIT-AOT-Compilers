@@ -1,6 +1,7 @@
 #ifndef JIT_AOT_COMPILERS_COURSE_BASIC_BLOCK_H_
 #define JIT_AOT_COMPILERS_COURSE_BASIC_BLOCK_H_
 
+#include "InstructionBase.h"
 #include "Instruction.h"
 #include "macros.h"
 #include <vector>
@@ -38,16 +39,16 @@ public:
     const InstructionBase *GetFirstInstruction() const {
         return firstInst;
     }
-    InstructionBase *GetLastInstruction() const {
+    InstructionBase *GetLastInstruction() {
         return lastInst;
     }
-    const InstructionBase *GetLastInstruction() {
+    const InstructionBase *GetLastInstruction() const {
         return lastInst;
     }
-    InstructionBase *GetFirstPhiInstruction() {
+    PhiInstruction *GetFirstPhiInstruction() {
         return firstPhi;
     }
-    const InstructionBase *GetFirstPhiInstruction() const {
+    const PhiInstruction *GetFirstPhiInstruction() const {
         return firstPhi;
     }
     Graph *GetGraph() {
@@ -80,20 +81,15 @@ private:
     template <bool PushBack>
     void pushInstruction(InstructionBase *instr);
 
-    void updateIfPhi(InstructionBase *instr) {
-        if (instr->GetOpcode() == Opcode::PHI) {
-            updateFirstPhi();
-        }
-    }
-    void updateFirstPhi();
+    void pushPhi(InstructionBase *instr);
 
 private:
     size_t id;
 
     std::vector<BasicBlock *> preds;
     std::vector<BasicBlock *> succs;
-    
-    InstructionBase *firstPhi;
+
+    PhiInstruction *firstPhi;
     InstructionBase *firstInst;
     InstructionBase *lastInst;
 

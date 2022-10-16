@@ -19,7 +19,7 @@ public:
     virtual void Clear() noexcept = 0;
 };
 
-class IRBuilder : public IRBuilderBase {
+class IRBuilder final : public IRBuilderBase {
 public:
     IRBuilder() : IRBuilderBase(), graph(nullptr) {}
     virtual ~IRBuilder() noexcept {

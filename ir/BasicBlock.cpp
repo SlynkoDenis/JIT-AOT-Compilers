@@ -48,7 +48,10 @@ void BasicBlock::pushInstruction(InstructionBase *instr) {
     ASSERT((instr) && (instr->GetBasicBlock() == nullptr)
         && (instr->GetPrevInstruction() == nullptr));
     instr->SetBasicBlock(this);
-    if (firstInst == nullptr) {
+
+    if (instr->IsPhi()) {
+        pushPhi(instr);
+    } else if (firstInst == nullptr) {
         firstInst = instr;
         lastInst = instr;
     } else {
@@ -62,18 +65,18 @@ void BasicBlock::pushInstruction(InstructionBase *instr) {
             firstInst = instr;
         }
     }
-
-    updateIfPhi(instr);
 }
 
-void BasicBlock::updateFirstPhi() {
-    InstructionBase *instr = GetFirstInstruction();
-    while (instr != nullptr) {
-        if (instr->GetOpcode() == Opcode::PHI) {
-            firstPhi = instr;
-            break;
-        }
-        instr = instr->GetNextInstruction();
+void BasicBlock::pushPhi(InstructionBase *instr) {
+    ASSERT((instr) && instr->IsPhi());
+
+    if (!firstPhi) {
+        firstPhi = static_cast<PhiInstruction *>(instr);
+        firstPhi->SetNextInstruction(firstInst);
+    } else {
+        instr->SetNextInstruction(firstPhi);
+        firstPhi->SetPrevInstruction(instr);
+        firstPhi = static_cast<PhiInstruction *>(instr);
     }
 }
 
@@ -86,7 +89,8 @@ void BasicBlock::PushBackInstruction(InstructionBase *instr) {
 }
 
 void BasicBlock::InsertBefore(InstructionBase *before, InstructionBase *target) {
-    ASSERT((target) && (target->GetBasicBlock() == nullptr));
+    // use PushBackInstruction/PushForwardInstruction for PHI instructions
+    ASSERT((target) && (target->GetBasicBlock() == nullptr) && !target->IsPhi());
     ASSERT((before) && (before->GetBasicBlock() == this));
     target->SetBasicBlock(this);
     auto *prev = before->GetPrevInstruction();
@@ -97,12 +101,10 @@ void BasicBlock::InsertBefore(InstructionBase *before, InstructionBase *target) 
     if (!prev) {
         firstInst = target;
     }
-
-    updateIfPhi(target);
 }
 
 void BasicBlock::InsertAfter(InstructionBase *after, InstructionBase *target) {
-    ASSERT((target) && (target->GetBasicBlock() == nullptr));
+    ASSERT((target) && (target->GetBasicBlock() == nullptr) && !target->IsPhi());
     ASSERT((after) && (after->GetBasicBlock() == this));
     target->SetBasicBlock(this);
     auto *next = after->GetPrevInstruction();
@@ -113,8 +115,6 @@ void BasicBlock::InsertAfter(InstructionBase *after, InstructionBase *target) {
     if (!next) {
         lastInst = target;
     }
-
-    updateIfPhi(target);
 }
 
 void BasicBlock::UnlinkInstruction(InstructionBase *target) {
@@ -136,6 +136,8 @@ void BasicBlock::UnlinkInstruction(InstructionBase *target) {
         lastInst = prev;
     }
 
-    updateIfPhi(target);
+    if (target == firstPhi) {
+        firstPhi = nullptr;
+    }
 }
-}   // namespace
+}   // namespace ir

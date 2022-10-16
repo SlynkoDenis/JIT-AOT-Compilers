@@ -4,35 +4,15 @@
 #include <array>
 #include "Concepts.h"
 #include <cstdint>
+#include "InstructionBase.h"
+#include "Input.h"
 #include "macros.h"
+#include <span>
 #include "Types.h"
+#include <vector>
 
 
 namespace ir {
-class BasicBlock;
-
-// Opcodes & Conditional Codes
-#define INSTS_LIST(DEF) \
-    DEF(MUL)            \
-    DEF(ADDI)           \
-    DEF(MOVI)           \
-    DEF(CAST)           \
-    DEF(CMP)            \
-    DEF(JA)             \
-    DEF(JMP)            \
-    DEF(RET)            \
-    DEF(PHI)
-
-enum class Opcode {
-#define OPCODE_DEF(name, ...) name,
-    INSTS_LIST(OPCODE_DEF)
-#undef OPCODE_DEF
-    INVALID,
-    NUM_OPCODES = INVALID
-};
-
-const char *getOpcodeName(Opcode opcode);
-
 enum class CondCode {
     EQ,
     NE,
@@ -40,99 +20,122 @@ enum class CondCode {
     GE
 };
 
-// Virtual Register
-class VReg {
+class InputsInstruction: public InstructionBase {
 public:
-    using Type = uint8_t;
+    InputsInstruction(Opcode opcode, OperandType type)
+        : InstructionBase(opcode, type) {}
+    virtual DEFAULT_DTOR(InputsInstruction);
 
-    VReg(uint8_t value) : value(value) {}
-
-    auto GetValue() const {
-        return value;
-    }
-
-private:
-    Type value;
+    virtual Input &GetInput(size_t idx) = 0;
+    virtual const Input &GetInput(size_t idx) const = 0;
+    virtual void SetInput(Input newInput, size_t idx) = 0;
 };
 
-inline bool operator==(const VReg& lhs, const VReg& rhs) {
-    return lhs.GetValue() == rhs.GetValue();
-}
-
-// Instructions
-class InstructionBase {
+template <int InputsNum>
+class FixedInputsInstruction: public InputsInstruction {
 public:
-    InstructionBase(Opcode opcode, OperandType type)
-        : opcode(opcode), prev(nullptr), next(nullptr), parent(nullptr), type(type) {}
-    NO_COPY_SEMANTIC(InstructionBase);
-    NO_MOVE_SEMANTIC(InstructionBase);
-    virtual DEFAULT_DTOR(InstructionBase);
+    FixedInputsInstruction(Opcode opcode, OperandType type)
+        : InputsInstruction(opcode, type) {}
 
-    InstructionBase *GetPrevInstruction() {
-        return prev;
+    template <IsSameType<Input>... T>
+    FixedInputsInstruction(Opcode opcode, OperandType type, T... inputs)
+        : InputsInstruction(opcode, type), inputs{inputs...} {}
+
+    Input &GetInput(size_t idx) override {
+        return inputs.at(idx);
     }
-    const InstructionBase *GetPrevInstruction() const {
-        return prev;
+    const Input &GetInput(size_t idx) const override {
+        return inputs.at(idx);
     }
-    InstructionBase *GetNextInstruction() {
-        return next;
-    }
-    const InstructionBase *GetNextInstruction() const {
-        return next;
-    }
-    BasicBlock *GetBasicBlock() {
-        return parent;
-    }
-    const BasicBlock *GetBasicBlock() const {
-        return parent;
-    }
-    auto GetOpcode() const {
-        return opcode;
-    }
-    auto GetType() const {
-        return type;
-    }
-    const char *GetOpcodeName() const {
-        return getOpcodeName(opcode);
+    void SetInput(Input newInput, size_t idx) override {
+        inputs.at(idx) = newInput;
     }
 
-    void SetPrevInstruction(InstructionBase *inst) {
-        prev = inst;
+    std::array<Input, InputsNum> &GetInputs() {
+        // TODO: return span?
+        return inputs;
     }
-    void SetNextInstruction(InstructionBase *inst) {
-        next = inst;
+    auto GetInputs() const {
+        // TODO: return array?
+        return std::span{inputs};
     }
-    void SetBasicBlock(BasicBlock *bblock) {
-        parent = bblock;
-    }
-    void SetType(OperandType newType) {
-        type = newType;
-    }
-    void UnlinkFromParent();
-    void InsertBefore(InstructionBase *inst);
-    void InsertAfter(InstructionBase *inst);
 
 private:
-    Opcode opcode;
-    InstructionBase *prev;
-    InstructionBase *next;
-    BasicBlock *parent;
-    OperandType type;
+    std::array<Input, InputsNum> inputs;
 };
 
-class DestVRegMixin {
+template <>
+class FixedInputsInstruction<1>: public InputsInstruction {
 public:
-    DestVRegMixin(VReg vdest) : vdest(vdest) {}
+    FixedInputsInstruction(Opcode opcode, OperandType type)
+        : InputsInstruction(opcode, type) {}
+    FixedInputsInstruction(Opcode opcode, OperandType type, Input input)
+        : InputsInstruction(opcode, type), input(input) {}
 
-    auto GetDestVReg() const {
-        return vdest;
+    Input &GetInput() {
+        return input;
     }
-    void SetDestVReg(VReg vreg) {
-        vdest = vreg;
+    const Input &GetInput() const {
+        return input;
+    }
+    Input &GetInput(size_t idx) override {
+        ASSERT(idx > 0);
+        return input;
+    }
+    const Input &GetInput(size_t idx) const override {
+        ASSERT(idx > 0);
+        return input;
+    }
+    void SetInput(Input newInput, size_t idx) override {
+        ASSERT(idx > 0);
+        input = newInput;
     }
 
 private:
-    VReg vdest;
+    Input input;
+};
+
+template <typename T>
+concept AllowedInputType = (IsSameType<Input, T>
+    || (std::is_pointer_v<T> && std::is_base_of<InstructionBase, std::remove_pointer_t<T>>::value));
+
+class VariableInputsInstruction: public InputsInstruction {
+public:
+    VariableInputsInstruction(Opcode opcode, OperandType type)
+        : InputsInstruction(opcode, type) {}
+
+    template <AllowedInputType... T>
+    VariableInputsInstruction(Opcode opcode, OperandType type, T... ins)
+        : InputsInstruction(opcode, type), inputs{ins...} {}
+
+    template <std::ranges::range Ins>
+    VariableInputsInstruction(Opcode opcode, OperandType type, Ins ins)
+        : InputsInstruction(opcode, type), inputs(ins.cbegin(), ins.cend()) {}
+
+    DEFAULT_DTOR(VariableInputsInstruction);
+
+    Input &GetInput(size_t idx) override {
+        return inputs.at(idx);
+    }
+    const Input &GetInput(size_t idx) const override {
+        return inputs.at(idx);
+    }
+    void SetInput(Input newInput, size_t idx) override {
+        inputs.at(idx) = newInput;
+    }
+
+    std::vector<Input> &GetInputs() {
+        return inputs;
+    }
+    const std::vector<Input> &GetInputs() const {
+        return inputs;
+    }
+    void AddInput(Input newInput) {
+        inputs.push_back(newInput);
+    }
+
+private:
+    std::vector<Input> inputs;
 };
 
 template <Numeric T>
@@ -142,10 +145,10 @@ public:
 
     explicit ImmediateMixin(T value) : value(value) {}
 
-    auto GetImm() const {
+    auto GetValue() const {
         return value;
     }
-    void SetImm(T new_value) {
+    void SetValue(T new_value) {
         value = new_value;
     }
 
@@ -168,97 +171,43 @@ private:
     CondCode ccode;
 };
 
-// Specific instructions
-class UnaryRegInstruction : public InstructionBase, public DestVRegMixin {
+// Specific instructions classes
+class UnaryRegInstruction : public FixedInputsInstruction<1> {
 public:
-    UnaryRegInstruction(Opcode opcode, OperandType type, VReg vdest, VReg vreg)
-        : InstructionBase(opcode, type), DestVRegMixin(vdest), vreg(vreg) {}
-
-    auto GetVReg() const {
-        return vreg;
-    }
-    void SetVReg(VReg newVReg) {
-        vreg = newVReg;
-    }
-
-private:
-    VReg vreg;
+    UnaryRegInstruction(Opcode opcode, OperandType type, Input input)
+        : FixedInputsInstruction(opcode, type, input) {}
 };
 
-class BinaryRegInstruction : public InstructionBase, public DestVRegMixin {
+class BinaryRegInstruction : public FixedInputsInstruction<2> {
 public:
-    BinaryRegInstruction(Opcode opcode, OperandType type, VReg vdest, VReg vreg1, VReg vreg2)
-        : InstructionBase(opcode, type), DestVRegMixin(vdest), vreg1(vreg1), vreg2(vreg2) {}
-
-    auto GetVReg1() const {
-        return vreg1;
-    }
-    auto GetVReg2() const {
-        return vreg2;
-    }
-    void SetVReg1(VReg newVReg) {
-        vreg1 = newVReg;
-    }
-    void SetVReg2(VReg newVReg) {
-        vreg2 = newVReg;
-    }
-
-private:
-    VReg vreg1;
-    VReg vreg2;
+    BinaryRegInstruction(Opcode opcode, OperandType type, Input in1, Input in2)
+        : FixedInputsInstruction(opcode, type, in1, in2) {}
 };
 
-class BinaryImmInstruction : public InstructionBase, public DestVRegMixin, public ImmediateMixin<uint64_t> {
+class ConstantInstruction : public InstructionBase, public ImmediateMixin<uint64_t> {
 public:
-    BinaryImmInstruction(Opcode opcode, OperandType type, VReg vdest, VReg vreg, uint64_t imm)
-        : InstructionBase(opcode, type), DestVRegMixin(vdest), ImmediateMixin<uint64_t>(imm), vreg(vreg) {
-    }
-
-    auto GetVReg() const {
-        return vreg;
-    }
-    void SetVReg(VReg newVReg) {
-        vreg = newVReg;
-    }
-
-private:
-    VReg vreg;
+    ConstantInstruction(Opcode opcode, OperandType type)
+        : InstructionBase(opcode, type), ImmediateMixin<uint64_t>(0) {}
+    ConstantInstruction(Opcode opcode, OperandType type, uint64_t value)
+        : InstructionBase(opcode, type), ImmediateMixin<uint64_t>(value) {}
 };
 
-class MoveImmediateInstruction : public InstructionBase, public DestVRegMixin, public ImmediateMixin<uint64_t> {
+class BinaryImmInstruction : public FixedInputsInstruction<1>, public ImmediateMixin<uint64_t> {
 public:
-    MoveImmediateInstruction(Opcode opcode, OperandType type, VReg vdest, uint64_t imm)
-        : InstructionBase(opcode, type), DestVRegMixin(vdest), ImmediateMixin<uint64_t>(imm) {
-    }
+    BinaryImmInstruction(Opcode opcode, OperandType type, Input input, uint64_t imm)
+        : FixedInputsInstruction<1>(opcode, type, input), ImmediateMixin<uint64_t>(imm) {}
 };
 
-class CompareInstruction : public InstructionBase, public ConditionMixin {
+class CompareInstruction : public FixedInputsInstruction<2>, public ConditionMixin {
 public:
-    CompareInstruction(Opcode opcode, OperandType type, CondCode ccode, VReg v1, VReg v2)
-        : InstructionBase(opcode, type), ConditionMixin(ccode), vreg1(v1), vreg2(v2) {}
-
-    auto GetVReg1() const {
-        return vreg1;
-    }
-    auto GetVReg2() const {
-        return vreg2;
-    }
-    void SetVReg1(VReg newVReg) {
-        vreg1 = newVReg;
-    }
-    void SetVReg2(VReg newVReg) {
-        vreg2 = newVReg;
-    }
-
-private:
-    VReg vreg1;
-    VReg vreg2;
+    CompareInstruction(Opcode opcode, OperandType type, CondCode ccode, Input in1, Input in2)
+        : FixedInputsInstruction(opcode, type, in1, in2), ConditionMixin(ccode) {}
 };
 
-class CastInstruction : public UnaryRegInstruction {
+class CastInstruction : public FixedInputsInstruction<1> {
 public:
-    explicit CastInstruction(OperandType fromType, OperandType toType, VReg vdest, VReg vreg)
-        : UnaryRegInstruction(Opcode::CAST, fromType, vdest, vreg), toType(toType) {}
+    CastInstruction(OperandType fromType, OperandType toType, Input input)
+        : FixedInputsInstruction(Opcode::CAST, fromType, input), toType(toType) {}
 
     auto GetTargetType() const {
         return toType;
@@ -277,26 +226,30 @@ public:
         : InstructionBase(opcode, OperandType::I64), ImmediateMixin<uint64_t>(imm) {}
 };
 
-class RetInstruction : public InstructionBase {
+class RetInstruction : public FixedInputsInstruction<1> {
 public:
-    RetInstruction(OperandType type, VReg vreg)
-        : InstructionBase(Opcode::RET, type), vreg(vreg) {}
-
-    auto GetVReg() const {
-        return vreg;
-    }
-    void SetVReg(VReg newVReg) {
-        vreg = newVReg;
-    }
-
-private:
-    VReg vreg;
+    RetInstruction(OperandType type, Input input)
+        : FixedInputsInstruction<1>(Opcode::RET, type, input) {}
 };
 
-class PhiInstruction : public BinaryRegInstruction {
+class PhiInstruction : public VariableInputsInstruction {
 public:
-    PhiInstruction(OperandType type, VReg vdest, VReg vreg1, VReg vreg2)
-        : BinaryRegInstruction(Opcode::PHI, type, vdest, vreg1, vreg2) {}
+    explicit PhiInstruction(OperandType type)
+        : VariableInputsInstruction(Opcode::PHI, type) {}
+
+    template <AllowedInputType... T>
+    PhiInstruction(OperandType type, T... input)
+        : VariableInputsInstruction(Opcode::PHI, type, input...) {}
+
+    template <std::ranges::range Ins>
+    PhiInstruction(OperandType type, Ins input)
+        : VariableInputsInstruction(Opcode::PHI, type, input) {}
+};
+
+class InputArgumentInstruction : public InstructionBase {
+public:
+    explicit InputArgumentInstruction(OperandType type)
+        : InstructionBase(Opcode::ARG, type) {}
 };
 }   // namespace ir
 

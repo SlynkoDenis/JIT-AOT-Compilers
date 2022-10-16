@@ -3,6 +3,11 @@
 
 
 namespace ir {
+void Graph::ConnectBasicBlocks(BasicBlock *lhs, BasicBlock *rhs) {
+    lhs->AddSuccessor(rhs);
+    rhs->AddPredecessor(lhs);
+}
+
 void Graph::AddBasicBlock(BasicBlock *bblock) {
     ASSERT(bblock);
     bblock->SetId(bblocks.size());
@@ -25,26 +30,6 @@ void Graph::AddBasicBlockBefore(BasicBlock *before, BasicBlock *bblock) {
     before->AddPredecessor(bblock);
 
     bblock->AddSuccessor(before);
-}
-
-void Graph::AddBasicBlockAfter(BasicBlock *after, BasicBlock *bblock) {
-    ASSERT((after) && (after->GetGraph() == this));
-    ASSERT(bblock);
-    ASSERT(bblock->GetPredecessors().empty() && bblock->GetSuccessors().empty());
-
-    bblock->SetGraph(this);
-    for (auto *b : after->GetSuccessors()) {
-        b->RemovePredecessor(after);
-        b->AddPredecessor(bblock);
-        bblock->AddSuccessor(b);
-    }
-    after->GetSuccessors().clear();
-    after->AddSuccessor(bblock);
-
-    bblock->AddPredecessor(after);
-    if (lastBlock == after) {
-        lastBlock = bblock;
-    }
 }
 
 void Graph::UnlinkBasicBlock(BasicBlock *bblock) {

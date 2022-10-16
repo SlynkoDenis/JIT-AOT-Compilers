@@ -3,6 +3,7 @@
 
 #include "Concepts.h"
 #include "Graph.h"
+#include "Instruction.h"
 #include "macros.h"
 #include <vector>
 
@@ -20,8 +21,9 @@ public:
     void PushBackInstruction(BasicBlock *bblock, InstructionBase *instr) {
         bblock->PushBackInstruction(instr);
     }
-    template <InstructionType... T>
-    void PushBackInstruction(BasicBlock *bblock, InstructionBase *instr, T *... reminder) {
+    template <typename... T>
+    void PushBackInstruction(BasicBlock *bblock, InstructionBase *instr, T *... reminder)
+    requires InstructionType<InstructionBase, T...> {
         bblock->PushBackInstruction(instr);
         PushBackInstruction(bblock, reminder...);
     }
@@ -29,45 +31,65 @@ public:
     void PushForwardInstruction(BasicBlock *bblock, InstructionBase *instr) {
         bblock->PushForwardInstruction(instr);
     }
-    template <InstructionType... T>
-    void PushForwardInstruction(BasicBlock *bblock, InstructionBase *instr, T *... reminder) {
+    template <typename... T>
+    void PushForwardInstruction(BasicBlock *bblock, InstructionBase *instr, T *... reminder)
+    requires InstructionType<InstructionBase, T...> {
         bblock->PushForwardInstruction(instr);
         PushForwardInstruction(bblock, reminder...);
     }
 
+// TODO: implement and use Arena allocator
 #define CREATE_INST(name, ...)              \
     auto *inst = new name(__VA_ARGS__);     \
     instrs.push_back(inst);                 \
+    inst->SetId(instrs.size());             \
     return inst
 
-    BinaryRegInstruction *CreateMul(OperandType type, VReg vdest, VReg v1, VReg v2) {
-        CREATE_INST(BinaryRegInstruction, Opcode::MUL, type, vdest, v1, v2);
+    BinaryRegInstruction *CreateMul(OperandType type, Input in1, Input in2) {
+        CREATE_INST(BinaryRegInstruction, Opcode::MUL, type, in1, in2);
     }
     template <ValidOpType T>
-    BinaryImmInstruction *CreateAddi(OperandType type, VReg vdest, VReg vreg, T imm) {
-        CREATE_INST(BinaryImmInstruction, Opcode::ADDI, type, vdest, vreg, imm);
+    BinaryImmInstruction *CreateAddi(OperandType type, Input input, T imm) {
+        CREATE_INST(BinaryImmInstruction, Opcode::ADDI, type, input, imm);
     }
+    // TODO: remove MOVI instruction
     template <ValidOpType T>
-    MoveImmediateInstruction *CreateMovi(OperandType type, VReg vdest, T imm) {
-        CREATE_INST(MoveImmediateInstruction, Opcode::MOVI, type, vdest, imm);
+    ConstantInstruction *CreateConst(OperandType type, T imm) {
+        CREATE_INST(ConstantInstruction, Opcode::CONST, type, imm);
     }
-    CastInstruction *CreateCast(OperandType fromType, OperandType toType, VReg vdest, VReg vreg) {
-        CREATE_INST(CastInstruction, fromType, toType, vdest, vreg);
+    CastInstruction *CreateCast(OperandType fromType, OperandType toType, Input input) {
+        CREATE_INST(CastInstruction, fromType, toType, input);
     }
-    CompareInstruction *CreateCmp(OperandType type, CondCode ccode, VReg v1, VReg v2) {
-        CREATE_INST(CompareInstruction, Opcode::CMP, type, ccode, v1, v2);
+    CompareInstruction *CreateCmp(OperandType type, CondCode ccode, Input in1, Input in2) {
+        CREATE_INST(CompareInstruction, Opcode::CMP, type, ccode, in1, in2);
     }
-    JumpInstruction *CreateJa(int64_t imm) {
+    JumpInstruction *CreateJa(int64_t imm = -1) {
         CREATE_INST(JumpInstruction, Opcode::JA, imm);
     }
     JumpInstruction *CreateJmp(int64_t imm) {
         CREATE_INST(JumpInstruction, Opcode::JMP, imm);
     }
-    RetInstruction *CreateRet(OperandType type, VReg vreg) {
-        CREATE_INST(RetInstruction, type, vreg);
+    RetInstruction *CreateRet(OperandType type, Input input) {
+        CREATE_INST(RetInstruction, type, input);
     }
-    PhiInstruction *CreatePhi(OperandType type, VReg vdest, VReg vreg1, VReg vreg2) {
-        CREATE_INST(PhiInstruction, type, vdest, vreg1, vreg2);
+
+    PhiInstruction *CreatePhi(OperandType type) {
+        CREATE_INST(PhiInstruction, type);
+    }
+    template <AllowedInputType... T>
+    PhiInstruction *CreatePhi(OperandType type, T... inputs) {
+        auto *inst = new PhiInstruction(type, inputs...);
+        instrs.push_back(inst);
+        inst->SetId(instrs.size());
+        return inst;
+    }
+    template <std::ranges::range Ins>
+    PhiInstruction *CreatePhi(OperandType type, Ins inputs) {
+        CREATE_INST(PhiInstruction, type, inputs);
+    }
+
+    InputArgumentInstruction *CreateArg(OperandType type) {
+        CREATE_INST(InputArgumentInstruction, type);
     }
 
 #undef CREATE_INST

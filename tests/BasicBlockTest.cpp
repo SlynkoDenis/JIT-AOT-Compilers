@@ -29,10 +29,7 @@ TEST_F(BasicBlockTest, TestBasicBlock1) {
     ASSERT_EQ(bblock->GetGraph(), irBuilder.GetGraph());
 
     auto opType = OperandType::I32;
-    auto vdest = VReg(0);
-    auto vreg1 = VReg(1);
-    auto vreg2 = VReg(2);
-    auto *mul = instrBuilder.CreateMul(opType, vdest, vreg1, vreg2);
+    auto *mul = instrBuilder.CreateMul(opType, nullptr, nullptr);
 
     // add 1st instruction
     bblock->PushBackInstruction(mul);
@@ -40,8 +37,8 @@ TEST_F(BasicBlockTest, TestBasicBlock1) {
     ASSERT_EQ(bblock->GetFirstInstruction(), mul);
     ASSERT_EQ(bblock->GetLastInstruction(), mul);
 
-    auto *addi1 = instrBuilder.CreateAddi(opType, vreg1, vreg1, 32);
-    auto *addi2 = instrBuilder.CreateAddi(opType, vreg2, vreg2, 32);
+    auto *addi1 = instrBuilder.CreateAddi(opType, nullptr, 32);
+    auto *addi2 = instrBuilder.CreateAddi(opType, nullptr, 32);
 
     // add 2nd instruction into start of the basic block
     bblock->PushForwardInstruction(addi2);
@@ -61,12 +58,9 @@ TEST_F(BasicBlockTest, TestBasicBlock2) {
     auto *bblock = irBuilder.CreateEmptyBasicBlock();
 
     auto opType = OperandType::I32;
-    auto vdest = VReg(0);
-    auto vreg1 = VReg(1);
-    auto vreg2 = VReg(2);
-    auto *mul = instrBuilder.CreateMul(opType, vdest, vreg1, vreg2);
-    auto *addi1 = instrBuilder.CreateAddi(opType, vreg1, vreg1, 32);
-    auto *addi2 = instrBuilder.CreateAddi(opType, vreg2, vreg2, 32);
+    auto *mul = instrBuilder.CreateMul(opType, nullptr, nullptr);
+    auto *addi1 = instrBuilder.CreateAddi(opType, nullptr, 32);
+    auto *addi2 = instrBuilder.CreateAddi(opType, nullptr, 32);
 
     // add all 3 instructions
     instrBuilder.PushBackInstruction(bblock, addi1, addi2, mul);
@@ -79,12 +73,9 @@ TEST_F(BasicBlockTest, TestBasicBlock2) {
 
 TEST_F(BasicBlockTest, TestBasicBlock3) {
     auto opType = OperandType::I32;
-    auto vdest = VReg(0);
-    auto vreg1 = VReg(1);
-    auto vreg2 = VReg(2);
-    auto *mul = instrBuilder.CreateMul(opType, vdest, vreg1, vreg2);
-    auto *addi1 = instrBuilder.CreateAddi(opType, vreg1, vreg1, 32);
-    auto *addi2 = instrBuilder.CreateAddi(opType, vreg2, vreg2, 32);
+    auto *mul = instrBuilder.CreateMul(opType, nullptr, nullptr);
+    auto *addi1 = instrBuilder.CreateAddi(opType, nullptr, 32);
+    auto *addi2 = instrBuilder.CreateAddi(opType, nullptr, 32);
 
     // add all 3 instructions
     auto *bblock = irBuilder.CreateEmptyBasicBlock();

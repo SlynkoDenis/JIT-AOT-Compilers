@@ -23,10 +23,7 @@ public:
 
 TEST_F(GraphTest, TestGraph1) {
     auto opType = OperandType::I32;
-    auto vdest = VReg(0);
-    auto vreg1 = VReg(1);
-    auto vreg2 = VReg(2);
-    auto *mul = instrBuilder.CreateMul(opType, vdest, vreg1, vreg2);
+    auto *mul = instrBuilder.CreateMul(opType, nullptr, nullptr);
 
     // add a single instruction in the 1st basic block
     auto *bblock = irBuilder.CreateEmptyBasicBlock();
@@ -35,8 +32,8 @@ TEST_F(GraphTest, TestGraph1) {
     ASSERT_EQ(bblock->GetFirstInstruction(), mul);
     ASSERT_EQ(bblock->GetLastInstruction(), mul);
 
-    auto *addi1 = instrBuilder.CreateAddi(opType, vreg1, vreg1, 32);
-    auto *addi2 = instrBuilder.CreateAddi(opType, vreg2, vreg2, 32);
+    auto *addi1 = instrBuilder.CreateAddi(opType, nullptr, 32);
+    auto *addi2 = instrBuilder.CreateAddi(opType, nullptr, 32);
 
     // add another instruction in the 2nd basic block, which must be predecessor of the 1st
     auto *predBBlock1 = irBuilder.CreateEmptyBasicBlock();
@@ -54,7 +51,7 @@ TEST_F(GraphTest, TestGraph1) {
     // add instruction in the 3rd basic block, which must be between 1st and 2nd
     auto *predBBlock2 = irBuilder.CreateEmptyBasicBlock();
     instrBuilder.PushBackInstruction(predBBlock2, addi2);
-    bblock->GetGraph()->AddBasicBlockAfter(predBBlock1, predBBlock2);
+    bblock->GetGraph()->AddBasicBlockBefore(bblock, predBBlock2);
     ASSERT_EQ(predBBlock2->GetFirstInstruction(), addi2);
     ASSERT_EQ(predBBlock2->GetLastInstruction(), addi2);
     succs = predBBlock1->GetSuccessors();
@@ -72,12 +69,9 @@ TEST_F(GraphTest, TestGraph1) {
 
 TEST_F(GraphTest, TestGraph2) {
     auto opType = OperandType::I32;
-    auto vdest = VReg(0);
-    auto vreg1 = VReg(1);
-    auto vreg2 = VReg(2);
-    auto *mul = instrBuilder.CreateMul(opType, vdest, vreg1, vreg2);
-    auto *addi1 = instrBuilder.CreateAddi(opType, vreg1, vreg1, 32);
-    auto *addi2 = instrBuilder.CreateAddi(opType, vreg2, vreg2, 32);
+    auto *mul = instrBuilder.CreateMul(opType, nullptr, nullptr);
+    auto *addi1 = instrBuilder.CreateAddi(opType, nullptr, 32);
+    auto *addi2 = instrBuilder.CreateAddi(opType, nullptr, 32);
 
     // create basic blocks as: [addi1] -> [addi2] -> [mul]
     auto *mulBBlock = irBuilder.CreateEmptyBasicBlock();
@@ -89,7 +83,7 @@ TEST_F(GraphTest, TestGraph2) {
 
     auto *addiBBlock2 = irBuilder.CreateEmptyBasicBlock();
     instrBuilder.PushBackInstruction(addiBBlock2, addi2);
-    irBuilder.GetGraph()->AddBasicBlockAfter(addiBBlock1, addiBBlock2);
+    irBuilder.GetGraph()->AddBasicBlockBefore(mulBBlock, addiBBlock2);
 
     // unlink middle basic block and check results
     irBuilder.GetGraph()->UnlinkBasicBlock(addiBBlock2);
