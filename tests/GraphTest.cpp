@@ -1,7 +1,7 @@
 #include "gtest/gtest.h"
 #include "InstructionBuilder.h"
 #include "IRBuilder.h"
-#include <iostream>
+
 
 namespace ir::tests {
 class GraphTest : public ::testing::Test {

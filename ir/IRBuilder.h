@@ -2,6 +2,7 @@
 #define JIT_AOT_COMPILERS_COURSE_IR_BUILDER_H_
 
 #include "BasicBlock.h"
+#include "Graph.h"
 #include "macros.h"
 
 

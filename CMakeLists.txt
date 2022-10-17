@@ -40,6 +40,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 add_executable(fact main.cpp)
 add_subdirectory(utils)
 add_subdirectory(ir)
+add_subdirectory(analysis)
 
 if(${CMAKE_BUILD_TYPE} MATCHES "Debug")
     add_git_submodule(third_party/googletest)

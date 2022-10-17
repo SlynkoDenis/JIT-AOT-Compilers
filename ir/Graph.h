@@ -25,6 +25,12 @@ public:
     const BasicBlock *GetLastBasicBlock() const {
         return lastBlock;
     }
+    size_t GetBasicBlocksCount() const {
+        return bblocks.size();
+    }
+    bool IsEmpty() const {
+        return bblocks.empty();
+    }
 
     void SetFirstBasicBlock(BasicBlock *bblock) {
         firstBlock = bblock;
