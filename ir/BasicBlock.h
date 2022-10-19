@@ -13,7 +13,7 @@ class Graph;
 class BasicBlock {
 public:
     BasicBlock();
-    explicit BasicBlock(Graph *graph);
+    BasicBlock(Graph *graph);
     NO_COPY_SEMANTIC(BasicBlock);
     NO_MOVE_SEMANTIC(BasicBlock);
     virtual DEFAULT_DTOR(BasicBlock);
@@ -51,6 +51,20 @@ public:
     const PhiInstruction *GetFirstPhiInstruction() const {
         return firstPhi;
     }
+
+    BasicBlock *GetDominator() {
+        return dominator;
+    }
+    const BasicBlock *GetDominator() const {
+        return dominator;
+    }
+    std::vector<BasicBlock *> &GetDominatedBlocks() {
+        return dominated;
+    }
+    const std::vector<BasicBlock *> &GetDominatedBlocks() const {
+        return dominated;
+    }
+
     Graph *GetGraph() {
         return graph;
     }
@@ -65,6 +79,14 @@ public:
     void AddSuccessor(BasicBlock *bblock);
     void RemovePredecessor(BasicBlock *bblock);
     void RemoveSuccessor(BasicBlock *bblock);
+
+    void SetDominator(BasicBlock *newIDom) {
+        dominator = newIDom;
+    }
+    void AddDominatedBlock(BasicBlock *bblock) {
+        dominated.push_back(bblock);
+    }
+
     void SetGraph(Graph *g) {
         graph = g;
     }
@@ -75,7 +97,7 @@ public:
     void InsertAfter(InstructionBase *after, InstructionBase *target);
     void UnlinkInstruction(InstructionBase *target);
 
-    static const size_t INVALID_ID = static_cast<size_t>(-1);
+    static constexpr size_t INVALID_ID = static_cast<size_t>(-1);
 
 private:
     template <bool PushBack>
@@ -92,6 +114,9 @@ private:
     PhiInstruction *firstPhi;
     InstructionBase *firstInst;
     InstructionBase *lastInst;
+
+    BasicBlock *dominator;
+    std::vector<BasicBlock *> dominated;
 
     Graph *graph;
 };

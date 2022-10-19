@@ -143,7 +143,7 @@ class ImmediateMixin {
 public:
     using Type = T;
 
-    explicit ImmediateMixin(T value) : value(value) {}
+    ImmediateMixin(T value) : value(value) {}
 
     auto GetValue() const {
         return value;
