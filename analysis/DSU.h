@@ -1,5 +1,5 @@
-#ifndef JIT_AOT_COMPILERS_COURSE_DSU2_H_
-#define JIT_AOT_COMPILERS_COURSE_DSU2_H_
+#ifndef JIT_AOT_COMPILERS_COURSE_DSU_H_
+#define JIT_AOT_COMPILERS_COURSE_DSU_H_
 
 #include "BasicBlock.h"
 #include "macros.h"
@@ -47,4 +47,4 @@ private:
 };
 }   // namespace ir
 
-#endif  // JIT_AOT_COMPILERS_COURSE_DSU2_H_
+#endif  // JIT_AOT_COMPILERS_COURSE_DSU_H_

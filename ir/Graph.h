@@ -6,9 +6,11 @@
 
 
 namespace ir {
+class Loop;
+
 class Graph {
 public:
-    Graph() : firstBlock(nullptr), lastBlock(nullptr) {}
+    Graph() : firstBlock(nullptr), lastBlock(nullptr), loopTreeRoot(nullptr) {}
     NO_COPY_SEMANTIC(Graph);
     NO_MOVE_SEMANTIC(Graph);
     virtual DEFAULT_DTOR(Graph);
@@ -32,11 +34,21 @@ public:
         return bblocks.empty();
     }
 
+    Loop *GetLoopTree() {
+        return loopTreeRoot;
+    }
+    const Loop *GetLoopTree() const {
+        return loopTreeRoot;
+    }
+
     void SetFirstBasicBlock(BasicBlock *bblock) {
         firstBlock = bblock;
     }
     void SetLastBasicBlock(BasicBlock *bblock) {
         lastBlock = bblock;
+    }
+    void SetLoopTree(Loop *loop) {
+        loopTreeRoot = loop;
     }
 
     void ConnectBasicBlocks(BasicBlock *lhs, BasicBlock *rhs);
@@ -54,6 +66,8 @@ private:
     BasicBlock *firstBlock;
     BasicBlock *lastBlock;
     std::vector<BasicBlock *> bblocks;
+
+    Loop *loopTreeRoot;
 };
 }   // namespace ir
 

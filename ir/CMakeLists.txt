@@ -7,16 +7,16 @@ set(SOURCES
 add_library(ir STATIC ${SOURCES})
 
 target_sources(ir PUBLIC
-        BasicBlock.h
-        Concepts.h
-        Graph.h
-        Input.h
-        Instruction.h
-        InstructionBase.h
-        InstructionBuilder.h
-        IRBuilder.h
-        Types.h
-        )
+    BasicBlock.h
+    Concepts.h
+    Graph.h
+    Input.h
+    Instruction.h
+    InstructionBase.h
+    InstructionBuilder.h
+    IRBuilder.h
+    Types.h
+    )
 
 include_directories(${CMAKE_SOURCE_DIR}/utils)
 

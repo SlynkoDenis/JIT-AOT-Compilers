@@ -1,10 +1,11 @@
 #include "DomTree.h"
 #include "gtest/gtest.h"
 #include "IRBuilder.h"
+#include "TestGraphSamples.h"
 
 
 namespace ir::tests {
-class DomTreeTest : public ::testing::Test {
+class DomTreeTest : public ::testing::Test, public TestGraphSamples {
 public:
     virtual void SetUp() {
         irBuilder.CreateGraph();
@@ -16,7 +17,7 @@ public:
         irBuilder.Clear();
     }
 
-    IRBuilder irBuilder;
+public:
     DomTreeBuilder domTreeBuilder;
 };
 
@@ -37,33 +38,9 @@ static void checkDominatedBlocks(BasicBlock *bblock,
 }
 
 TEST_F(DomTreeTest, TestBuilding1) {
-    /*
-       A
-       |
-       B
-      / \
-     /   \
-    C     F
-    |    / \
-    |   E   \
-    |  /    |
-    | /     |
-    D<------G
-    */
-    std::vector<BasicBlock *> bblocks(7);
-    for (auto &it : bblocks) {
-        it = irBuilder.CreateEmptyBasicBlock();
-    }
-    auto *graph = irBuilder.GetGraph();
-    graph->SetFirstBasicBlock(bblocks[0]);
-    graph->ConnectBasicBlocks(bblocks[0], bblocks[1]);
-    graph->ConnectBasicBlocks(bblocks[1], bblocks[2]);
-    graph->ConnectBasicBlocks(bblocks[1], bblocks[5]);
-    graph->ConnectBasicBlocks(bblocks[2], bblocks[3]);
-    graph->ConnectBasicBlocks(bblocks[4], bblocks[3]);
-    graph->ConnectBasicBlocks(bblocks[5], bblocks[4]);
-    graph->ConnectBasicBlocks(bblocks[5], bblocks[6]);
-    graph->ConnectBasicBlocks(bblocks[6], bblocks[3]);
+    auto preBuiltGraph = BuildCase1();
+    auto *graph = preBuiltGraph.first;
+    auto bblocks = preBuiltGraph.second;
 
     domTreeBuilder.Build(graph);
 
@@ -85,39 +62,9 @@ TEST_F(DomTreeTest, TestBuilding1) {
 }
 
 TEST_F(DomTreeTest, TestBuilding2) {
-    /*
-        A
-        |
-    --->B-->J
-    |   |  /
-    |   | /
-    |   |/
-    |   C<--
-    |   |  |
-    |   D---
-    |   |
-    |   E<--
-    |   |  |
-    |   F---
-    |   |
-    H<--G-->I-->K
-    */
-    std::vector<BasicBlock *> bblocks(11);
-    for (auto &it : bblocks) {
-        it = irBuilder.CreateEmptyBasicBlock();
-    }
-    auto *graph = irBuilder.GetGraph();
-    graph->SetFirstBasicBlock(bblocks[0]);
-    for (size_t i = 0; i < 7; ++i) {
-        graph->ConnectBasicBlocks(bblocks[i], bblocks[i + 1]);
-    }
-    graph->ConnectBasicBlocks(bblocks[3], bblocks[2]);
-    graph->ConnectBasicBlocks(bblocks[5], bblocks[4]);
-    graph->ConnectBasicBlocks(bblocks[7], bblocks[1]);
-    graph->ConnectBasicBlocks(bblocks[1], bblocks[9]);
-    graph->ConnectBasicBlocks(bblocks[9], bblocks[2]);
-    graph->ConnectBasicBlocks(bblocks[6], bblocks[8]);
-    graph->ConnectBasicBlocks(bblocks[8], bblocks[10]);
+    auto preBuiltGraph = BuildCase2();
+    auto *graph = preBuiltGraph.first;
+    auto bblocks = preBuiltGraph.second;
 
     domTreeBuilder.Build(graph);
 
@@ -144,43 +91,9 @@ TEST_F(DomTreeTest, TestBuilding2) {
 }
 
 TEST_F(DomTreeTest, TestBuilding3) {
-    /*
-          A
-          |
-          |
-    ----->B
-    |    /|
-    |   / |
-    |  E  C<--
-    |  |\ |  |
-    |  | \|  |
-    ---F  D  |
-       |  |  |
-       |  |  |
-       H->G---
-        \ |
-         \|
-          I
-    */
-    std::vector<BasicBlock *> bblocks(9);
-    for (auto &it : bblocks) {
-        it = irBuilder.CreateEmptyBasicBlock();
-    }
-    auto *graph = irBuilder.GetGraph();
-    graph->SetFirstBasicBlock(bblocks[0]);
-    for (size_t i = 0; i < 3; ++i) {
-        graph->ConnectBasicBlocks(bblocks[i], bblocks[i + 1]);
-    }
-    graph->ConnectBasicBlocks(bblocks[1], bblocks[4]);
-    graph->ConnectBasicBlocks(bblocks[4], bblocks[3]);
-    graph->ConnectBasicBlocks(bblocks[4], bblocks[5]);
-    graph->ConnectBasicBlocks(bblocks[5], bblocks[7]);
-    graph->ConnectBasicBlocks(bblocks[5], bblocks[1]);
-    graph->ConnectBasicBlocks(bblocks[7], bblocks[6]);
-    graph->ConnectBasicBlocks(bblocks[7], bblocks[8]);
-    graph->ConnectBasicBlocks(bblocks[3], bblocks[6]);
-    graph->ConnectBasicBlocks(bblocks[6], bblocks[2]);
-    graph->ConnectBasicBlocks(bblocks[6], bblocks[8]);
+    auto preBuiltGraph = BuildCase3();
+    auto *graph = preBuiltGraph.first;
+    auto bblocks = preBuiltGraph.second;
 
     domTreeBuilder.Build(graph);
 

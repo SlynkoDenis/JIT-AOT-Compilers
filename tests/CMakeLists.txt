@@ -5,7 +5,10 @@ set(SOURCES
     DomTreeTest.cpp
     GraphTest.cpp
     InstructionsTest.cpp
+    LoopAnalysisTest.cpp
     main.cpp
+    TestGraphSamples.h
+    TestGraphSamples.cpp
     TraversalsTest.cpp
     )
 

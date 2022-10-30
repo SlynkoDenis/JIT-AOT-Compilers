@@ -10,6 +10,7 @@ BasicBlock::BasicBlock()
       firstInst(nullptr),
       lastInst(nullptr),
       dominator(nullptr),
+      loop(nullptr),
       graph(nullptr) {}
 
 BasicBlock::BasicBlock(Graph *graph)
@@ -18,7 +19,20 @@ BasicBlock::BasicBlock(Graph *graph)
       firstInst(nullptr),
       lastInst(nullptr),
       dominator(nullptr),
+      loop(nullptr),
       graph(graph) {}
+
+bool BasicBlock::Domites(const BasicBlock *bblock) const {
+    ASSERT(bblock);
+    auto *dom = bblock->GetDominator();
+    while (dom != nullptr) {
+        if (dom == this) {
+            return true;
+        }
+        dom = dom->GetDominator();
+    }
+    return false;
+}
 
 void BasicBlock::AddPredecessor(BasicBlock *bblock) {
     ASSERT(bblock);
@@ -37,7 +51,9 @@ void BasicBlock::RemovePredecessor(BasicBlock *bblock) {
     ASSERT(bblock);
     auto it = std::find(preds.begin(), preds.end(), bblock);
     ASSERT(it != preds.end());
-    preds.erase(it);
+
+    *it = preds.back();
+    preds.pop_back();
 }
 
 void BasicBlock::RemoveSuccessor(BasicBlock *bblock) {
