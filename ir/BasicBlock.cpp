@@ -2,11 +2,14 @@
 
 
 namespace ir {
+const size_t BasicBlock::INVALID_ID;
+
 BasicBlock::BasicBlock()
     : id(INVALID_ID),
       firstPhi(nullptr),
       firstInst(nullptr),
       lastInst(nullptr),
+      dominator(nullptr),
       graph(nullptr) {}
 
 BasicBlock::BasicBlock(Graph *graph)
@@ -14,6 +17,7 @@ BasicBlock::BasicBlock(Graph *graph)
       firstPhi(nullptr),
       firstInst(nullptr),
       lastInst(nullptr),
+      dominator(nullptr),
       graph(graph) {}
 
 void BasicBlock::AddPredecessor(BasicBlock *bblock) {

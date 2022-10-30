@@ -2,11 +2,14 @@
 #define JIT_AOT_COMPILERS_COURSE_TRAVERSALS_H_
 
 #include "BasicBlock.h"
-#include "Graph.h"
+#include <functional>
+#include <set>
 #include <vector>
 
 
 namespace ir {
+class Graph;
+
 class DFO {
 public:
     using TraversalCallbackType = std::function<void(BasicBlock *)>;
@@ -27,6 +30,8 @@ private:
 };
 
 std::vector<BasicBlock *> RPO(Graph *graph);
+
+void DumpGrahpRPO(Graph *graph);
 }   // namespace ir
 
 #endif  // JIT_AOT_COMPILERS_COURSE_TRAVERSALS_H_

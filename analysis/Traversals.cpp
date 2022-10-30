@@ -1,5 +1,4 @@
-#include <functional>
-#include <set>
+#include "Graph.h"
 #include "Traversals.h"
 
 
@@ -38,5 +37,22 @@ std::vector<BasicBlock *> RPO(Graph *graph) {
     ASSERT(result.size() == graph->GetBasicBlocksCount());
     std::reverse(result.begin(), result.end());
     return result;
+}
+
+void DumpGrahpRPO(Graph *graph) {
+    auto rpoBBlocks = RPO(graph);
+    std::cout << "======================================\n";
+    for (auto bblock : rpoBBlocks) {
+        std::cout << "\tBB #" << bblock->GetId() << "\npreds: < ";
+        for (const auto &pred : bblock->GetPredecessors()) {
+            std::cout << pred->GetId() << " ";
+        }
+        std::cout << ">\nsuccs: < ";
+        for (const auto &succ : bblock->GetSuccessors()) {
+            std::cout << succ->GetId() << " ";
+        }
+        std::cout << ">\n";
+    }
+    std::cout << "======================================" << std::endl;
 }
 }   // namespace ir
