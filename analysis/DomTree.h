@@ -1,6 +1,7 @@
 #ifndef JIT_AOT_COMPILERS_COURSE_DOM_TREE_H_
 #define JIT_AOT_COMPILERS_COURSE_DOM_TREE_H_
 
+#include "arena/ArenaAllocator.h"
 #include "DSU.h"
 #include "Graph.h"
 #include <vector>
@@ -9,37 +10,88 @@
 namespace ir {
 class DomTreeBuilder final {
 public:
-    using VectorBBlocks = std::vector<BasicBlock *>;
+    using VectorBBlocks = ArenaVector<BasicBlock *>;
 
     void Build(Graph *graph);
 
-    const VectorBBlocks &GetImmediateDominators() const {
+    const VectorBBlocks *GetImmediateDominators() const {
         return idoms;
     }
 
 private:
-    void resetStructs(size_t bblocksCount);
+    DSU resetStructs(Graph *graph);
     void dfsTraverse(BasicBlock *bblock);
-    void computeSDoms();
+    void computeSDoms(DSU &sdomsHelper);
     void computeIDoms();
 
-private:
-    int lastNumber;
-    DSU sdomsHelper;
+    size_t getSize() const {
+        return idoms->size();
+    }
 
-    VectorBBlocks idoms;
+    BasicBlock *getImmDominator(size_t id) {
+        return idoms->at(id);
+    }
+    void setImmDominator(size_t id, BasicBlock *bblock) {
+        idoms->at(id) = bblock;
+    }
+
+    size_t getSemiDomNumber(BasicBlock *bblock) {
+        ASSERT(bblock);
+        return sdoms->at(bblock->GetId());
+    }
+    void setSemiDomNumber(BasicBlock *bblock, size_t visitNumber) {
+        ASSERT(bblock);
+        sdoms->at(bblock->GetId()) = visitNumber;
+    }
+
+    const VectorBBlocks &getSemiDoms(BasicBlock *bblock) {
+        ASSERT(bblock);
+        return sdomsSet->at(bblock->GetId());
+    }
+    void registerSemiDom(BasicBlock *bblock) {
+        auto semiDomNumber = getSemiDomNumber(bblock);
+        sdomsSet->at(getOrderedBlock(semiDomNumber)->GetId()).push_back(bblock);
+    }
+
+    BasicBlock *getLabel(BasicBlock *bblock) {
+        ASSERT(bblock);
+        return labels->at(bblock->GetId());
+    }
+
+    BasicBlock *getOrderedBlock(size_t visitNumber) {
+        return orderedBBlocks->at(visitNumber);
+    }
+    void setOrderedBlock(size_t visitNumber, BasicBlock *bblock) {
+        ASSERT(bblock);
+        orderedBBlocks->at(visitNumber) = bblock;
+    }
+
+    BasicBlock *getBlockDFOParent(BasicBlock *bblock) {
+        ASSERT(bblock);
+        return bblocksParents->at(bblock->GetId());
+    }
+    void setBlockDFOParent(BasicBlock *child, BasicBlock *parent) {
+        ASSERT(child);
+        ASSERT(parent);
+        bblocksParents->at(child->GetId()) = parent;
+    }
+
+private:
+    int lastNumber = 0;
+
+    VectorBBlocks *idoms = nullptr;
 
     // mapping: node-id -> DFO-number of node's semidominator
-    std::vector<size_t> sdoms;
+    ArenaVector<size_t> *sdoms = nullptr;
     // mapping: node-id -> nodes dominated by this node-id
-    std::vector<VectorBBlocks> sdomsSet;
+    ArenaVector<VectorBBlocks> *sdomsSet = nullptr;
 
     // nodes with min semidominators within DFO tree ancestors
-    VectorBBlocks labels;
+    VectorBBlocks *labels = nullptr;
     // DFO basic blocks
-    VectorBBlocks orderedBBlocks;
+    VectorBBlocks *orderedBBlocks = nullptr;
     // basic blocks' parents in DFO tree
-    VectorBBlocks bblocksParents;
+    VectorBBlocks *bblocksParents = nullptr;
 };
 }   // namespace ir
 

@@ -1,6 +1,7 @@
 #ifndef JIT_AOT_COMPILERS_COURSE_BASIC_BLOCK_H_
 #define JIT_AOT_COMPILERS_COURSE_BASIC_BLOCK_H_
 
+#include "arena/ArenaAllocator.h"
 #include "InstructionBase.h"
 #include "Instruction.h"
 #include "macros.h"
@@ -13,7 +14,6 @@ class Loop;
 
 class BasicBlock {
 public:
-    BasicBlock();
     BasicBlock(Graph *graph);
     NO_COPY_SEMANTIC(BasicBlock);
     NO_MOVE_SEMANTIC(BasicBlock);
@@ -22,16 +22,16 @@ public:
     size_t GetId() const {
         return id;
     }
-    std::vector<BasicBlock *> &GetPredecessors() {
+    utils::memory::ArenaVector<BasicBlock *> &GetPredecessors() {
         return preds;
     }
-    const std::vector<BasicBlock *> &GetPredecessors() const {
+    const utils::memory::ArenaVector<BasicBlock *> &GetPredecessors() const {
         return preds;
     }
-    std::vector<BasicBlock *> &GetSuccessors() {
+    utils::memory::ArenaVector<BasicBlock *> &GetSuccessors() {
         return succs;
     }
-    const std::vector<BasicBlock *> &GetSuccessors() const {
+    const utils::memory::ArenaVector<BasicBlock *> &GetSuccessors() const {
         return succs;
     }
     InstructionBase *GetFirstInstruction() {
@@ -59,10 +59,10 @@ public:
     const BasicBlock *GetDominator() const {
         return dominator;
     }
-    std::vector<BasicBlock *> &GetDominatedBlocks() {
+    utils::memory::ArenaVector<BasicBlock *> &GetDominatedBlocks() {
         return dominated;
     }
-    const std::vector<BasicBlock *> &GetDominatedBlocks() const {
+    const utils::memory::ArenaVector<BasicBlock *> &GetDominatedBlocks() const {
         return dominated;
     }
     bool Domites(const BasicBlock *bblock) const;
@@ -110,6 +110,9 @@ public:
     void InsertAfter(InstructionBase *after, InstructionBase *target);
     void UnlinkInstruction(InstructionBase *target);
 
+    NO_NEW_DELETE;
+
+public:
     static constexpr size_t INVALID_ID = static_cast<size_t>(-1);
 
 private:
@@ -121,15 +124,15 @@ private:
 private:
     size_t id;
 
-    std::vector<BasicBlock *> preds;
-    std::vector<BasicBlock *> succs;
+    utils::memory::ArenaVector<BasicBlock *> preds;
+    utils::memory::ArenaVector<BasicBlock *> succs;
 
     PhiInstruction *firstPhi;
     InstructionBase *firstInst;
     InstructionBase *lastInst;
 
     BasicBlock *dominator;
-    std::vector<BasicBlock *> dominated;
+    utils::memory::ArenaVector<BasicBlock *> dominated;
 
     Loop *loop;
 

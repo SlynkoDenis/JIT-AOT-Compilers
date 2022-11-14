@@ -1,32 +1,19 @@
-#include "gtest/gtest.h"
-#include "IRBuilder.h"
+#include "CompilerTestBase.h"
 #include "Traversals.h"
 
 
 namespace ir::tests {
-class TraversalsTest : public ::testing::Test {
-public:
-    virtual void SetUp() {
-        irBuilder.CreateGraph();
-    }
-
-    TraversalsTest() = default;
-
-    virtual void TearDown() {
-        irBuilder.Clear();
-    }
-
-    IRBuilder irBuilder;
+class TraversalsTest : public CompilerTestBase {
 };
 
 TEST_F(TraversalsTest, TestDFO) {
     // create graph
-    auto *blockA = irBuilder.CreateEmptyBasicBlock();
-    auto *blockB = irBuilder.CreateEmptyBasicBlock();
-    auto *blockC = irBuilder.CreateEmptyBasicBlock();
-    auto *blockD = irBuilder.CreateEmptyBasicBlock();
+    auto *blockA = GetIRBuilder().CreateEmptyBasicBlock();
+    auto *blockB = GetIRBuilder().CreateEmptyBasicBlock();
+    auto *blockC = GetIRBuilder().CreateEmptyBasicBlock();
+    auto *blockD = GetIRBuilder().CreateEmptyBasicBlock();
 
-    auto *graph = irBuilder.GetGraph();
+    auto *graph = GetIRBuilder().GetGraph();
     graph->SetFirstBasicBlock(blockA);
     graph->ConnectBasicBlocks(blockA, blockB);
     graph->ConnectBasicBlocks(blockA, blockC);
@@ -47,12 +34,12 @@ TEST_F(TraversalsTest, TestDFO) {
 
 TEST_F(TraversalsTest, TestRPO) {
     // create graph
-    auto *blockA = irBuilder.CreateEmptyBasicBlock();
-    auto *blockB = irBuilder.CreateEmptyBasicBlock();
-    auto *blockC = irBuilder.CreateEmptyBasicBlock();
-    auto *blockD = irBuilder.CreateEmptyBasicBlock();
+    auto *blockA = GetIRBuilder().CreateEmptyBasicBlock();
+    auto *blockB = GetIRBuilder().CreateEmptyBasicBlock();
+    auto *blockC = GetIRBuilder().CreateEmptyBasicBlock();
+    auto *blockD = GetIRBuilder().CreateEmptyBasicBlock();
 
-    auto *graph = irBuilder.GetGraph();
+    auto *graph = GetIRBuilder().GetGraph();
     graph->SetFirstBasicBlock(blockA);
     graph->ConnectBasicBlocks(blockA, blockB);
     graph->ConnectBasicBlocks(blockA, blockC);

@@ -1,6 +1,7 @@
 #ifndef JIT_AOT_COMPILERS_COURSE_TRAVERSALS_H_
 #define JIT_AOT_COMPILERS_COURSE_TRAVERSALS_H_
 
+#include "arena/ArenaAllocator.h"
 #include "BasicBlock.h"
 #include <functional>
 #include <set>
@@ -26,10 +27,10 @@ protected:
     virtual void doTraverse(BasicBlock *bblock, TraversalCallbackType callback);
 
 private:
-    std::set<size_t> visited;
+    utils::memory::ArenaSet<size_t> *visited = nullptr;
 };
 
-std::vector<BasicBlock *> RPO(Graph *graph);
+utils::memory::ArenaVector<BasicBlock *> RPO(Graph *graph);
 
 void DumpGrahpRPO(Graph *graph);
 }   // namespace ir

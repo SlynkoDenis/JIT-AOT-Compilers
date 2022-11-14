@@ -1,6 +1,7 @@
 #ifndef JIT_AOT_COMPILERS_COURSE_INSTRUCTION_H_
 #define JIT_AOT_COMPILERS_COURSE_INSTRUCTION_H_
 
+#include "arena/ArenaAllocator.h"
 #include <array>
 #include "Concepts.h"
 #include <cstdint>
@@ -13,6 +14,8 @@
 
 
 namespace ir {
+using utils::memory::ArenaAllocator;
+
 enum class CondCode {
     EQ,
     NE,
@@ -97,20 +100,25 @@ private:
 
 template <typename T>
 concept AllowedInputType = (IsSameType<Input, T>
-    || (std::is_pointer_v<T> && std::is_base_of<InstructionBase, std::remove_pointer_t<T>>::value));
+    || (std::is_pointer_v<T>
+        && std::is_base_of_v<InstructionBase, std::remove_cv_t<std::remove_pointer_t<T>>>));
 
 class VariableInputsInstruction: public InputsInstruction {
 public:
-    VariableInputsInstruction(Opcode opcode, OperandType type)
-        : InputsInstruction(opcode, type) {}
+    VariableInputsInstruction(Opcode opcode, OperandType type, ArenaAllocator *const allocator)
+        : InputsInstruction(opcode, type), inputs(allocator->ToSTL()) {}
 
-    template <AllowedInputType... T>
-    VariableInputsInstruction(Opcode opcode, OperandType type, T... ins)
-        : InputsInstruction(opcode, type), inputs{ins...} {}
+    template <typename Ins>
+    VariableInputsInstruction(Opcode opcode, OperandType type, Ins ins,
+                              ArenaAllocator *const allocator)
+    requires AllowedInputType<typename Ins::value_type>
+        : InputsInstruction(opcode, type), inputs(ins.cbegin(), ins.cend(), allocator->ToSTL()) {}
 
-    template <std::ranges::range Ins>
-    VariableInputsInstruction(Opcode opcode, OperandType type, Ins ins)
-        : InputsInstruction(opcode, type), inputs(ins.cbegin(), ins.cend()) {}
+    template <typename Ins>
+    VariableInputsInstruction(Opcode opcode, OperandType type, std::initializer_list<Ins> ins,
+                              ArenaAllocator *const allocator)
+    requires AllowedInputType<Ins>
+        : InputsInstruction(opcode, type), inputs(ins.begin(), ins.end(), allocator->ToSTL()) {}
 
     DEFAULT_DTOR(VariableInputsInstruction);
 
@@ -124,18 +132,18 @@ public:
         inputs.at(idx) = newInput;
     }
 
-    std::vector<Input> &GetInputs() {
+    utils::memory::ArenaVector<Input> &GetInputs() {
         return inputs;
     }
-    const std::vector<Input> &GetInputs() const {
+    const utils::memory::ArenaVector<Input> &GetInputs() const {
         return inputs;
     }
     void AddInput(Input newInput) {
         inputs.push_back(newInput);
     }
 
-private:
-    std::vector<Input> inputs;
+protected:
+    utils::memory::ArenaVector<Input> inputs;
 };
 
 template <Numeric T>
@@ -234,16 +242,43 @@ public:
 
 class PhiInstruction : public VariableInputsInstruction {
 public:
-    explicit PhiInstruction(OperandType type)
-        : VariableInputsInstruction(Opcode::PHI, type) {}
+    PhiInstruction(OperandType type, ArenaAllocator *const allocator)
+        : VariableInputsInstruction(Opcode::PHI, type, allocator),
+          sourceBBlocks(allocator->ToSTL()) {}
 
-    template <AllowedInputType... T>
-    PhiInstruction(OperandType type, T... input)
-        : VariableInputsInstruction(Opcode::PHI, type, input...) {}
+    template <typename Ins, typename Sources>
+    PhiInstruction(OperandType type, Ins input, Sources sources, ArenaAllocator *const allocator)
+    requires std::is_same_v<std::remove_cv_t<typename Sources::value_type>, BasicBlock *>
+             && AllowedInputType<typename Ins::value_type>
+        : VariableInputsInstruction(Opcode::PHI, type, input, allocator),
+          sourceBBlocks(sources.cbegin(), sources.cend(), allocator->ToSTL())
+    {
+        ASSERT(inputs.size() == sourceBBlocks.size());
+    }
 
-    template <std::ranges::range Ins>
-    PhiInstruction(OperandType type, Ins input)
-        : VariableInputsInstruction(Opcode::PHI, type, input) {}
+    template <typename Ins, typename Sources>
+    PhiInstruction(OperandType type, std::initializer_list<Ins> input, std::initializer_list<Sources> sources,
+                   ArenaAllocator *const allocator)
+    requires std::is_same_v<std::remove_cv_t<Sources>, BasicBlock *> && AllowedInputType<Ins>
+        : VariableInputsInstruction(Opcode::PHI, type, input, allocator),
+          sourceBBlocks(sources.begin(), sources.end(), allocator->ToSTL())
+    {
+        ASSERT(inputs.size() == sourceBBlocks.size());
+    }
+
+    BasicBlock *GetSourceBasicBlock(size_t idx) {
+        return sourceBBlocks.at(idx);
+    }
+    const BasicBlock *GetSourceBasicBlock(size_t idx) const {
+        return sourceBBlocks.at(idx);
+    }
+    void SetSourceBasicBlock(BasicBlock *bblock, size_t idx) {
+        ASSERT(bblock);
+        sourceBBlocks.at(idx) = bblock;
+    }
+
+private:
+    utils::memory::ArenaVector<BasicBlock *> sourceBBlocks;
 };
 
 class InputArgumentInstruction : public InstructionBase {

@@ -64,4 +64,17 @@ void Graph::removeSuccessors(BasicBlock *bblock) {
     }
     bblock->GetSuccessors().clear();
 }
+
+// defined here after full declaration of Graph methods
+BasicBlock::BasicBlock(Graph *graph)
+    : id(INVALID_ID),
+      preds(graph->GetAllocator()->ToSTL()),
+      succs(graph->GetAllocator()->ToSTL()),
+      firstPhi(nullptr),
+      firstInst(nullptr),
+      lastInst(nullptr),
+      dominator(nullptr),
+      dominated(graph->GetAllocator()->ToSTL()),
+      loop(nullptr),
+      graph(graph) {}
 }   // namespace ir

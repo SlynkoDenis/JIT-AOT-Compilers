@@ -10,31 +10,41 @@ void LoopAnalyzer::Analyze(Graph *graph) {
         return;
     }
 
-    resetStructs(graph->GetBasicBlocksCount());
+    resetStructs(graph);
     DomTreeBuilder().Build(graph);
     collectBackEdges(graph);
     populateLoops();
     buildLoopTree(graph);
 }
 
-void LoopAnalyzer::resetStructs(size_t bblocksCount) {
+void LoopAnalyzer::resetStructs(Graph *graph) {
     colorCounter = static_cast<uint32_t>(DFSColors::COLORS_SIZE);
-    dfsColors.resize(bblocksCount, DFSColors::WHITE);
-
     blockId = 0;
-    dfsBlocks.resize(bblocksCount, nullptr);
 
-    loops.clear();
+    auto bblocksCount = graph->GetBasicBlocksCount();
+    if (dfsColors == nullptr) {
+        auto *allocator = graph->GetAllocator();
+        dfsColors = allocator->template NewVector<DFSColors>(bblocksCount, DFSColors::WHITE);
+        dfsBlocks = allocator->template NewVector<BasicBlock *>(bblocksCount, nullptr);
+        loops = allocator->template NewVector<Loop *>();
+    } else {
+        dfsBlocks->clear();
+        dfsBlocks->clear();
+        loops->clear();
+
+        dfsColors->resize(bblocksCount, DFSColors::WHITE);
+        dfsBlocks->resize(bblocksCount, nullptr);
+    }
 }
 
 void LoopAnalyzer::collectBackEdges(Graph *graph) {
     ASSERT(graph);
-    dfsBackEdgesSearch(graph->GetFirstBasicBlock());
+    dfsBackEdgesSearch(graph->GetFirstBasicBlock(), graph->GetAllocator());
     ASSERT(blockId == graph->GetBasicBlocksCount());
 }
 
 void LoopAnalyzer::populateLoops() {
-    for (auto *bblock : dfsBlocks) {
+    for (auto *bblock : *dfsBlocks) {
         auto *loop = bblock->GetLoop();
         if (loop == nullptr || loop->GetHeader() != bblock) {
             continue;
@@ -54,11 +64,11 @@ void LoopAnalyzer::populateLoops() {
 
 void LoopAnalyzer::buildLoopTree(Graph *graph) {
     ASSERT(graph);
+    auto *allocator = graph->GetAllocator();
+    auto *rootLoop = allocator->template New<Loop>(loops->size(), nullptr, false, allocator, true);
+    loops->push_back(rootLoop);
 
-    auto *rootLoop = new Loop(loops.size(), nullptr, false, true);
-    loops.push_back(rootLoop);
-
-    for (auto *bblock : dfsBlocks) {
+    for (auto *bblock : *dfsBlocks) {
         auto *loop = bblock->GetLoop();
         if (loop == nullptr) {
             rootLoop->AddBasicBlock(bblock);
@@ -71,30 +81,32 @@ void LoopAnalyzer::buildLoopTree(Graph *graph) {
     graph->SetLoopTree(rootLoop);
 }
 
-void LoopAnalyzer::dfsBackEdgesSearch(BasicBlock *bblock) {
+void LoopAnalyzer::dfsBackEdgesSearch(BasicBlock *bblock, ArenaAllocator *const allocator) {
     ASSERT(bblock);
 
-    dfsColors[bblock->GetId()] = DFSColors::GREY;
+    dfsColors->at(bblock->GetId()) = DFSColors::GREY;
     for (auto *succ : bblock->GetSuccessors()) {
-        auto &color = dfsColors[succ->GetId()];
+        auto &color = dfsColors->at(succ->GetId());
         if (color == DFSColors::WHITE) {
-            dfsBackEdgesSearch(succ);
+            dfsBackEdgesSearch(succ, allocator);
         } else if (color == DFSColors::GREY) {
-            addLoopInfo(succ, bblock);
+            addLoopInfo(succ, bblock, allocator);
         }
     }
-    dfsColors[bblock->GetId()] = DFSColors::BLACK;
+    dfsColors->at(bblock->GetId()) = DFSColors::BLACK;
 
-    dfsBlocks[blockId++] = bblock;
+    dfsBlocks->at(blockId++) = bblock;
 }
 
-void LoopAnalyzer::addLoopInfo(BasicBlock *header, BasicBlock *backEdgeSource) {
+void LoopAnalyzer::addLoopInfo(BasicBlock *header, BasicBlock *backEdgeSource,
+                               ArenaAllocator *const allocator) {
     auto *loop = header->GetLoop();
     if (loop == nullptr) {
-        loop = new Loop(loops.size(), header, isLoopIrreducible(header, backEdgeSource));
+        loop = allocator->template New<Loop>(loops->size(), header,
+                                             isLoopIrreducible(header, backEdgeSource), allocator);
         loop->AddBasicBlock(header);
         loop->AddBackEdge(backEdgeSource);
-        loops.push_back(loop);
+        loops->push_back(loop);
 
         header->SetLoop(loop);
     } else {
@@ -109,7 +121,7 @@ void LoopAnalyzer::populateReducibleLoop(Loop *loop) {
     ASSERT(loop);
     // reuse `dfsColors` vector in this DFS
     auto color = static_cast<DFSColors>(++colorCounter);
-    dfsColors[loop->GetHeader()->GetId()] = color;
+    dfsColors->at(loop->GetHeader()->GetId()) = color;
     for (auto *backEdgeSource : loop->GetBackEdges()) {
         dfsPopulateLoops(loop, backEdgeSource, color);
     }
@@ -117,10 +129,10 @@ void LoopAnalyzer::populateReducibleLoop(Loop *loop) {
 
 void LoopAnalyzer::dfsPopulateLoops(Loop *loop, BasicBlock *bblock, DFSColors color) {
     ASSERT((loop) && (bblock));
-    if (dfsColors[bblock->GetId()] == color) {
+    if (dfsColors->at(bblock->GetId()) == color) {
         return;
     }
-    dfsColors[bblock->GetId()] = color;
+    dfsColors->at(bblock->GetId()) = color;
 
     auto *blockLoop = bblock->GetLoop();    
     if (blockLoop == nullptr) {

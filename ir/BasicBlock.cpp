@@ -2,26 +2,6 @@
 
 
 namespace ir {
-const size_t BasicBlock::INVALID_ID;
-
-BasicBlock::BasicBlock()
-    : id(INVALID_ID),
-      firstPhi(nullptr),
-      firstInst(nullptr),
-      lastInst(nullptr),
-      dominator(nullptr),
-      loop(nullptr),
-      graph(nullptr) {}
-
-BasicBlock::BasicBlock(Graph *graph)
-    : id(INVALID_ID),
-      firstPhi(nullptr),
-      firstInst(nullptr),
-      lastInst(nullptr),
-      dominator(nullptr),
-      loop(nullptr),
-      graph(graph) {}
-
 bool BasicBlock::Domites(const BasicBlock *bblock) const {
     ASSERT(bblock);
     auto *dom = bblock->GetDominator();

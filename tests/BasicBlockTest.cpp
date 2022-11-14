@@ -1,35 +1,19 @@
-#include "gtest/gtest.h"
-#include "InstructionBuilder.h"
-#include "IRBuilder.h"
+#include "CompilerTestBase.h"
 
 
 namespace ir::tests {
-class BasicBlockTest : public ::testing::Test {
-public:
-    virtual void SetUp() {
-        irBuilder.CreateGraph();
-    }
-
-    BasicBlockTest() = default;
-
-    virtual void TearDown() {
-        instrBuilder.Clear();
-        irBuilder.Clear();
-    }
-
-    InstructionBuilder instrBuilder;
-    IRBuilder irBuilder;
+class BasicBlockTest : public CompilerTestBase {
 };
 
 TEST_F(BasicBlockTest, TestBasicBlock1) {
-    auto *bblock = irBuilder.CreateEmptyBasicBlock();
+    auto *bblock = GetIRBuilder().CreateEmptyBasicBlock();
     ASSERT_NE(bblock, nullptr);
     ASSERT_EQ(bblock->GetFirstInstruction(), nullptr);
     ASSERT_EQ(bblock->GetLastInstruction(), nullptr);
-    ASSERT_EQ(bblock->GetGraph(), irBuilder.GetGraph());
+    ASSERT_EQ(bblock->GetGraph(), GetIRBuilder().GetGraph());
 
     auto opType = OperandType::I32;
-    auto *mul = instrBuilder.CreateMul(opType, nullptr, nullptr);
+    auto *mul = GetInstructionBuilder().CreateMul(opType, nullptr, nullptr);
 
     // add 1st instruction
     bblock->PushBackInstruction(mul);
@@ -37,8 +21,8 @@ TEST_F(BasicBlockTest, TestBasicBlock1) {
     ASSERT_EQ(bblock->GetFirstInstruction(), mul);
     ASSERT_EQ(bblock->GetLastInstruction(), mul);
 
-    auto *addi1 = instrBuilder.CreateAddi(opType, nullptr, 32);
-    auto *addi2 = instrBuilder.CreateAddi(opType, nullptr, 32);
+    auto *addi1 = GetInstructionBuilder().CreateAddi(opType, nullptr, 32);
+    auto *addi2 = GetInstructionBuilder().CreateAddi(opType, nullptr, 32);
 
     // add 2nd instruction into start of the basic block
     bblock->PushForwardInstruction(addi2);
@@ -55,15 +39,15 @@ TEST_F(BasicBlockTest, TestBasicBlock1) {
 }
 
 TEST_F(BasicBlockTest, TestBasicBlock2) {
-    auto *bblock = irBuilder.CreateEmptyBasicBlock();
+    auto *bblock = GetIRBuilder().CreateEmptyBasicBlock();
 
     auto opType = OperandType::I32;
-    auto *mul = instrBuilder.CreateMul(opType, nullptr, nullptr);
-    auto *addi1 = instrBuilder.CreateAddi(opType, nullptr, 32);
-    auto *addi2 = instrBuilder.CreateAddi(opType, nullptr, 32);
+    auto *mul = GetInstructionBuilder().CreateMul(opType, nullptr, nullptr);
+    auto *addi1 = GetInstructionBuilder().CreateAddi(opType, nullptr, 32);
+    auto *addi2 = GetInstructionBuilder().CreateAddi(opType, nullptr, 32);
 
     // add all 3 instructions
-    instrBuilder.PushBackInstruction(bblock, addi1, addi2, mul);
+    GetInstructionBuilder().PushBackInstruction(bblock, addi1, addi2, mul);
     // check correct order
     ASSERT_EQ(bblock->GetFirstInstruction(), addi1);
     ASSERT_EQ(addi1->GetNextInstruction(), addi2);
@@ -73,13 +57,13 @@ TEST_F(BasicBlockTest, TestBasicBlock2) {
 
 TEST_F(BasicBlockTest, TestBasicBlock3) {
     auto opType = OperandType::I32;
-    auto *mul = instrBuilder.CreateMul(opType, nullptr, nullptr);
-    auto *addi1 = instrBuilder.CreateAddi(opType, nullptr, 32);
-    auto *addi2 = instrBuilder.CreateAddi(opType, nullptr, 32);
+    auto *mul = GetInstructionBuilder().CreateMul(opType, nullptr, nullptr);
+    auto *addi1 = GetInstructionBuilder().CreateAddi(opType, nullptr, 32);
+    auto *addi2 = GetInstructionBuilder().CreateAddi(opType, nullptr, 32);
 
     // add all 3 instructions
-    auto *bblock = irBuilder.CreateEmptyBasicBlock();
-    instrBuilder.PushBackInstruction(bblock, addi1, addi2, mul);
+    auto *bblock = GetIRBuilder().CreateEmptyBasicBlock();
+    GetInstructionBuilder().PushBackInstruction(bblock, addi1, addi2, mul);
     // unlink addi2 (2/3 instruction)
     bblock->UnlinkInstruction(addi2);
     ASSERT_EQ(addi2->GetBasicBlock(), nullptr);

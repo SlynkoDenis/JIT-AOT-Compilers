@@ -10,91 +10,105 @@ void DomTreeBuilder::Build(Graph *graph) {
         return;
     }
 
-    resetStructs(graph->GetBasicBlocksCount());
+    auto sdomsHelper = resetStructs(graph);
 
     dfsTraverse(graph->GetFirstBasicBlock());
     // check graph's connectivity
     ASSERT(lastNumber == static_cast<int>(graph->GetBasicBlocksCount()) - 1);
-    computeSDoms();
+    computeSDoms(sdomsHelper);
     computeIDoms();
 }
 
-void DomTreeBuilder::resetStructs(size_t bblocksCount) {
+DSU DomTreeBuilder::resetStructs(Graph *graph) {
     lastNumber = -1;
-    sdoms.clear();
-    sdoms.resize(bblocksCount, BasicBlock::INVALID_ID);
-    sdomsSet.clear();
-    sdomsSet.resize(bblocksCount);
-    idoms.clear();
-    idoms.resize(bblocksCount, nullptr);
 
-    labels.clear();
-    labels.resize(bblocksCount, nullptr);
-    orderedBBlocks.clear();
-    orderedBBlocks.resize(bblocksCount, nullptr);
-    bblocksParents.clear();
-    bblocksParents.resize(bblocksCount, nullptr);
+    auto bblocksCount = graph->GetBasicBlocksCount();
+    auto *allocator = graph->GetAllocator();
+    if (sdoms == nullptr) {
+        sdoms = allocator->template NewVector<size_t>(bblocksCount, BasicBlock::INVALID_ID);
+        sdomsSet = allocator->template NewVector<VectorBBlocks>(bblocksCount,
+                                                                VectorBBlocks(allocator->ToSTL()));
+        idoms = allocator->template NewVector<BasicBlock *>(bblocksCount, nullptr);
+        labels = allocator->template NewVector<BasicBlock *>(bblocksCount, nullptr);
+        orderedBBlocks = allocator->template NewVector<BasicBlock *>(bblocksCount, nullptr);
+        bblocksParents = allocator->template NewVector<BasicBlock *>(bblocksCount, nullptr);
+    } else {
+        sdoms->clear();
+        sdomsSet->clear();
+        idoms->clear();
+        labels->clear();
+        orderedBBlocks->clear();
+        bblocksParents->clear();
 
-    sdomsHelper = DSU(labels, sdoms);
+        sdoms->resize(bblocksCount, BasicBlock::INVALID_ID);
+        sdomsSet->resize(bblocksCount, VectorBBlocks(allocator->ToSTL()));
+        idoms->resize(bblocksCount, nullptr);
+        labels->resize(bblocksCount, nullptr);
+        orderedBBlocks->resize(bblocksCount, nullptr);
+        bblocksParents->resize(bblocksCount, nullptr);
+    }
+
+    return DSU(labels, sdoms, allocator);
 }
 
 void DomTreeBuilder::dfsTraverse(BasicBlock *bblock) {
     ++lastNumber;
-    ASSERT((bblock) && (lastNumber < static_cast<int>(orderedBBlocks.size())));
+    ASSERT((bblock) && (lastNumber < static_cast<int>(getSize())));
 
     auto id = bblock->GetId();
-    labels[id] = bblock;
-    sdoms[id] = lastNumber;
-    orderedBBlocks[lastNumber] = bblock;
+    labels->at(id) = bblock;
+    setSemiDomNumber(bblock, lastNumber);
+    setOrderedBlock(lastNumber, bblock);
 
     for (auto *succ : bblock->GetSuccessors()) {
-        if (labels[succ->GetId()] == nullptr) {
-            bblocksParents[succ->GetId()] = bblock;
+        if (getLabel(succ) == nullptr) {
+            setBlockDFOParent(succ, bblock);
             dfsTraverse(succ);
         }
     }
 }
 
-void DomTreeBuilder::computeSDoms() {
-    for (int i = orderedBBlocks.size() - 1; i >= 0; --i) {
-        auto *currentBlock = orderedBBlocks[i];
-        auto currentBlockId = currentBlock->GetId();
+void DomTreeBuilder::computeSDoms(DSU &sdomsHelper) {
+    for (int i = getSize() - 1; i >= 0; --i) {
+        auto *currentBlock = getOrderedBlock(i);
 
         for (const auto &pred : currentBlock->GetPredecessors()) {
             auto nodeWithMinLabel = sdomsHelper.Find(pred);
-            sdoms[currentBlockId] = std::min(
-                sdoms[currentBlockId], sdoms[nodeWithMinLabel->GetId()]);
+            auto id = std::min(
+                getSemiDomNumber(currentBlock), getSemiDomNumber(nodeWithMinLabel));
+            setSemiDomNumber(currentBlock, id);
         }
 
         if (i > 0) {
-            sdomsSet[orderedBBlocks[sdoms[currentBlockId]]->GetId()].push_back(currentBlock);
-            auto *parent = bblocksParents[currentBlockId];
-            sdomsHelper.Unite(currentBlock, parent);
+            registerSemiDom(currentBlock);
+            sdomsHelper.Unite(currentBlock, getBlockDFOParent(currentBlock));
         }
 
-        for (auto dominatee : sdomsSet[currentBlockId]) {
+        for (auto dominatee : getSemiDoms(currentBlock)) {
             auto minSDom = sdomsHelper.Find(dominatee);
 
             auto dominateeId = dominatee->GetId();
-            if (sdoms[minSDom->GetId()] == sdoms[dominateeId]) {
-                idoms[dominateeId] = orderedBBlocks[sdoms[dominateeId]];
+            if (getSemiDomNumber(minSDom) == getSemiDomNumber(dominatee)) {
+                setImmDominator(dominateeId, getOrderedBlock(getSemiDomNumber(dominatee)));
             } else {
-                idoms[dominateeId] = minSDom;
+                setImmDominator(dominateeId, minSDom);
             }
         }
     }
 }
 
 void DomTreeBuilder::computeIDoms() {
-    for (size_t i = 1; i < orderedBBlocks.size(); ++i) {
-        auto *currentBlock = orderedBBlocks[i];
+    for (size_t i = 1; i < getSize(); ++i) {
+        auto *currentBlock = getOrderedBlock(i);
         auto currentBlockId = currentBlock->GetId();
-        if (idoms[currentBlockId]->GetId() != orderedBBlocks[sdoms[currentBlockId]]->GetId()) {
-            idoms[currentBlockId] = idoms[idoms[currentBlockId]->GetId()];
+        if (getImmDominator(currentBlockId) != getOrderedBlock(getSemiDomNumber(currentBlock))) {
+            setImmDominator(currentBlockId,
+                            getImmDominator(getImmDominator(currentBlockId)->GetId()));
         }
 
-        currentBlock->SetDominator(idoms[currentBlockId]);
-        idoms[currentBlockId]->AddDominatedBlock(currentBlock);
+        auto *immDom = getImmDominator(currentBlockId);
+        currentBlock->SetDominator(immDom);
+        immDom->AddDominatedBlock(currentBlock);
     }
 }
 }   // namespace ir

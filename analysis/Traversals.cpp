@@ -9,25 +9,30 @@ void DFO::DoTraverse(Graph *graph, DFO::TraversalCallbackType callback) {
         return;
     }
 
-    visited.clear();
+    if (!visited) {
+        auto *allocator = graph->GetAllocator();
+        visited = allocator->template New<utils::memory::ArenaSet<size_t>>(allocator->ToSTL());
+    } else {
+        visited->clear();
+    }
     doTraverse(graph->GetFirstBasicBlock(), callback);
-    ASSERT(visited.size() == graph->GetBasicBlocksCount());
+    ASSERT(visited->size() == graph->GetBasicBlocksCount());
 }
 
 void DFO::doTraverse(BasicBlock *bblock, DFO::TraversalCallbackType callback) {
     ASSERT(bblock);
-    visited.insert(bblock->GetId());
+    visited->insert(bblock->GetId());
     for (auto *succ : bblock->GetSuccessors()) {
-        if (!visited.contains(succ->GetId())) {
+        if (!visited->contains(succ->GetId())) {
             doTraverse(succ, callback);
         }
     }
     callback(bblock);
 }
 
-std::vector<BasicBlock *> RPO(Graph *graph) {
+utils::memory::ArenaVector<BasicBlock *> RPO(Graph *graph) {
     ASSERT(graph);
-    std::vector<BasicBlock *> result;
+    utils::memory::ArenaVector<BasicBlock *> result(graph->GetAllocator()->ToSTL());
     if (graph->IsEmpty()) {
         return result;
     }

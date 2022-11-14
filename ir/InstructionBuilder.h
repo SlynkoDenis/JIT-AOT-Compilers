@@ -11,12 +11,11 @@
 namespace ir {
 class InstructionBuilder {
 public:
-    InstructionBuilder() = default;
+    explicit InstructionBuilder(ArenaAllocator *const allocator)
+        : allocator(allocator), instrs(allocator->ToSTL()) {}
     NO_COPY_SEMANTIC(InstructionBuilder);
     NO_MOVE_SEMANTIC(InstructionBuilder);
-    virtual ~InstructionBuilder() noexcept {
-        Clear();
-    }
+    virtual DEFAULT_DTOR(InstructionBuilder);
 
     void PushBackInstruction(BasicBlock *bblock, InstructionBase *instr) {
         bblock->PushBackInstruction(instr);
@@ -39,10 +38,10 @@ public:
     }
 
 // TODO: implement and use Arena allocator
-#define CREATE_INST(name, ...)              \
-    auto *inst = new name(__VA_ARGS__);     \
-    instrs.push_back(inst);                 \
-    inst->SetId(instrs.size());             \
+#define CREATE_INST(name, ...)                                  \
+    auto *inst = allocator->template New<name>(__VA_ARGS__);    \
+    instrs.push_back(inst);                                     \
+    inst->SetId(instrs.size());                                 \
     return inst
 
     BinaryRegInstruction *CreateMul(OperandType type, Input in1, Input in2) {
@@ -74,18 +73,20 @@ public:
     }
 
     PhiInstruction *CreatePhi(OperandType type) {
-        CREATE_INST(PhiInstruction, type);
+        CREATE_INST(PhiInstruction, type, allocator);
     }
-    template <AllowedInputType... T>
-    PhiInstruction *CreatePhi(OperandType type, T... inputs) {
-        auto *inst = new PhiInstruction(type, inputs...);
-        instrs.push_back(inst);
-        inst->SetId(instrs.size());
-        return inst;
+    template <typename Ins, typename Sources>
+    PhiInstruction *CreatePhi(OperandType type, Ins inputs, Sources sources)
+    requires std::is_same_v<std::remove_cv_t<typename Sources::value_type>, BasicBlock *>
+             && AllowedInputType<typename Ins::value_type>
+    {
+        CREATE_INST(PhiInstruction, type, inputs, sources, allocator);
     }
-    template <std::ranges::range Ins>
-    PhiInstruction *CreatePhi(OperandType type, Ins inputs) {
-        CREATE_INST(PhiInstruction, type, inputs);
+    template <typename Ins, typename Sources>
+    PhiInstruction *CreatePhi(OperandType type, std::initializer_list<Ins> inputs, std::initializer_list<Sources> sources)
+    requires std::is_same_v<std::remove_cv_t<Sources>, BasicBlock *> && AllowedInputType<Ins>
+    {
+        CREATE_INST(PhiInstruction, type, inputs, sources, allocator);
     }
 
     InputArgumentInstruction *CreateArg(OperandType type) {
@@ -94,15 +95,9 @@ public:
 
 #undef CREATE_INST
 
-    void Clear() noexcept {
-        for (auto *instr : instrs) {
-            delete instr;
-        }
-        instrs.clear();
-    }
-
 private:
-    std::vector<InstructionBase *> instrs;
+    ArenaAllocator *const allocator;
+    utils::memory::ArenaVector<InstructionBase *> instrs;
 };
 }   // namespace ir
 

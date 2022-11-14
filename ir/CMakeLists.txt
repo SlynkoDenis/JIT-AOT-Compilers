@@ -8,6 +8,7 @@ add_library(ir STATIC ${SOURCES})
 
 target_sources(ir PUBLIC
     BasicBlock.h
+    Compiler.h
     Concepts.h
     Graph.h
     Input.h
@@ -18,6 +19,9 @@ target_sources(ir PUBLIC
     Types.h
     )
 
-include_directories(${CMAKE_SOURCE_DIR}/utils)
+target_include_directories(ir PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/utils
+    )
 
-target_include_directories(ir PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+add_dependencies(ir utils)

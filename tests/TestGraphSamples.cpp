@@ -18,9 +18,9 @@ std::pair<Graph *, std::vector<BasicBlock *>> TestGraphSamples::BuildCase1() {
     */
     std::vector<BasicBlock *> bblocks(7);
     for (auto &it : bblocks) {
-        it = irBuilder.CreateEmptyBasicBlock();
+        it = GetIRBuilder().CreateEmptyBasicBlock();
     }
-    auto *graph = irBuilder.GetGraph();
+    auto *graph = GetIRBuilder().GetGraph();
     graph->SetFirstBasicBlock(bblocks[0]);
     graph->ConnectBasicBlocks(bblocks[0], bblocks[1]);
     graph->ConnectBasicBlocks(bblocks[1], bblocks[2]);
@@ -54,9 +54,9 @@ std::pair<Graph *, std::vector<BasicBlock *>> TestGraphSamples::BuildCase2() {
     */
     std::vector<BasicBlock *> bblocks(11);
     for (auto &it : bblocks) {
-        it = irBuilder.CreateEmptyBasicBlock();
+        it = GetIRBuilder().CreateEmptyBasicBlock();
     }
-    auto *graph = irBuilder.GetGraph();
+    auto *graph = GetIRBuilder().GetGraph();
     graph->SetFirstBasicBlock(bblocks[0]);
     for (size_t i = 0; i < 7; ++i) {
         graph->ConnectBasicBlocks(bblocks[i], bblocks[i + 1]);
@@ -93,9 +93,9 @@ std::pair<Graph *, std::vector<BasicBlock *>> TestGraphSamples::BuildCase3() {
     */
     std::vector<BasicBlock *> bblocks(9);
     for (auto &it : bblocks) {
-        it = irBuilder.CreateEmptyBasicBlock();
+        it = GetIRBuilder().CreateEmptyBasicBlock();
     }
-    auto *graph = irBuilder.GetGraph();
+    auto *graph = GetIRBuilder().GetGraph();
     graph->SetFirstBasicBlock(bblocks[0]);
     for (size_t i = 0; i < 3; ++i) {
         graph->ConnectBasicBlocks(bblocks[i], bblocks[i + 1]);

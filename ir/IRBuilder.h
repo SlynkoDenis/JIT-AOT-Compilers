@@ -1,6 +1,7 @@
 #ifndef JIT_AOT_COMPILERS_COURSE_IR_BUILDER_H_
 #define JIT_AOT_COMPILERS_COURSE_IR_BUILDER_H_
 
+#include "arena/ArenaAllocator.h"
 #include "BasicBlock.h"
 #include "Graph.h"
 #include "macros.h"
@@ -22,18 +23,25 @@ public:
 
 class IRBuilder final : public IRBuilderBase {
 public:
-    IRBuilder() : IRBuilderBase(), graph(nullptr) {}
+    IRBuilder() = delete;
+    IRBuilder(ArenaAllocator *const alloc)
+        : IRBuilderBase(),
+          allocator(alloc),
+          bblocks(alloc->ToSTL())
+    {
+        ASSERT(allocator);
+    }
     virtual ~IRBuilder() noexcept {
         Clear();
     }
 
     void CreateGraph() {
         ASSERT(graph == nullptr);
-        graph = new Graph();
+        graph = allocator->template New<Graph>(allocator);
     }
 
     BasicBlock *CreateEmptyBasicBlock() override {
-        auto *bblock = new BasicBlock();
+        auto *bblock = allocator->template New<BasicBlock>(graph);
         bblocks.push_back(bblock);
         graph->AddBasicBlock(bblock);
         return bblock;
@@ -47,17 +55,14 @@ public:
     }
 
     void Clear() noexcept override {
-        for (auto *bblock : bblocks) {
-            delete bblock;
-        }
-        bblocks.clear();
-        delete graph;
         graph = nullptr;
     }
 
 private:
-    std::vector<BasicBlock *> bblocks;
-    Graph *graph;
+    ArenaAllocator *allocator = nullptr;
+
+    utils::memory::ArenaVector<BasicBlock *> bblocks;
+    Graph *graph = nullptr;
 };
 }   // namespace ir
 
