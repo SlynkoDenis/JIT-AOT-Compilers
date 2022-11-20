@@ -23,6 +23,7 @@ private:
     void computeSDoms();
     void computeIDoms();
 
+private:
     int lastNumber;
     DSU sdomsHelper;
 

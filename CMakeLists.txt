@@ -48,7 +48,7 @@ if(${CMAKE_BUILD_TYPE} MATCHES "Debug")
 endif()
 
 target_link_libraries(fact PUBLIC
-        analysis
-        ir
-        utils
-        )
+    analysis
+    ir
+    utils
+    )

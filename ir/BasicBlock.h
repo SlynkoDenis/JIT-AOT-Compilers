@@ -9,6 +9,7 @@
 
 namespace ir {
 class Graph;
+class Loop;
 
 class BasicBlock {
 public:
@@ -64,6 +65,14 @@ public:
     const std::vector<BasicBlock *> &GetDominatedBlocks() const {
         return dominated;
     }
+    bool Domites(const BasicBlock *bblock) const;
+
+    Loop *GetLoop() {
+        return loop;
+    }
+    const Loop *GetLoop() const {
+        return loop;
+    }
 
     Graph *GetGraph() {
         return graph;
@@ -85,6 +94,10 @@ public:
     }
     void AddDominatedBlock(BasicBlock *bblock) {
         dominated.push_back(bblock);
+    }
+
+    void SetLoop(Loop *newLoop) {
+        loop = newLoop;
     }
 
     void SetGraph(Graph *g) {
@@ -117,6 +130,8 @@ private:
 
     BasicBlock *dominator;
     std::vector<BasicBlock *> dominated;
+
+    Loop *loop;
 
     Graph *graph;
 };
