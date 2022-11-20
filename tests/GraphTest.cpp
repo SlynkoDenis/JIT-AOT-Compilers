@@ -7,7 +7,7 @@ class GraphTest : public CompilerTestBase {
 
 TEST_F(GraphTest, TestGraph1) {
     auto opType = OperandType::I32;
-    auto *mul = GetInstructionBuilder().CreateMul(opType, nullptr, nullptr);
+    auto *mul = GetInstructionBuilder().CreateMUL(opType, nullptr, nullptr);
 
     // add a single instruction in the 1st basic block
     auto *bblock = GetIRBuilder().CreateEmptyBasicBlock();
@@ -16,8 +16,8 @@ TEST_F(GraphTest, TestGraph1) {
     ASSERT_EQ(bblock->GetFirstInstruction(), mul);
     ASSERT_EQ(bblock->GetLastInstruction(), mul);
 
-    auto *addi1 = GetInstructionBuilder().CreateAddi(opType, nullptr, 32);
-    auto *addi2 = GetInstructionBuilder().CreateAddi(opType, nullptr, 32);
+    auto *addi1 = GetInstructionBuilder().CreateADDI(opType, nullptr, 32);
+    auto *addi2 = GetInstructionBuilder().CreateADDI(opType, nullptr, 32);
 
     // add another instruction in the 2nd basic block, which must be predecessor of the 1st
     auto *predBBlock1 = GetIRBuilder().CreateEmptyBasicBlock();
@@ -53,9 +53,9 @@ TEST_F(GraphTest, TestGraph1) {
 
 TEST_F(GraphTest, TestGraph2) {
     auto opType = OperandType::I32;
-    auto *mul = GetInstructionBuilder().CreateMul(opType, nullptr, nullptr);
-    auto *addi1 = GetInstructionBuilder().CreateAddi(opType, nullptr, 32);
-    auto *addi2 = GetInstructionBuilder().CreateAddi(opType, nullptr, 32);
+    auto *mul = GetInstructionBuilder().CreateMUL(opType, nullptr, nullptr);
+    auto *addi1 = GetInstructionBuilder().CreateADDI(opType, nullptr, 32);
+    auto *addi2 = GetInstructionBuilder().CreateADDI(opType, nullptr, 32);
 
     // create basic blocks as: [addi1] -> [addi2] -> [mul]
     auto *mulBBlock = GetIRBuilder().CreateEmptyBasicBlock();

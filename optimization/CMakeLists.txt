@@ -1,0 +1,20 @@
+set(SOURCES
+    ConstantFolding.cpp
+    Peephole.cpp
+    )
+
+add_library(optimization STATIC ${SOURCES})
+
+target_sources(optimization PUBLIC
+    ConstantFolding.h
+    Peephole.h
+    )
+
+target_include_directories(optimization PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/analysis
+    ${CMAKE_SOURCE_DIR}/ir
+    ${CMAKE_SOURCE_DIR}/utils
+    )
+
+add_dependencies(optimization analysis)

@@ -65,6 +65,7 @@ void BasicBlock::pushInstruction(InstructionBase *instr) {
             firstInst = instr;
         }
     }
+    size += 1;
 }
 
 void BasicBlock::pushPhi(InstructionBase *instr) {
@@ -97,24 +98,28 @@ void BasicBlock::InsertBefore(InstructionBase *before, InstructionBase *target) 
     before->SetPrevInstruction(target);
     target->SetPrevInstruction(prev);
     target->SetNextInstruction(before);
+    prev->SetNextInstruction(target);
 
     if (!prev) {
         firstInst = target;
     }
+    size += 1;
 }
 
 void BasicBlock::InsertAfter(InstructionBase *after, InstructionBase *target) {
     ASSERT((target) && (target->GetBasicBlock() == nullptr) && !target->IsPhi());
     ASSERT((after) && (after->GetBasicBlock() == this));
     target->SetBasicBlock(this);
-    auto *next = after->GetPrevInstruction();
+    auto *next = after->GetNextInstruction();
     after->SetNextInstruction(target);
     target->SetPrevInstruction(after);
     target->SetNextInstruction(next);
+    next->SetPrevInstruction(target);
 
     if (!next) {
         lastInst = target;
     }
+    size += 1;
 }
 
 void BasicBlock::UnlinkInstruction(InstructionBase *target) {
@@ -139,5 +144,34 @@ void BasicBlock::UnlinkInstruction(InstructionBase *target) {
     if (target == firstPhi) {
         firstPhi = nullptr;
     }
+    size -= 1;
+}
+
+void BasicBlock::ReplaceInstruction(InstructionBase *prevInstr, InstructionBase *newInstr) {
+    ReplaceInDataFlow(prevInstr, newInstr);
+    replaceInControlFlow(prevInstr, newInstr);
+    // TODO: replace users in inputs of prevInstr to newInstr
+}
+
+void BasicBlock::ReplaceInDataFlow(InstructionBase *prevInstr, InstructionBase *newInstr) {
+    newInstr->AddUsers(prevInstr->GetUsers());
+    for (auto &it : prevInstr->GetUsers()) {
+        ASSERT(it->HasInputs());
+        auto *typed = static_cast<InputsInstruction *>(it);
+        typed->ReplaceInput(prevInstr, newInstr);
+    }
+}
+
+void BasicBlock::replaceInControlFlow(InstructionBase *prevInstr, InstructionBase *newInstr) {
+    // TODO: check case newInstr->IsPhi() -> true (with tests)
+    ASSERT((prevInstr) && (prevInstr->GetBasicBlock() == this));
+    if (prevInstr->GetPrevInstruction()) {
+        InsertAfter(prevInstr->GetPrevInstruction(), newInstr);
+    } else if (prevInstr->GetNextInstruction()) {
+        InsertBefore(prevInstr->GetNextInstruction(), newInstr);
+    } else {
+        PushForwardInstruction(newInstr);
+    }
+    UnlinkInstruction(prevInstr);
 }
 }   // namespace ir

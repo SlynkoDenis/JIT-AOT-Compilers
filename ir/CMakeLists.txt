@@ -8,6 +8,7 @@ add_library(ir STATIC ${SOURCES})
 
 target_sources(ir PUBLIC
     BasicBlock.h
+    BasicBlockIterator.h
     Compiler.h
     Concepts.h
     Graph.h
@@ -17,6 +18,7 @@ target_sources(ir PUBLIC
     InstructionBuilder.h
     IRBuilder.h
     Types.h
+    Users.h
     )
 
 target_include_directories(ir PUBLIC

@@ -10,7 +10,7 @@ void Graph::ConnectBasicBlocks(BasicBlock *lhs, BasicBlock *rhs) {
 
 void Graph::AddBasicBlock(BasicBlock *bblock) {
     ASSERT(bblock);
-    bblock->SetId(bblocks.size());
+    bblock->SetId(GetBasicBlocksCount());
     bblocks.push_back(bblock);
     bblock->SetGraph(this);
 }
@@ -35,7 +35,7 @@ void Graph::AddBasicBlockBefore(BasicBlock *before, BasicBlock *bblock) {
 void Graph::UnlinkBasicBlock(BasicBlock *bblock) {
     ASSERT((bblock) && (bblock->GetGraph() == this));
     auto id = bblock->GetId();
-    ASSERT(id < bblocks.size() && bblocks[id] == bblock);
+    ASSERT(id < GetBasicBlocksCount() && bblocks[id] == bblock);
     bblocks[id] = nullptr;
     bblock->SetId(BasicBlock::INVALID_ID);
 
@@ -70,11 +70,6 @@ BasicBlock::BasicBlock(Graph *graph)
     : id(INVALID_ID),
       preds(graph->GetAllocator()->ToSTL()),
       succs(graph->GetAllocator()->ToSTL()),
-      firstPhi(nullptr),
-      firstInst(nullptr),
-      lastInst(nullptr),
-      dominator(nullptr),
       dominated(graph->GetAllocator()->ToSTL()),
-      loop(nullptr),
       graph(graph) {}
 }   // namespace ir
