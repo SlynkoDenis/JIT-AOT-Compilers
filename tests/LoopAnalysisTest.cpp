@@ -1,23 +1,10 @@
 #include "DomTree.h"
-#include "gtest/gtest.h"
-#include "IRBuilder.h"
 #include "LoopAnalyzer.h"
 #include "TestGraphSamples.h"
 
 
 namespace ir::tests {
-class LoopAnalysisTest : public ::testing::Test, public TestGraphSamples {
-public:
-    virtual void SetUp() {
-        irBuilder.CreateGraph();
-    }
-
-    LoopAnalysisTest() = default;
-
-    virtual void TearDown() {
-        irBuilder.Clear();
-    }
-
+class LoopAnalysisTest : public TestGraphSamples {
 public:
     LoopAnalyzer loopAnalyzer;
 };
@@ -124,9 +111,9 @@ TEST_F(LoopAnalysisTest, TestLoops4) {
     */
     std::vector<BasicBlock *> bblocks(5);
     for (auto &it : bblocks) {
-        it = irBuilder.CreateEmptyBasicBlock();
+        it = GetIRBuilder().CreateEmptyBasicBlock();
     }
-    auto *graph = irBuilder.GetGraph();
+    auto *graph = GetIRBuilder().GetGraph();
     graph->SetFirstBasicBlock(bblocks[0]);
     graph->ConnectBasicBlocks(bblocks[0], bblocks[1]);
     graph->ConnectBasicBlocks(bblocks[1], bblocks[2]);
@@ -167,9 +154,9 @@ TEST_F(LoopAnalysisTest, TestLoops5) {
     */
     std::vector<BasicBlock *> bblocks(6);
     for (auto &it : bblocks) {
-        it = irBuilder.CreateEmptyBasicBlock();
+        it = GetIRBuilder().CreateEmptyBasicBlock();
     }
-    auto *graph = irBuilder.GetGraph();
+    auto *graph = GetIRBuilder().GetGraph();
     graph->SetFirstBasicBlock(bblocks[0]);
     for (size_t i = 0; i < 3; ++i) {
         graph->ConnectBasicBlocks(bblocks[i], bblocks[i + 1]);
@@ -216,9 +203,9 @@ TEST_F(LoopAnalysisTest, TestLoops6) {
     */
     std::vector<BasicBlock *> bblocks(8);
     for (auto &it : bblocks) {
-        it = irBuilder.CreateEmptyBasicBlock();
+        it = GetIRBuilder().CreateEmptyBasicBlock();
     }
-    auto *graph = irBuilder.GetGraph();
+    auto *graph = GetIRBuilder().GetGraph();
     graph->SetFirstBasicBlock(bblocks[0]);
     graph->ConnectBasicBlocks(bblocks[0], bblocks[1]);
     graph->ConnectBasicBlocks(bblocks[1], bblocks[2]);

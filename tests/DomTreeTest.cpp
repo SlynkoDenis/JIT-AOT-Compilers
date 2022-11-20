@@ -1,22 +1,9 @@
 #include "DomTree.h"
-#include "gtest/gtest.h"
-#include "IRBuilder.h"
 #include "TestGraphSamples.h"
 
 
 namespace ir::tests {
-class DomTreeTest : public ::testing::Test, public TestGraphSamples {
-public:
-    virtual void SetUp() {
-        irBuilder.CreateGraph();
-    }
-
-    DomTreeTest() = default;
-
-    virtual void TearDown() {
-        irBuilder.Clear();
-    }
-
+class DomTreeTest : public TestGraphSamples {
 public:
     DomTreeBuilder domTreeBuilder;
 };

@@ -36,8 +36,8 @@ const char *getOpcodeName(Opcode opcode);
 // Instructions
 class InstructionBase {
 public:
-    InstructionBase(Opcode opcode, OperandType type)
-        : id(INVALID_ID),
+    InstructionBase(Opcode opcode, OperandType type, size_t id = INVALID_ID)
+        : id(id),
           opcode(opcode),
           type(type),
           prev(nullptr),
@@ -104,8 +104,10 @@ public:
     void InsertBefore(InstructionBase *inst);
     void InsertAfter(InstructionBase *inst);
 
+    NO_NEW_DELETE;
+
 public:
-    static const size_t INVALID_ID = static_cast<size_t>(0) - 1;
+    static constexpr size_t INVALID_ID = static_cast<size_t>(0) - 1;
 
 private:
     size_t id;

@@ -1,21 +1,15 @@
 #ifndef JIT_AOT_COMPILERS_COURSE_TEST_GRAPH_SAMPLES_H_
 #define JIT_AOT_COMPILERS_COURSE_TEST_GRAPH_SAMPLES_H_
 
-#include "Graph.h"
-#include "IRBuilder.h"
+#include "CompilerTestBase.h"
 
 
 namespace ir::tests {
-class TestGraphSamples {
+class TestGraphSamples : public CompilerTestBase {
 public:
-    virtual ~TestGraphSamples() noexcept = default;
-
     std::pair<Graph *, std::vector<BasicBlock *>> BuildCase1();
     std::pair<Graph *, std::vector<BasicBlock *>> BuildCase2();
     std::pair<Graph *, std::vector<BasicBlock *>> BuildCase3();
-
-public:
-    IRBuilder irBuilder;
 };
 }   // namespace ir::tests
 

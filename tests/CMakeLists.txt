@@ -2,6 +2,7 @@ set(BINARY tests)
 
 set(SOURCES
     BasicBlockTest.cpp
+    CompilerTestBase.h
     DomTreeTest.cpp
     GraphTest.cpp
     InstructionsTest.cpp

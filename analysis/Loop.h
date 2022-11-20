@@ -16,10 +16,17 @@ enum class DFSColors : uint32_t {
 
 class Loop final {
 public:
-    Loop(size_t id, BasicBlock *header, bool isIrreducible, bool isRoot = false)
+    Loop(size_t id,
+         BasicBlock *header,
+         bool isIrreducible,
+         ArenaAllocator *const allocator,
+         bool isRoot = false)
         : id(id),
           header(header),
+          backEdges(allocator->ToSTL()),
+          basicBlocks(allocator->ToSTL()),
           outerLoop(nullptr),
+          innerLoops(allocator->ToSTL()),
           isIrreducible(isIrreducible),
           isRoot(isRoot) {}
 
@@ -38,17 +45,17 @@ public:
         ASSERT(std::find(backEdges.begin(), backEdges.end(), backEdgeSource) == backEdges.end());
         backEdges.push_back(backEdgeSource);
     }
-    std::vector<BasicBlock *> GetBackEdges() {
+    ArenaVector<BasicBlock *> GetBackEdges() {
         return backEdges;
     }
-    const std::vector<BasicBlock *> &GetBackEdges() const {
+    const ArenaVector<BasicBlock *> &GetBackEdges() const {
         return backEdges;
     }
 
-    std::vector<BasicBlock *> GetBasicBlocks() {
+    ArenaVector<BasicBlock *> GetBasicBlocks() {
         return basicBlocks;
     }
-    const std::vector<BasicBlock *> &GetBasicBlocks() const {
+    const ArenaVector<BasicBlock *> &GetBasicBlocks() const {
         return basicBlocks;
     }
     void AddBasicBlock(BasicBlock *bblock) {
@@ -68,7 +75,7 @@ public:
     void SetOuterLoop(Loop *loop) {
         outerLoop = loop;
     }
-    const std::vector<Loop *> &GetInnerLoops() const {
+    const ArenaVector<Loop *> &GetInnerLoops() const {
         return innerLoops;
     }
     void AddInnerLoop(Loop *loop) {
@@ -87,17 +94,19 @@ public:
         return isRoot;
     }
 
+    NO_NEW_DELETE;
+
 private:
     size_t id;
 
     BasicBlock *header;
     // TODO: may replace with set
-    std::vector<BasicBlock *> backEdges;
+    ArenaVector<BasicBlock *> backEdges;
 
-    std::vector<BasicBlock *> basicBlocks;
+    ArenaVector<BasicBlock *> basicBlocks;
 
     Loop *outerLoop;
-    std::vector<Loop *> innerLoops;
+    ArenaVector<Loop *> innerLoops;
 
     bool isIrreducible;
 

@@ -1,6 +1,7 @@
 #ifndef JIT_AOT_COMPILERS_COURSE_GRAPH_H_
 #define JIT_AOT_COMPILERS_COURSE_GRAPH_H_
 
+#include "arena/ArenaAllocator.h"
 #include "BasicBlock.h"
 #include "macros.h"
 
@@ -10,10 +11,19 @@ class Loop;
 
 class Graph {
 public:
-    Graph() : firstBlock(nullptr), lastBlock(nullptr), loopTreeRoot(nullptr) {}
+    Graph(ArenaAllocator *allocator)
+        : allocator(allocator),
+          firstBlock(nullptr),
+          lastBlock(nullptr),
+          bblocks(allocator->ToSTL()),
+          loopTreeRoot(nullptr) {}
     NO_COPY_SEMANTIC(Graph);
     NO_MOVE_SEMANTIC(Graph);
     virtual DEFAULT_DTOR(Graph);
+
+    ArenaAllocator *GetAllocator() const {
+        return allocator;
+    }
 
     BasicBlock *GetFirstBasicBlock() {
         return firstBlock;
@@ -63,9 +73,11 @@ protected:
     void updatePhiInstructions();
 
 private:
+    ArenaAllocator *allocator;
+
     BasicBlock *firstBlock;
     BasicBlock *lastBlock;
-    std::vector<BasicBlock *> bblocks;
+    utils::memory::ArenaVector<BasicBlock *> bblocks;
 
     Loop *loopTreeRoot;
 };
