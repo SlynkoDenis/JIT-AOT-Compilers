@@ -22,6 +22,9 @@ public:
     size_t GetId() const {
         return id;
     }
+    size_t GetSize() const {
+        return size;
+    }
     utils::memory::ArenaVector<BasicBlock *> &GetPredecessors() {
         return preds;
     }
@@ -109,8 +112,59 @@ public:
     void InsertBefore(InstructionBase *before, InstructionBase *target);
     void InsertAfter(InstructionBase *after, InstructionBase *target);
     void UnlinkInstruction(InstructionBase *target);
+    void ReplaceInstruction(InstructionBase *prevInstr, InstructionBase *newInstr);
+    void ReplaceInDataFlow(InstructionBase *prevInstr, InstructionBase *newInstr);
 
     NO_NEW_DELETE;
+
+public:
+    // STL compatible iterator
+    template <typename T>
+    class Iterator {
+    public:
+        explicit Iterator(T instr) : curr(instr) {}
+        Iterator &operator++() {
+            curr = curr->GetNextInstruction();
+            return *this;
+        }
+        Iterator operator++(int) {
+            auto retval = *this;
+            ++(*this);
+            return retval;
+        }
+        bool operator==(const Iterator &other) const {
+            return curr == other.curr;
+        }
+        bool operator!=(const Iterator &other) const {
+            return !(*this == other);
+        }
+        T operator*() {
+            return curr;
+        }
+
+        // iterator traits
+        using difference_type = size_t;
+        using value_type = size_t;
+        using pointer = T*;
+        using reference = T&;
+        using iterator_category = std::forward_iterator_tag;
+
+    private:
+        T curr;
+    };
+
+    auto begin() {
+        return Iterator{GetFirstInstruction()};
+    }
+    auto cbegin() const {
+        return Iterator{GetFirstInstruction()};
+    }
+    auto end() {
+        return Iterator{GetLastInstruction()};
+    }
+    auto cend() const {
+        return Iterator{GetLastInstruction()};
+    }
 
 public:
     static constexpr size_t INVALID_ID = static_cast<size_t>(-1);
@@ -121,22 +175,26 @@ private:
 
     void pushPhi(InstructionBase *instr);
 
+    void replaceInControlFlow(InstructionBase *prevInstr, InstructionBase *newInstr);
+
 private:
-    size_t id;
+    size_t id = INVALID_ID;
 
     utils::memory::ArenaVector<BasicBlock *> preds;
     utils::memory::ArenaVector<BasicBlock *> succs;
 
-    PhiInstruction *firstPhi;
-    InstructionBase *firstInst;
-    InstructionBase *lastInst;
+    size_t size = 0;
 
-    BasicBlock *dominator;
+    PhiInstruction *firstPhi = nullptr;
+    InstructionBase *firstInst = nullptr;
+    InstructionBase *lastInst = nullptr;
+
+    BasicBlock *dominator = nullptr;
     utils::memory::ArenaVector<BasicBlock *> dominated;
 
-    Loop *loop;
+    Loop *loop = nullptr;
 
-    Graph *graph;
+    Graph *graph = nullptr;
 };
 }   // namespace ir
 

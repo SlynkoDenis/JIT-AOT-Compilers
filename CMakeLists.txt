@@ -31,6 +31,8 @@ if(${CMAKE_BUILD_TYPE} MATCHES "Debug")
     add_definitions(-DDEBUG)
 endif()
 
+add_link_options("-fuse-ld=lld")
+
 set(CMAKE_CXX_FLAGS "-Wall -Wextra -Werror")
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
@@ -41,6 +43,7 @@ add_executable(fact main.cpp)
 add_subdirectory(utils)
 add_subdirectory(ir)
 add_subdirectory(analysis)
+add_subdirectory(optimization)
 
 if(${CMAKE_BUILD_TYPE} MATCHES "Debug")
     add_git_submodule(third_party/googletest)

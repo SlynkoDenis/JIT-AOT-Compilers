@@ -23,6 +23,13 @@ public:
         instr = newInstr;
     }
 
+    InstructionBase *operator->() {
+        return instr;
+    }
+    const InstructionBase *operator->() const {
+        return instr;
+    }
+
 private:
     InstructionBase *instr;
 };

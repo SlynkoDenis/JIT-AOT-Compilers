@@ -37,7 +37,8 @@ public:
 
     void CreateGraph() {
         ASSERT(graph == nullptr);
-        graph = allocator->template New<Graph>(allocator);
+        auto *instrBuilder = allocator->template New<InstructionBuilder>(allocator);
+        graph = allocator->template New<Graph>(allocator, instrBuilder);
     }
 
     BasicBlock *CreateEmptyBasicBlock() override {

@@ -37,66 +37,122 @@ public:
         PushForwardInstruction(bblock, reminder...);
     }
 
-// TODO: implement and use Arena allocator
-#define CREATE_INST(name, ...)                                  \
-    auto *inst = allocator->template New<name>(__VA_ARGS__);    \
-    instrs.push_back(inst);                                     \
-    inst->SetId(instrs.size());                                 \
+#define CREATE_INST(name, ...)                                          \
+    auto *inst = allocator->template New<name>(__VA_ARGS__, allocator); \
+    instrs.push_back(inst);                                             \
+    inst->SetId(instrs.size());                                         \
     return inst
 
-    BinaryRegInstruction *CreateMul(OperandType type, Input in1, Input in2) {
-        CREATE_INST(BinaryRegInstruction, Opcode::MUL, type, in1, in2);
-    }
-    template <ValidOpType T>
-    BinaryImmInstruction *CreateAddi(OperandType type, Input input, T imm) {
-        CREATE_INST(BinaryImmInstruction, Opcode::ADDI, type, input, imm);
-    }
-    // TODO: remove MOVI instruction
-    template <ValidOpType T>
-    ConstantInstruction *CreateConst(OperandType type, T imm) {
-        CREATE_INST(ConstantInstruction, Opcode::CONST, type, imm);
-    }
-    CastInstruction *CreateCast(OperandType fromType, OperandType toType, Input input) {
-        CREATE_INST(CastInstruction, fromType, toType, input);
-    }
-    CompareInstruction *CreateCmp(OperandType type, CondCode ccode, Input in1, Input in2) {
-        CREATE_INST(CompareInstruction, Opcode::CMP, type, ccode, in1, in2);
-    }
-    JumpInstruction *CreateJa(int64_t imm = -1) {
-        CREATE_INST(JumpInstruction, Opcode::JA, imm);
-    }
-    JumpInstruction *CreateJmp(int64_t imm) {
-        CREATE_INST(JumpInstruction, Opcode::JMP, imm);
-    }
-    RetInstruction *CreateRet(OperandType type, Input input) {
-        CREATE_INST(RetInstruction, type, input);
+#define CREATE_INST_WITH_PROP(name, prop, ...)                          \
+    auto *inst = allocator->template New<name>(__VA_ARGS__, allocator); \
+    instrs.push_back(inst);                                             \
+    inst->SetId(instrs.size());                                         \
+    inst->SetProperty(prop);                                            \
+    return inst
+
+#define CREATE_COMMUTABLE_ARITHM(opcode)                                                    \
+    BinaryRegInstruction *Create##opcode(OperandType type, Input in1, Input in2) {          \
+        auto prop = ARITHM | utils::to_underlying(InstrProp::COMMUTABLE);                   \
+        CREATE_INST_WITH_PROP(BinaryRegInstruction, prop, Opcode::opcode, type, in1, in2);  \
     }
 
-    PhiInstruction *CreatePhi(OperandType type) {
-        CREATE_INST(PhiInstruction, type, allocator);
+#define CREATE_IMM_INST(opcode)                                                                 \
+    template <ValidOpType T>                                                                    \
+    BinaryImmInstruction *Create##opcode(OperandType type, Input input, T imm) {                \
+        CREATE_INST_WITH_PROP(BinaryImmInstruction, ARITHM, Opcode::opcode, type, input, imm);  \
+    }
+
+    CREATE_COMMUTABLE_ARITHM(AND)
+    CREATE_COMMUTABLE_ARITHM(OR)
+    CREATE_COMMUTABLE_ARITHM(XOR)
+    CREATE_COMMUTABLE_ARITHM(ADD)
+    CREATE_COMMUTABLE_ARITHM(MUL)
+
+    BinaryRegInstruction *CreateSUB(OperandType type, Input in1, Input in2) {
+        CREATE_INST_WITH_PROP(BinaryRegInstruction, ARITHM, Opcode::SUB, type, in1, in2);
+    }
+    BinaryRegInstruction *CreateDIV(OperandType type, Input in1, Input in2) {
+        CREATE_INST_WITH_PROP(BinaryRegInstruction, ARITHM, Opcode::DIV, type, in1, in2);
+    }
+    BinaryRegInstruction *CreateSRA(OperandType type, Input in1, Input in2) {
+        CREATE_INST_WITH_PROP(BinaryRegInstruction, ARITHM, Opcode::SRA, type, in1, in2);
+    }
+    BinaryRegInstruction *CreateSLA(OperandType type, Input in1, Input in2) {
+        CREATE_INST_WITH_PROP(BinaryRegInstruction, ARITHM, Opcode::SLA, type, in1, in2);
+    }
+    BinaryRegInstruction *CreateSLL(OperandType type, Input in1, Input in2) {
+        CREATE_INST_WITH_PROP(BinaryRegInstruction, ARITHM, Opcode::SLL, type, in1, in2);
+    }
+
+    CREATE_IMM_INST(ANDI)
+    CREATE_IMM_INST(ORI)
+    CREATE_IMM_INST(XORI)
+    CREATE_IMM_INST(ADDI)
+    CREATE_IMM_INST(SUBI)
+    CREATE_IMM_INST(MULI)
+    CREATE_IMM_INST(DIVI)
+    CREATE_IMM_INST(SRAI)
+    CREATE_IMM_INST(SLAI)
+    CREATE_IMM_INST(SLLI)
+
+    UnaryRegInstruction *CreateNOT(OperandType type, Input input) {
+        CREATE_INST_WITH_PROP(UnaryRegInstruction, ARITHM, Opcode::NOT, type, input);
+    }
+    UnaryRegInstruction *CreateNEG(OperandType type, Input input) {
+        CREATE_INST_WITH_PROP(UnaryRegInstruction, ARITHM, Opcode::NEG, type, input);
+    }
+    template <ValidOpType T>
+    ConstantInstruction *CreateCONST(OperandType type, T imm) {
+        CREATE_INST(ConstantInstruction, Opcode::CONST, type, imm);
+    }
+    CastInstruction *CreateCAST(OperandType fromType, OperandType toType, Input input) {
+        CREATE_INST_WITH_PROP(CastInstruction, InstrProp::INPUT, fromType, toType, input);
+    }
+    CompareInstruction *CreateCMP(OperandType type, CondCode ccode, Input in1, Input in2) {
+        CREATE_INST_WITH_PROP(CompareInstruction, InstrProp::INPUT, Opcode::CMP, type, ccode, in1, in2);
+    }
+    JumpInstruction *CreateJA(int64_t imm = -1) {
+        CREATE_INST_WITH_PROP(JumpInstruction, InstrProp::JUMP, Opcode::JA, imm);
+    }
+    JumpInstruction *CreateJMP(int64_t imm) {
+        CREATE_INST_WITH_PROP(JumpInstruction, InstrProp::JUMP, Opcode::JMP, imm);
+    }
+    RetInstruction *CreateRET(OperandType type, Input input) {
+        CREATE_INST_WITH_PROP(RetInstruction, InstrProp::JUMP, type, input);
+    }
+
+    PhiInstruction *CreatePHI(OperandType type) {
+        CREATE_INST_WITH_PROP(PhiInstruction, InstrProp::INPUT, type);
     }
     template <typename Ins, typename Sources>
-    PhiInstruction *CreatePhi(OperandType type, Ins inputs, Sources sources)
+    PhiInstruction *CreatePHI(OperandType type, Ins inputs, Sources sources)
     requires std::is_same_v<std::remove_cv_t<typename Sources::value_type>, BasicBlock *>
              && AllowedInputType<typename Ins::value_type>
     {
-        CREATE_INST(PhiInstruction, type, inputs, sources, allocator);
+        CREATE_INST_WITH_PROP(PhiInstruction, InstrProp::INPUT, type, inputs, sources);
     }
     template <typename Ins, typename Sources>
-    PhiInstruction *CreatePhi(OperandType type, std::initializer_list<Ins> inputs, std::initializer_list<Sources> sources)
+    PhiInstruction *CreatePHI(OperandType type, std::initializer_list<Ins> inputs, std::initializer_list<Sources> sources)
     requires std::is_same_v<std::remove_cv_t<Sources>, BasicBlock *> && AllowedInputType<Ins>
     {
-        CREATE_INST(PhiInstruction, type, inputs, sources, allocator);
+        CREATE_INST_WITH_PROP(PhiInstruction, InstrProp::INPUT, type, inputs, sources);
     }
 
-    InputArgumentInstruction *CreateArg(OperandType type) {
+    InputArgumentInstruction *CreateARG(OperandType type) {
         CREATE_INST(InputArgumentInstruction, type);
     }
 
 #undef CREATE_INST
+#undef CREATE_INST_WITH_PROP
+#undef CREATE_COMMUTABLE_ARITHM
+#undef CREATE_IMM_INST
+
+private:
+    static constexpr InstructionPropT ARITHM = utils::underlying_logic_or(InstrProp::ARITH, InstrProp::INPUT);
 
 private:
     ArenaAllocator *const allocator;
+
     utils::memory::ArenaVector<InstructionBase *> instrs;
 };
 }   // namespace ir

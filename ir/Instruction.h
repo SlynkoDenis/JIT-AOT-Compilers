@@ -14,8 +14,6 @@
 
 
 namespace ir {
-using utils::memory::ArenaAllocator;
-
 enum class CondCode {
     EQ,
     NE,
@@ -25,25 +23,38 @@ enum class CondCode {
 
 class InputsInstruction: public InstructionBase {
 public:
-    InputsInstruction(Opcode opcode, OperandType type)
-        : InstructionBase(opcode, type) {}
+    InputsInstruction(Opcode opcode, OperandType type, ArenaAllocator *const allocator)
+        : InstructionBase(opcode, type, allocator) {}
     virtual DEFAULT_DTOR(InputsInstruction);
 
+    virtual size_t GetInputsCount() const = 0;
     virtual Input &GetInput(size_t idx) = 0;
     virtual const Input &GetInput(size_t idx) const = 0;
     virtual void SetInput(Input newInput, size_t idx) = 0;
+    virtual void ReplaceInput(const Input &oldInput, Input newInput) = 0;
 };
 
 template <int InputsNum>
 class FixedInputsInstruction: public InputsInstruction {
 public:
-    FixedInputsInstruction(Opcode opcode, OperandType type)
-        : InputsInstruction(opcode, type) {}
+    FixedInputsInstruction(Opcode opcode, OperandType type, ArenaAllocator *const allocator)
+        : InputsInstruction(opcode, type, allocator) {}
 
     template <IsSameType<Input>... T>
-    FixedInputsInstruction(Opcode opcode, OperandType type, T... inputs)
-        : InputsInstruction(opcode, type), inputs{inputs...} {}
+    FixedInputsInstruction(Opcode opcode, OperandType type, ArenaAllocator *const allocator,
+                           T... ins)
+        : InputsInstruction(opcode, type, allocator), inputs{ins...}
+    {
+        for (auto &it : inputs) {
+            if (it.GetInstruction()) {
+                it->AddUser(this);
+            }
+        }
+    }
 
+    size_t GetInputsCount() const override {
+        return InputsNum;
+    }
     Input &GetInput(size_t idx) override {
         return inputs.at(idx);
     }
@@ -52,6 +63,14 @@ public:
     }
     void SetInput(Input newInput, size_t idx) override {
         inputs.at(idx) = newInput;
+        if (newInput.GetInstruction()) {
+            newInput->AddUser(this);
+        }
+    }
+    void ReplaceInput(const Input &oldInput, Input newInput) override {
+        auto iter = std::find(inputs.begin(), inputs.end(), oldInput);
+        ASSERT(iter != inputs.end());
+        *iter = newInput;
     }
 
     std::array<Input, InputsNum> &GetInputs() {
@@ -70,11 +89,19 @@ private:
 template <>
 class FixedInputsInstruction<1>: public InputsInstruction {
 public:
-    FixedInputsInstruction(Opcode opcode, OperandType type)
-        : InputsInstruction(opcode, type) {}
-    FixedInputsInstruction(Opcode opcode, OperandType type, Input input)
-        : InputsInstruction(opcode, type), input(input) {}
+    FixedInputsInstruction(Opcode opcode, OperandType type, ArenaAllocator *const allocator)
+        : InputsInstruction(opcode, type, allocator) {}
+    FixedInputsInstruction(Opcode opcode, OperandType type, Input input, ArenaAllocator *const allocator)
+        : InputsInstruction(opcode, type, allocator), input(input)
+    {
+        if (input.GetInstruction()) {
+            input->AddUser(this);
+        }
+    }
 
+    size_t GetInputsCount() const override {
+        return 1;
+    }
     Input &GetInput() {
         return input;
     }
@@ -82,7 +109,7 @@ public:
         return input;
     }
     Input &GetInput(size_t idx) override {
-        ASSERT(idx > 0);
+        ASSERT(idx == 0);
         return input;
     }
     const Input &GetInput(size_t idx) const override {
@@ -92,6 +119,13 @@ public:
     void SetInput(Input newInput, size_t idx) override {
         ASSERT(idx > 0);
         input = newInput;
+        if (input.GetInstruction()) {
+            input->AddUser(this);
+        }
+    }
+    void ReplaceInput(const Input &oldInput, Input newInput) override {
+        ASSERT(input == oldInput);
+        input = newInput;
     }
 
 private:
@@ -99,29 +133,49 @@ private:
 };
 
 template <typename T>
-concept AllowedInputType = (IsSameType<Input, T>
+concept AllowedInputType = (IsSameType<Input, std::remove_cv_t<T>>
     || (std::is_pointer_v<T>
         && std::is_base_of_v<InstructionBase, std::remove_cv_t<std::remove_pointer_t<T>>>));
 
 class VariableInputsInstruction: public InputsInstruction {
 public:
     VariableInputsInstruction(Opcode opcode, OperandType type, ArenaAllocator *const allocator)
-        : InputsInstruction(opcode, type), inputs(allocator->ToSTL()) {}
+        : InputsInstruction(opcode, type, allocator),
+          inputs(allocator->ToSTL()) {}
 
     template <typename Ins>
     VariableInputsInstruction(Opcode opcode, OperandType type, Ins ins,
                               ArenaAllocator *const allocator)
     requires AllowedInputType<typename Ins::value_type>
-        : InputsInstruction(opcode, type), inputs(ins.cbegin(), ins.cend(), allocator->ToSTL()) {}
+        : InputsInstruction(opcode, type, allocator),
+          inputs(ins.begin(), ins.end(), allocator->ToSTL())
+    {
+        for (auto &it : inputs) {
+            if (it.GetInstruction()) {
+                it->AddUser(this);
+            }
+        }
+    }
 
     template <typename Ins>
     VariableInputsInstruction(Opcode opcode, OperandType type, std::initializer_list<Ins> ins,
                               ArenaAllocator *const allocator)
     requires AllowedInputType<Ins>
-        : InputsInstruction(opcode, type), inputs(ins.begin(), ins.end(), allocator->ToSTL()) {}
+        : InputsInstruction(opcode, type, allocator),
+          inputs(ins.begin(), ins.end(), allocator->ToSTL())
+    {
+        for (auto &it : inputs) {
+            if (it.GetInstruction()) {
+                it->AddUser(this);
+            }
+        }
+    }
 
     DEFAULT_DTOR(VariableInputsInstruction);
 
+    size_t GetInputsCount() const override {
+        return inputs.size();
+    }
     Input &GetInput(size_t idx) override {
         return inputs.at(idx);
     }
@@ -130,6 +184,14 @@ public:
     }
     void SetInput(Input newInput, size_t idx) override {
         inputs.at(idx) = newInput;
+        if (newInput.GetInstruction()) {
+            newInput->AddUser(this);
+        }
+    }
+    void ReplaceInput(const Input &oldInput, Input newInput) override {
+        auto iter = std::find(inputs.begin(), inputs.end(), oldInput);
+        ASSERT(iter != inputs.end());
+        *iter = newInput;
     }
 
     utils::memory::ArenaVector<Input> &GetInputs() {
@@ -140,6 +202,9 @@ public:
     }
     void AddInput(Input newInput) {
         inputs.push_back(newInput);
+        if (newInput.GetInstruction()) {
+            newInput->AddUser(this);
+        }
     }
 
 protected:
@@ -182,40 +247,47 @@ private:
 // Specific instructions classes
 class UnaryRegInstruction : public FixedInputsInstruction<1> {
 public:
-    UnaryRegInstruction(Opcode opcode, OperandType type, Input input)
-        : FixedInputsInstruction(opcode, type, input) {}
+    UnaryRegInstruction(Opcode opcode, OperandType type, Input input, ArenaAllocator *const allocator)
+        : FixedInputsInstruction(opcode, type, input, allocator) {}
 };
 
 class BinaryRegInstruction : public FixedInputsInstruction<2> {
 public:
-    BinaryRegInstruction(Opcode opcode, OperandType type, Input in1, Input in2)
-        : FixedInputsInstruction(opcode, type, in1, in2) {}
+    BinaryRegInstruction(Opcode opcode, OperandType type, Input in1, Input in2,
+                         ArenaAllocator *const allocator)
+        : FixedInputsInstruction(opcode, type, allocator, in1, in2) {}
 };
 
 class ConstantInstruction : public InstructionBase, public ImmediateMixin<uint64_t> {
 public:
-    ConstantInstruction(Opcode opcode, OperandType type)
-        : InstructionBase(opcode, type), ImmediateMixin<uint64_t>(0) {}
-    ConstantInstruction(Opcode opcode, OperandType type, uint64_t value)
-        : InstructionBase(opcode, type), ImmediateMixin<uint64_t>(value) {}
+    ConstantInstruction(Opcode opcode, OperandType type, ArenaAllocator *const allocator)
+        : InstructionBase(opcode, type, allocator), ImmediateMixin<uint64_t>(0) {}
+    ConstantInstruction(Opcode opcode, OperandType type, uint64_t value, ArenaAllocator *const allocator)
+        : InstructionBase(opcode, type, allocator), ImmediateMixin<uint64_t>(value) {}
 };
 
 class BinaryImmInstruction : public FixedInputsInstruction<1>, public ImmediateMixin<uint64_t> {
 public:
-    BinaryImmInstruction(Opcode opcode, OperandType type, Input input, uint64_t imm)
-        : FixedInputsInstruction<1>(opcode, type, input), ImmediateMixin<uint64_t>(imm) {}
+    BinaryImmInstruction(Opcode opcode, OperandType type, Input input, uint64_t imm,
+                         ArenaAllocator *const allocator)
+        : FixedInputsInstruction<1>(opcode, type, input, allocator),
+          ImmediateMixin<uint64_t>(imm) {}
 };
 
 class CompareInstruction : public FixedInputsInstruction<2>, public ConditionMixin {
 public:
-    CompareInstruction(Opcode opcode, OperandType type, CondCode ccode, Input in1, Input in2)
-        : FixedInputsInstruction(opcode, type, in1, in2), ConditionMixin(ccode) {}
+    CompareInstruction(Opcode opcode, OperandType type, CondCode ccode, Input in1, Input in2,
+                       ArenaAllocator *const allocator)
+        : FixedInputsInstruction(opcode, type, allocator, in1, in2),
+          ConditionMixin(ccode) {}
 };
 
 class CastInstruction : public FixedInputsInstruction<1> {
 public:
-    CastInstruction(OperandType fromType, OperandType toType, Input input)
-        : FixedInputsInstruction(Opcode::CAST, fromType, input), toType(toType) {}
+    CastInstruction(OperandType fromType, OperandType toType, Input input,
+                    ArenaAllocator *const allocator)
+        : FixedInputsInstruction(Opcode::CAST, fromType, input, allocator),
+          toType(toType) {}
 
     auto GetTargetType() const {
         return toType;
@@ -230,14 +302,15 @@ private:
 
 class JumpInstruction : public InstructionBase, public ImmediateMixin<uint64_t> {
 public:
-    JumpInstruction(Opcode opcode, uint64_t imm)
-        : InstructionBase(opcode, OperandType::I64), ImmediateMixin<uint64_t>(imm) {}
+    JumpInstruction(Opcode opcode, uint64_t imm, ArenaAllocator *const allocator)
+        : InstructionBase(opcode, OperandType::I64, allocator),
+          ImmediateMixin<uint64_t>(imm) {}
 };
 
 class RetInstruction : public FixedInputsInstruction<1> {
 public:
-    RetInstruction(OperandType type, Input input)
-        : FixedInputsInstruction<1>(Opcode::RET, type, input) {}
+    RetInstruction(OperandType type, Input input, ArenaAllocator *const allocator)
+        : FixedInputsInstruction<1>(Opcode::RET, type, input, allocator) {}
 };
 
 class PhiInstruction : public VariableInputsInstruction {
@@ -283,8 +356,8 @@ private:
 
 class InputArgumentInstruction : public InstructionBase {
 public:
-    explicit InputArgumentInstruction(OperandType type)
-        : InstructionBase(Opcode::ARG, type) {}
+    InputArgumentInstruction(OperandType type, ArenaAllocator *const allocator)
+        : InstructionBase(Opcode::ARG, type, allocator) {}
 };
 }   // namespace ir
 

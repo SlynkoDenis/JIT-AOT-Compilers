@@ -3,18 +3,42 @@
 
 #include "Concepts.h"
 #include <cstdint>
+#include "helpers.h"
 #include "macros.h"
 #include "Types.h"
+#include "Users.h"
 
 
 namespace ir {
 class BasicBlock;
 
+using utils::memory::ArenaAllocator;
+
 // Opcodes & Conditional Codes
 #define INSTS_LIST(DEF) \
     DEF(CONST)          \
+    DEF(NOT)            \
+    DEF(AND)            \
+    DEF(OR)             \
+    DEF(XOR)            \
+    DEF(NEG)            \
+    DEF(ADD)            \
+    DEF(SUB)            \
     DEF(MUL)            \
+    DEF(DIV)            \
+    DEF(SRA)            \
+    DEF(SLA)            \
+    DEF(SLL)            \
+    DEF(ANDI)           \
+    DEF(ORI)            \
+    DEF(XORI)           \
     DEF(ADDI)           \
+    DEF(SUBI)           \
+    DEF(MULI)           \
+    DEF(DIVI)           \
+    DEF(SRAI)           \
+    DEF(SLAI)           \
+    DEF(SLLI)           \
     DEF(CAST)           \
     DEF(CMP)            \
     DEF(JA)             \
@@ -33,16 +57,28 @@ enum class Opcode {
 
 const char *getOpcodeName(Opcode opcode);
 
+// Instructions properties, used in optimizations
+using InstructionPropT = uint8_t;
+
+enum class InstrProp : InstructionPropT {
+    ARITH = 0b1,
+    MEM = 0b10,
+    COMMUTABLE = 0b100,
+    JUMP = 0b1000,
+    INPUT = 0b10000,
+};
+
 // Instructions
-class InstructionBase {
+class InstructionBase : public Users {
 public:
-    InstructionBase(Opcode opcode, OperandType type, size_t id = INVALID_ID)
-        : id(id),
+    InstructionBase(Opcode opcode, OperandType type, ArenaAllocator *const allocator,
+                    size_t id = INVALID_ID,
+                    InstructionPropT prop = 0)
+        : Users(allocator),
+          id(id),
           opcode(opcode),
           type(type),
-          prev(nullptr),
-          next(nullptr),
-          parent(nullptr) {}
+          properties(prop) {}
     NO_COPY_SEMANTIC(InstructionBase);
     NO_MOVE_SEMANTIC(InstructionBase);
     virtual DEFAULT_DTOR(InstructionBase);
@@ -77,12 +113,24 @@ public:
     size_t GetId() const {
         return id;
     }
+    InstructionPropT GetProperties() const {
+        return properties;
+    }
+    bool SatisfiesProperty(InstrProp prop) const {
+        return GetProperties() & utils::to_underlying(prop);
+    }
 
     bool IsInputArgument() const {
         return opcode == Opcode::ARG;
     }
     bool IsPhi() const {
         return opcode == Opcode::PHI;
+    }
+    bool IsConst() const {
+        return opcode == Opcode::CONST;
+    }
+    bool HasInputs() const {
+        return SatisfiesProperty(InstrProp::INPUT);
     }
 
     void SetPrevInstruction(InstructionBase *inst) {
@@ -100,6 +148,12 @@ public:
     void SetId(size_t newId) {
         id = newId;
     }
+    void SetProperty(InstrProp prop) {
+        properties |= utils::to_underlying(prop);
+    }
+    void SetProperty(InstructionPropT prop) {
+        properties |= prop;
+    }
     void UnlinkFromParent();
     void InsertBefore(InstructionBase *inst);
     void InsertAfter(InstructionBase *inst);
@@ -115,10 +169,12 @@ private:
     Opcode opcode;
     OperandType type;
 
-    InstructionBase *prev;
-    InstructionBase *next;
+    InstructionBase *prev = nullptr;
+    InstructionBase *next = nullptr;
 
-    BasicBlock *parent;
+    BasicBlock *parent = nullptr;
+
+    InstructionPropT properties = 0;
 };
 }   // namespace ir
 

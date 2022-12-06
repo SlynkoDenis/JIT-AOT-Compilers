@@ -96,6 +96,10 @@ public:
     DEFAULT_MOVE_SEMANTIC(ArenaAllocator);
     ~ArenaAllocator() noexcept;
 
+    size_t GetFreeSize() const {
+        return arenaList->GetFreeSize();
+    }
+
     STLCompliantArenaAllocator<int> ToSTL();
 
     template <typename T>
@@ -107,9 +111,13 @@ public:
         return static_cast<T*>(p);
     }
 
+    template <NonVoid T>
+    [[nodiscard]] void *NewRaw() {
+        return allocate(sizeof(T));
+    }
     template <NonVoid T, typename... ArgsT>
     [[nodiscard]] T *New(ArgsT &&... args) {
-        auto p = allocate(sizeof(T));
+        auto p = NewRaw<T>();
         if (UNLIKELY(p == nullptr)) {
             return nullptr;
         }
