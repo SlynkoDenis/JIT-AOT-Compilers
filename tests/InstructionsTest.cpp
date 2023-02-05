@@ -7,10 +7,10 @@ class InstructionsTest : public CompilerTestBase {
 
 TEST_F(InstructionsTest, TestMul) {
     auto opType = OperandType::I32;
-    auto *arg1 = GetInstructionBuilder().CreateArg(opType);
-    auto *arg2 = GetInstructionBuilder().CreateArg(opType);
+    auto *arg1 = GetInstructionBuilder().CreateARG(opType);
+    auto *arg2 = GetInstructionBuilder().CreateARG(opType);
 
-    auto *instr = GetInstructionBuilder().CreateMul(opType, arg1, arg2);
+    auto *instr = GetInstructionBuilder().CreateMUL(opType, arg1, arg2);
 
     ASSERT_NE(instr, nullptr);
     ASSERT_EQ(instr->GetOpcode(), Opcode::MUL);
@@ -21,10 +21,10 @@ TEST_F(InstructionsTest, TestMul) {
 
 TEST_F(InstructionsTest, TestAddi) {
     auto opType = OperandType::U64;
-    auto *arg = GetInstructionBuilder().CreateArg(opType);
+    auto *arg = GetInstructionBuilder().CreateARG(opType);
     auto imm = 11UL;
 
-    auto *instr = GetInstructionBuilder().CreateAddi(opType, arg, imm);
+    auto *instr = GetInstructionBuilder().CreateADDI(opType, arg, imm);
 
     ASSERT_NE(instr, nullptr);
     ASSERT_EQ(instr->GetOpcode(), Opcode::ADDI);
@@ -37,7 +37,7 @@ TEST_F(InstructionsTest, TestConst) {
     auto opType = OperandType::I64;
     auto imm = 12L;
 
-    auto *instr = GetInstructionBuilder().CreateConst(opType, imm);
+    auto *instr = GetInstructionBuilder().CreateCONST(opType, imm);
 
     ASSERT_NE(instr, nullptr);
     ASSERT_EQ(instr->GetOpcode(), Opcode::CONST);
@@ -48,9 +48,9 @@ TEST_F(InstructionsTest, TestConst) {
 TEST_F(InstructionsTest, TestCast) {
     auto fromType = OperandType::I32;
     auto toType = OperandType::U8;
-    auto *arg = GetInstructionBuilder().CreateArg(fromType);
+    auto *arg = GetInstructionBuilder().CreateARG(fromType);
     
-    auto *instr = GetInstructionBuilder().CreateCast(fromType, toType, arg);
+    auto *instr = GetInstructionBuilder().CreateCAST(fromType, toType, arg);
 
     ASSERT_NE(instr, nullptr);
     ASSERT_EQ(instr->GetOpcode(), Opcode::CAST);
@@ -62,10 +62,10 @@ TEST_F(InstructionsTest, TestCast) {
 TEST_F(InstructionsTest, TestCmp) {
     auto opType = OperandType::U64;
     auto ccode = CondCode::LT;
-    auto *arg1 = GetInstructionBuilder().CreateArg(opType);
-    auto *arg2 = GetInstructionBuilder().CreateArg(opType);
+    auto *arg1 = GetInstructionBuilder().CreateARG(opType);
+    auto *arg2 = GetInstructionBuilder().CreateARG(opType);
 
-    auto *instr = GetInstructionBuilder().CreateCmp(opType, ccode, arg1, arg2);
+    auto *instr = GetInstructionBuilder().CreateCMP(opType, ccode, arg1, arg2);
 
     ASSERT_NE(instr, nullptr);
     ASSERT_EQ(instr->GetOpcode(), Opcode::CMP);
@@ -77,7 +77,7 @@ TEST_F(InstructionsTest, TestCmp) {
 
 TEST_F(InstructionsTest, TestJa) {
     auto dest = 42;
-    auto *instr = GetInstructionBuilder().CreateJa(dest);
+    auto *instr = GetInstructionBuilder().CreateJA(dest);
 
     ASSERT_NE(instr, nullptr);
     ASSERT_EQ(instr->GetOpcode(), Opcode::JA);
@@ -87,7 +87,7 @@ TEST_F(InstructionsTest, TestJa) {
 
 TEST_F(InstructionsTest, TestJmp) {
     int64_t dest = 42;
-    auto *instr = GetInstructionBuilder().CreateJmp(dest);
+    auto *instr = GetInstructionBuilder().CreateJMP(dest);
 
     ASSERT_NE(instr, nullptr);
     ASSERT_EQ(instr->GetOpcode(), Opcode::JMP);
@@ -97,9 +97,9 @@ TEST_F(InstructionsTest, TestJmp) {
 
 TEST_F(InstructionsTest, TestRet) {
     auto opType = OperandType::U8;
-    auto *arg = GetInstructionBuilder().CreateArg(opType);
+    auto *arg = GetInstructionBuilder().CreateARG(opType);
 
-    auto *instr = GetInstructionBuilder().CreateRet(opType, arg);
+    auto *instr = GetInstructionBuilder().CreateRET(opType, arg);
 
     ASSERT_NE(instr, nullptr);
     ASSERT_EQ(instr->GetOpcode(), Opcode::RET);
@@ -113,7 +113,7 @@ TEST_F(InstructionsTest, TestPhi) {
     auto args = std::vector<InstructionBase *>();
     args.reserve(numArgs);
     for (size_t i = 0; i < numArgs; ++i) {
-        args.push_back(GetInstructionBuilder().CreateArg(opType));
+        args.push_back(GetInstructionBuilder().CreateARG(opType));
     }
 
     std::vector<BasicBlock *> bblocks{3, nullptr};
@@ -121,7 +121,7 @@ TEST_F(InstructionsTest, TestPhi) {
         bblock = GetIRBuilder().CreateEmptyBasicBlock();
     }
 
-    auto *instr = GetInstructionBuilder().CreatePhi(opType, args, bblocks);
+    auto *instr = GetInstructionBuilder().CreatePHI(opType, args, bblocks);
 
     ASSERT_NE(instr, nullptr);
     ASSERT_EQ(instr->GetOpcode(), Opcode::PHI);

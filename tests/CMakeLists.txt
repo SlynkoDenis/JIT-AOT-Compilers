@@ -8,6 +8,7 @@ set(SOURCES
     InstructionsTest.cpp
     LoopAnalysisTest.cpp
     main.cpp
+    PeepholesTest.cpp
     TestGraphSamples.h
     TestGraphSamples.cpp
     TraversalsTest.cpp
@@ -17,4 +18,4 @@ add_executable(${BINARY} ${SOURCES})
 
 add_test(NAME ${BINARY} COMMAND ${BINARY})
 
-target_link_libraries(${BINARY} PUBLIC analysis ir gtest utils)
+target_link_libraries(${BINARY} PUBLIC analysis ir gtest optimization utils)

@@ -7,16 +7,18 @@
 
 
 namespace ir {
+class InstructionBuilder;
 class Loop;
 
 class Graph {
 public:
-    Graph(ArenaAllocator *allocator)
+    Graph(ArenaAllocator *allocator, InstructionBuilder* instrBuilder)
         : allocator(allocator),
           firstBlock(nullptr),
           lastBlock(nullptr),
           bblocks(allocator->ToSTL()),
-          loopTreeRoot(nullptr) {}
+          loopTreeRoot(nullptr),
+          instrBuilder(instrBuilder) {}
     NO_COPY_SEMANTIC(Graph);
     NO_MOVE_SEMANTIC(Graph);
     virtual DEFAULT_DTOR(Graph);
@@ -51,6 +53,10 @@ public:
         return loopTreeRoot;
     }
 
+    InstructionBuilder *GetInstructionBuilder() {
+        return instrBuilder;
+    }
+
     void SetFirstBasicBlock(BasicBlock *bblock) {
         firstBlock = bblock;
     }
@@ -80,6 +86,8 @@ private:
     utils::memory::ArenaVector<BasicBlock *> bblocks;
 
     Loop *loopTreeRoot;
+
+    InstructionBuilder *instrBuilder;
 };
 }   // namespace ir
 

@@ -26,7 +26,7 @@ private:
     void dfsPopulateLoops(Loop *loop, BasicBlock *bblock, DFSColors color);
 
     static bool isLoopIrreducible(const BasicBlock *header, const BasicBlock *backEdgeSource) {
-        return !header->Domites(backEdgeSource);
+        return !header->Dominates(backEdgeSource);
     }
 
 private:

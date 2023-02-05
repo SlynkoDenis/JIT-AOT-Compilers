@@ -15,7 +15,10 @@ target_sources(analysis PUBLIC
     Traversals.h
     )
 
-include_directories(${CMAKE_SOURCE_DIR}/utils)
-include_directories(${CMAKE_SOURCE_DIR}/ir)
+target_include_directories(analysis PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/ir
+    ${CMAKE_SOURCE_DIR}/utils
+    )
 
-target_include_directories(analysis PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+add_dependencies(analysis ir)

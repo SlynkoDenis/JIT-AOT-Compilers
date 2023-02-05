@@ -19,7 +19,7 @@ void *Arena::Alloc(size_t sz, size_t alignSize) {
     if (aligned == nullptr) {
         return nullptr;
     }
-    end = VoidPtrT(UintptrT(aligned) + sz);
+    end = VoidPtrT(UintptrT(end) + sz);
     freeSize -= sz;
     return aligned;
 }
@@ -36,6 +36,9 @@ void ArenaAllocator::addNewArena() {
 void *ArenaAllocator::allocate(size_t size) {
     auto addr = arenaList->Alloc(size, alignment);
     if (addr == nullptr) {
+        if (size > arenaList->GetSize()) {
+            arenaSize = AlignUp(size, PAGE_SIZE);
+        }
         addNewArena();
         return allocate(size);
     }
