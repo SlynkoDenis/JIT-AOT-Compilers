@@ -24,6 +24,10 @@ public:
     NO_MOVE_SEMANTIC(Users);
     virtual DEFAULT_DTOR(Users);
 
+    size_t UsersCount() const {
+        return users.size();
+    }
+
     const utils::memory::ArenaVector<InstructionBase *> &GetUsers() const {
         return users;
     }

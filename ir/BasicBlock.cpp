@@ -2,7 +2,7 @@
 
 
 namespace ir {
-bool BasicBlock::Domites(const BasicBlock *bblock) const {
+bool BasicBlock::Dominates(const BasicBlock *bblock) const {
     ASSERT(bblock);
     auto *dom = bblock->GetDominator();
     while (dom != nullptr) {

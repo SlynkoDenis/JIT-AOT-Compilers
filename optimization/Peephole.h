@@ -38,7 +38,6 @@ private:
     bool tryANDRepeatedArgs(BinaryRegInstruction *instr);
     bool trySequencedSRA(BinaryRegInstruction *instr);
     bool trySRAZero(BinaryRegInstruction *instr);
-    bool tryLeftRightShift(BinaryRegInstruction *instr);
     bool trySUBAfterNEG(BinaryRegInstruction *instr, Input checked, Input second);
     bool trySUBAfterADD(BinaryRegInstruction *instr);
     bool trySUBZero(BinaryRegInstruction *instr);

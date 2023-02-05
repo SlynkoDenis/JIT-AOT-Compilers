@@ -144,7 +144,7 @@ TEST_F(PeepholesTest, TestANDWithNEGArgs) {
     pass->Run();
 
     verifyControlAndDataFlowGraphs(bblock);
-    ASSERT_EQ(bblock->GetSize(), prevSize + 1);
+    ASSERT_EQ(bblock->GetSize(), prevSize - 1);
     ASSERT_EQ(bblock->GetLastInstruction(), userInstr);
     auto *notInstr = userInstr->GetInput(0).GetInstruction();
     ASSERT_NE(notInstr, nullptr);
@@ -275,140 +275,6 @@ TEST_F(PeepholesTest, TestSRAZero) {
     ASSERT_EQ(bblock->GetSize(), prevSize - 1);
     compareInstructions({arg, constZero, userInstr}, bblock);
     ASSERT_EQ(userInstr->GetInput(0), arg);
-}
-
-TEST_F(PeepholesTest, TestSequencedSRA1) {
-    // case:
-    // v4 = v1 >> v2
-    // v5 = v4 >> v3
-    // expected:
-    // v4 = v1 >> v2
-    // v6 = v2 + v3
-    // v5 = v1 >> v6
-    auto opType = OperandType::I32;
-    auto *arg1 = GetInstructionBuilder().CreateARG(opType);
-    auto *arg2 = GetInstructionBuilder().CreateARG(opType);
-    auto *arg3 = GetInstructionBuilder().CreateARG(opType);
-    auto *sraInstr1 = GetInstructionBuilder().CreateSRA(opType, arg1, arg2);
-    auto *sraInstr2 = GetInstructionBuilder().CreateSRA(opType, sraInstr1, arg3);
-
-    auto *bblock = GetIRBuilder().CreateEmptyBasicBlock();
-    GetIRBuilder().GetGraph()->SetFirstBasicBlock(bblock);
-    GetInstructionBuilder().PushBackInstruction(bblock, arg1, arg2, arg3, sraInstr1, sraInstr2);
-    auto prevSize = bblock->GetSize();
-
-    pass->Run();
-
-    verifyControlAndDataFlowGraphs(bblock);
-    ASSERT_EQ(bblock->GetSize(), prevSize + 1);
-    auto *instr = bblock->GetLastInstruction();
-    ASSERT_NE(instr, nullptr);
-    ASSERT_EQ(instr->GetOpcode(), Opcode::SRA);
-    auto *typed = static_cast<BinaryRegInstruction *>(instr);
-    ASSERT_EQ(typed->GetInput(0), arg1);
-    instr = instr->GetPrevInstruction();
-    ASSERT_EQ(instr, typed->GetInput(1));
-    ASSERT_EQ(instr->GetOpcode(), Opcode::ADD);
-    typed = static_cast<BinaryRegInstruction *>(instr);
-    if (typed->GetInput(0) == arg2) {
-        ASSERT_EQ(typed->GetInput(1), arg3);
-    } else {
-        ASSERT_EQ(typed->GetInput(0), arg3);
-        ASSERT_EQ(typed->GetInput(1), arg2);
-    }
-}
-
-TEST_F(PeepholesTest, TestSequencedSRA2) {
-    // case:
-    // v4 = v1 >> imm
-    // v5 = v4 >> v3
-    // expected:
-    // v4 = v1 >> imm
-    // v6 = v3 + imm
-    // v5 = v1 >> v6
-    auto opType = OperandType::I32;
-    auto *arg1 = GetInstructionBuilder().CreateARG(opType);
-    auto *arg2 = GetInstructionBuilder().CreateARG(opType);
-    int imm = 111;
-    auto *sraInstr1 = GetInstructionBuilder().CreateSRAI(opType, arg1, imm);
-    auto *sraInstr2 = GetInstructionBuilder().CreateSRA(opType, sraInstr1, arg2);
-
-    auto *bblock = GetIRBuilder().CreateEmptyBasicBlock();
-    GetIRBuilder().GetGraph()->SetFirstBasicBlock(bblock);
-    GetInstructionBuilder().PushBackInstruction(bblock, arg1, arg2, sraInstr1, sraInstr2);
-    auto prevSize = bblock->GetSize();
-
-    pass->Run();
-
-    verifyControlAndDataFlowGraphs(bblock);
-    ASSERT_EQ(bblock->GetSize(), prevSize + 1);
-    auto *instr = bblock->GetLastInstruction();
-    ASSERT_NE(instr, nullptr);
-    ASSERT_EQ(instr->GetOpcode(), Opcode::SRA);
-    auto *typed = static_cast<BinaryRegInstruction *>(instr);
-    ASSERT_EQ(typed->GetInput(0), arg1);
-    instr = instr->GetPrevInstruction();
-    ASSERT_EQ(instr, typed->GetInput(1));
-    ASSERT_EQ(instr->GetOpcode(), Opcode::ADDI);
-    auto *typedImm = static_cast<BinaryImmInstruction *>(instr);
-    ASSERT_EQ(typedImm->GetInput(0), arg2);
-    ASSERT_EQ(typedImm->GetValue(), imm);
-}
-
-TEST_F(PeepholesTest, TestLeftRightShifts1) {
-    // case:
-    // v3 = v1 << v2
-    // v4 = v3 >> v2
-    // expected:
-    // v4 is replaced with v1
-    auto opType = OperandType::I32;
-    auto *arg1 = GetInstructionBuilder().CreateARG(opType);
-    auto *arg2 = GetInstructionBuilder().CreateARG(opType);
-    auto *sraInstr1 = GetInstructionBuilder().CreateSLA(opType, arg1, arg2);
-    auto *sraInstr2 = GetInstructionBuilder().CreateSRA(opType, sraInstr1, arg2);
-    auto *payload = GetInstructionBuilder().CreateADD(opType, sraInstr1, sraInstr2);
-
-    auto *bblock = GetIRBuilder().CreateEmptyBasicBlock();
-    GetIRBuilder().GetGraph()->SetFirstBasicBlock(bblock);
-    GetInstructionBuilder().PushBackInstruction(bblock, arg1, arg2, sraInstr1, sraInstr2, payload);
-    auto prevSize = bblock->GetSize();
-
-    pass->Run();
-
-    verifyControlAndDataFlowGraphs(bblock);
-    ASSERT_EQ(bblock->GetSize(), prevSize - 1);
-    compareInstructions({arg1, arg2, sraInstr1, payload}, bblock);
-    ASSERT_EQ(payload->GetInput(0), sraInstr1);
-    ASSERT_EQ(payload->GetInput(1), arg1);
-}
-
-TEST_F(PeepholesTest, TestLeftRightShifts2) {
-    // case:
-    // v2 = imm
-    // v3 = v1 << imm
-    // v4 = v3 >> v2
-    // expected:
-    // v4 is replaced with v1
-    auto opType = OperandType::I32;
-    auto *arg = GetInstructionBuilder().CreateARG(opType);
-    int imm = 3;
-    auto *constInstr = GetInstructionBuilder().CreateCONST(opType, imm);
-    auto *sraInstr1 = GetInstructionBuilder().CreateSLAI(opType, arg, imm);
-    auto *sraInstr2 = GetInstructionBuilder().CreateSRA(opType, sraInstr1, constInstr);
-    auto *payload = GetInstructionBuilder().CreateADD(opType, sraInstr1, sraInstr2);
-
-    auto *bblock = GetIRBuilder().CreateEmptyBasicBlock();
-    GetIRBuilder().GetGraph()->SetFirstBasicBlock(bblock);
-    GetInstructionBuilder().PushBackInstruction(bblock, arg, constInstr, sraInstr1, sraInstr2, payload);
-    auto prevSize = bblock->GetSize();
-
-    pass->Run();
-
-    verifyControlAndDataFlowGraphs(bblock);
-    ASSERT_EQ(bblock->GetSize(), prevSize - 1);
-    compareInstructions({arg, constInstr, sraInstr1, payload}, bblock);
-    ASSERT_EQ(payload->GetInput(0), sraInstr1);
-    ASSERT_EQ(payload->GetInput(1), arg);
 }
 
 static void testSRAFolding(InstructionBuilder &instrBuilder, IRBuilder &irBuilder,

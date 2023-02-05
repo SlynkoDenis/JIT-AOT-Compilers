@@ -64,12 +64,9 @@ void PeepholePass::ProcessSRA(InstructionBase *instr) {
     if (trySRAZero(typed)) {
         return;
     }
-    if (trySequencedSRA(typed)) {
-        return;
-    }
-    if (tryLeftRightShift(typed)) {
-        return;
-    }
+    // if (trySequencedSRA(typed)) {
+    //     return;
+    // }
 }
 
 void PeepholePass::ProcessSUB(InstructionBase *instr) {
@@ -119,23 +116,30 @@ bool PeepholePass::tryANDAfterNOT(BinaryRegInstruction *instr) {
     // v2 = ~v0
     // v3 = ~v1
     // v4 = v2 & v3
-    // replaced with
-    // v2 = ~v0
-    // v3 = ~v1
+    // in case of single use of v2 and v3 is replaced with
     // v5 = v0 | v1
     // v4 = ~v5
     auto input1 = instr->GetInput(0);
     auto input2 = instr->GetInput(1);
-    if (input1->GetOpcode() == Opcode::NOT && input2->GetOpcode() == Opcode::NOT) {
+    if (input1->GetOpcode() == Opcode::NOT
+            && input2->GetOpcode() == Opcode::NOT
+            && input1->UsersCount() == 1
+            && input2->UsersCount() == 1) {
         auto not1Arg = static_cast<UnaryRegInstruction *>(input1.GetInstruction())->GetInput(0);
         auto not2Arg = static_cast<UnaryRegInstruction *>(input2.GetInstruction())->GetInput(0);
         auto *orInstr = graph->GetInstructionBuilder()->CreateOR(instr->GetType(), not1Arg, not2Arg);
-        not1Arg->AddUser(orInstr);
-        not2Arg->AddUser(orInstr);
+
+        not1Arg->ReplaceUser(input1.GetInstruction(), orInstr);
+        not2Arg->ReplaceUser(input2.GetInstruction(), orInstr);
+        auto *bblock = instr->GetBasicBlock();
+        bblock->UnlinkInstruction(input1.GetInstruction());
+        bblock->UnlinkInstruction(input2.GetInstruction());
+
         instr->GetBasicBlock()->InsertBefore(instr, orInstr);
 
         auto *notInstr = graph->GetInstructionBuilder()->CreateNOT(instr->GetType(), orInstr);
         orInstr->AddUser(notInstr);
+        // input1 and input2 instructions are later removed on DCE
         input1->RemoveUser(instr);
         input2->RemoveUser(instr);
         instr->GetBasicBlock()->ReplaceInstruction(instr, notInstr);
@@ -159,6 +163,7 @@ bool PeepholePass::tryANDRepeatedArgs(BinaryRegInstruction *instr) {
 }
 
 bool PeepholePass::trySequencedSRA(BinaryRegInstruction *instr) {
+    // TODO: enable this peephole after specifying overflow behaviour
     // case:
     // v3 = v0 >> v1
     // v4 = v3 >> v2
@@ -225,35 +230,6 @@ bool PeepholePass::trySRAZero(BinaryRegInstruction *instr) {
         if (typed->GetValue() == 0) {
             replaceWithoutNewInstr(instr, input1.GetInstruction());
             dumper->Dump("Applied 'v >>> 0' peephole");
-            return true;
-        }
-    }
-    return false;
-}
-
-bool PeepholePass::tryLeftRightShift(BinaryRegInstruction *instr) {
-    // case:
-    // v2 = v0 << v1
-    // v3 = v2 >> v1
-    // replaced with
-    // v3 = v0
-    auto *base1 = instr->GetInput(0).GetInstruction();
-    if (base1->GetOpcode() == Opcode::SLA) {
-        auto *typed = static_cast<BinaryRegInstruction *>(base1);
-        auto offset1 = instr->GetInput(1);
-        auto offset2 = typed->GetInput(1);
-        if (offset1 == offset2) {
-            replaceWithoutNewInstr(instr, typed->GetInput(0).GetInstruction());
-            dumper->Dump("Applied SLA -> SRA peephole");
-            return true;
-        }
-    } else if (base1->GetOpcode() == Opcode::SLAI && instr->GetInput(1)->IsConst()) {
-        auto *typed = static_cast<BinaryImmInstruction *>(base1);
-        auto offset1 = static_cast<ConstantInstruction *>(instr->GetInput(1).GetInstruction());
-        auto offset2 = typed->GetValue();
-        if (offset1->GetValue() == offset2) {
-            replaceWithoutNewInstr(instr, typed->GetInput(0).GetInstruction());
-            dumper->Dump("Applied SLAI -> SRA peephole");
             return true;
         }
     }

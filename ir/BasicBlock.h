@@ -68,7 +68,7 @@ public:
     const utils::memory::ArenaVector<BasicBlock *> &GetDominatedBlocks() const {
         return dominated;
     }
-    bool Domites(const BasicBlock *bblock) const;
+    bool Dominates(const BasicBlock *bblock) const;
 
     Loop *GetLoop() {
         return loop;
