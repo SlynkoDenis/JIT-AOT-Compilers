@@ -35,10 +35,11 @@ public:
         Clear();
     }
 
-    void CreateGraph() {
+    Graph *CreateGraph() {
         ASSERT(graph == nullptr);
         auto *instrBuilder = allocator->template New<InstructionBuilder>(allocator);
         graph = allocator->template New<Graph>(allocator, instrBuilder);
+        return graph;
     }
 
     BasicBlock *CreateEmptyBasicBlock() override {

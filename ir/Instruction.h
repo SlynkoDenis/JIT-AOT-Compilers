@@ -14,6 +14,8 @@
 
 
 namespace ir {
+using FunctionID = uint64_t;
+
 enum class CondCode {
     EQ,
     NE,
@@ -27,6 +29,7 @@ public:
         : InstructionBase(opcode, type, allocator) {}
     virtual DEFAULT_DTOR(InputsInstruction);
 
+    // TODO: add `GetInputs` method
     virtual size_t GetInputsCount() const = 0;
     virtual Input &GetInput(size_t idx) = 0;
     virtual const Input &GetInput(size_t idx) const = 0;
@@ -300,11 +303,39 @@ private:
     OperandType toType;
 };
 
-class JumpInstruction : public InstructionBase, public ImmediateMixin<uint64_t> {
+class JumpInstruction : public InstructionBase {
 public:
-    JumpInstruction(Opcode opcode, uint64_t imm, ArenaAllocator *const allocator)
-        : InstructionBase(opcode, OperandType::I64, allocator),
-          ImmediateMixin<uint64_t>(imm) {}
+    JumpInstruction(Opcode opcode, ArenaAllocator *const allocator)
+        : InstructionBase(
+            opcode,
+            OperandType::I64,
+            allocator,
+            InstructionBase::INVALID_ID,
+            utils::to_underlying(InstrProp::JUMP))
+    {}
+
+    BasicBlock *GetDestination();
+};
+
+class CondJumpInstruction : public InstructionBase {
+public:
+    CondJumpInstruction(ArenaAllocator *const allocator)
+        : InstructionBase(
+            Opcode::JCMP,
+            OperandType::I64,
+            allocator,
+            InstructionBase::INVALID_ID,
+            utils::to_underlying(InstrProp::JUMP))
+    {}
+
+    BasicBlock *GetTrueDestination();
+
+    BasicBlock *GetFalseDestination();
+
+private:
+    // true branch must always be the first successor, false branch - the second
+    template <int CmpRes>
+    BasicBlock *getBranchDestinationImpl();
 };
 
 class RetInstruction : public FixedInputsInstruction<1> {
@@ -358,6 +389,44 @@ class InputArgumentInstruction : public InstructionBase {
 public:
     InputArgumentInstruction(OperandType type, ArenaAllocator *const allocator)
         : InstructionBase(Opcode::ARG, type, allocator) {}
+};
+
+class CallInstruction : public VariableInputsInstruction {
+public:
+    CallInstruction(OperandType type, FunctionID target, ArenaAllocator *const allocator)
+        : VariableInputsInstruction(Opcode::CALL, type, allocator),
+          callTarget(target)
+    {}
+
+    template <AllowedInputType Ins>
+    CallInstruction(OperandType type,
+                    FunctionID target,
+                    std::initializer_list<Ins> input,
+                    ArenaAllocator *const allocator)
+        : VariableInputsInstruction(Opcode::CALL, type, input, allocator),
+          callTarget(target)
+    {}
+
+    FunctionID GetCallTarget() const {
+        return callTarget;
+    }
+
+private:
+    FunctionID callTarget;
+};
+
+class LoadInstruction : public InstructionBase, public ImmediateMixin<uint64_t> {
+public:
+    LoadInstruction(OperandType type, uint64_t addr, ArenaAllocator *const allocator)
+        : InstructionBase(Opcode::LOAD, type, allocator),
+          ImmediateMixin<uint64_t>(addr) {}
+};
+
+class StoreInstruction : public FixedInputsInstruction<1>, public ImmediateMixin<uint64_t> {
+public:
+    StoreInstruction(Input storedValue, uint64_t addr, ArenaAllocator *const allocator)
+        : FixedInputsInstruction<1>(Opcode::STORE, storedValue->GetType(), storedValue, allocator),
+          ImmediateMixin<uint64_t>(addr) {}
 };
 }   // namespace ir
 

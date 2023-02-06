@@ -23,6 +23,14 @@ public:
         return compiler.GetInstructionBuilder();
     }
 
+    static void compareInstructions(std::vector<InstructionBase *> expected, BasicBlock *bblock) {
+        ASSERT_EQ(bblock->GetSize(), expected.size());
+        size_t i = 0;
+        for (auto *instr : *bblock) {
+            ASSERT_EQ(instr, expected[i++]);
+        }
+    }
+
 public:
     Compiler compiler;
 };

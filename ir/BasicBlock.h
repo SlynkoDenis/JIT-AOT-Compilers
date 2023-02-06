@@ -12,7 +12,7 @@ namespace ir {
 class Graph;
 class Loop;
 
-class BasicBlock {
+class BasicBlock : public Markable {
 public:
     BasicBlock(Graph *graph);
     NO_COPY_SEMANTIC(BasicBlock);
@@ -54,6 +54,12 @@ public:
     }
     const PhiInstruction *GetFirstPhiInstruction() const {
         return firstPhi;
+    }
+    PhiInstruction *GetLastPhiInstruction() {
+        return lastPhi;
+    }
+    const PhiInstruction *GetLastPhiInstruction() const {
+        return lastPhi;
     }
 
     BasicBlock *GetDominator() {
@@ -154,16 +160,18 @@ public:
     };
 
     auto begin() {
-        return Iterator{GetFirstInstruction()};
+        auto *instr = GetFirstPhiInstruction();
+        return Iterator{instr != nullptr ? instr : GetFirstInstruction()};
     }
     auto cbegin() const {
-        return Iterator{GetFirstInstruction()};
+        auto *instr = GetFirstPhiInstruction();
+        return Iterator{instr != nullptr ? instr : GetFirstInstruction()};
     }
     auto end() {
-        return Iterator{GetLastInstruction()};
+        return Iterator<decltype(GetLastInstruction())>{nullptr};
     }
     auto cend() const {
-        return Iterator{GetLastInstruction()};
+        return Iterator<decltype(GetLastInstruction())>{nullptr};
     }
 
 public:
@@ -186,6 +194,7 @@ private:
     size_t size = 0;
 
     PhiInstruction *firstPhi = nullptr;
+    PhiInstruction *lastPhi = nullptr;
     InstructionBase *firstInst = nullptr;
     InstructionBase *lastInst = nullptr;
 

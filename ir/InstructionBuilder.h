@@ -37,6 +37,12 @@ public:
         PushForwardInstruction(bblock, reminder...);
     }
 
+#define CREATE_FIXED_INST(name)                             \
+    auto *inst = allocator->template New<name>(allocator);  \
+    instrs.push_back(inst);                                 \
+    inst->SetId(instrs.size());                             \
+    return inst
+
 #define CREATE_INST(name, ...)                                          \
     auto *inst = allocator->template New<name>(__VA_ARGS__, allocator); \
     instrs.push_back(inst);                                             \
@@ -111,14 +117,33 @@ public:
     CompareInstruction *CreateCMP(OperandType type, CondCode ccode, Input in1, Input in2) {
         CREATE_INST_WITH_PROP(CompareInstruction, InstrProp::INPUT, Opcode::CMP, type, ccode, in1, in2);
     }
-    JumpInstruction *CreateJA(int64_t imm = -1) {
-        CREATE_INST_WITH_PROP(JumpInstruction, InstrProp::JUMP, Opcode::JA, imm);
+    CondJumpInstruction *CreateJCMP() {
+        CREATE_FIXED_INST(CondJumpInstruction);
     }
-    JumpInstruction *CreateJMP(int64_t imm) {
-        CREATE_INST_WITH_PROP(JumpInstruction, InstrProp::JUMP, Opcode::JMP, imm);
+    JumpInstruction *CreateJMP() {
+        CREATE_INST(JumpInstruction, Opcode::JMP);
     }
     RetInstruction *CreateRET(OperandType type, Input input) {
-        CREATE_INST_WITH_PROP(RetInstruction, InstrProp::JUMP, type, input);
+        CREATE_INST_WITH_PROP(
+            RetInstruction,
+            utils::underlying_logic_or(InstrProp::JUMP, InstrProp::INPUT),
+            type,
+            input);
+    }
+
+    CallInstruction *CreateCALL(OperandType type, FunctionID target) {
+        CREATE_INST(CallInstruction, type, target);
+    }
+    template <AllowedInputType Ins>
+    CallInstruction *CreateCALL(OperandType type, FunctionID target, std::initializer_list<Ins> input) {
+        CREATE_INST(CallInstruction, type, target, input);
+    }
+
+    LoadInstruction *CreateLOAD(OperandType type, uint64_t addr) {
+        CREATE_INST_WITH_PROP(LoadInstruction, InstrProp::MEM, type, addr);
+    }
+    StoreInstruction *CreateSTORE(Input storedValue, uint64_t addr) {
+        CREATE_INST_WITH_PROP(StoreInstruction, InstrProp::MEM, storedValue, addr);
     }
 
     PhiInstruction *CreatePHI(OperandType type) {
@@ -132,7 +157,10 @@ public:
         CREATE_INST_WITH_PROP(PhiInstruction, InstrProp::INPUT, type, inputs, sources);
     }
     template <typename Ins, typename Sources>
-    PhiInstruction *CreatePHI(OperandType type, std::initializer_list<Ins> inputs, std::initializer_list<Sources> sources)
+    PhiInstruction *CreatePHI(
+        OperandType type,
+        std::initializer_list<Ins> inputs,
+        std::initializer_list<Sources> sources)
     requires std::is_same_v<std::remove_cv_t<Sources>, BasicBlock *> && AllowedInputType<Ins>
     {
         CREATE_INST_WITH_PROP(PhiInstruction, InstrProp::INPUT, type, inputs, sources);

@@ -5,6 +5,7 @@
 #include <cstdint>
 #include "helpers.h"
 #include "macros.h"
+#include "marker/marker.h"
 #include "Types.h"
 #include "Users.h"
 
@@ -15,7 +16,17 @@ class BasicBlock;
 using utils::memory::ArenaAllocator;
 
 // Opcodes & Conditional Codes
+// instruction which shouldn't be collected by DCE are placed in start of the list
 #define INSTS_LIST(DEF) \
+    DEF(DIV)            \
+    DEF(DIVI)           \
+    DEF(CALL)           \
+    DEF(LOAD)           \
+    DEF(STORE)          \
+    DEF(CMP)            \
+    DEF(JCMP)           \
+    DEF(JMP)            \
+    DEF(RET)            \
     DEF(CONST)          \
     DEF(NOT)            \
     DEF(AND)            \
@@ -25,7 +36,6 @@ using utils::memory::ArenaAllocator;
     DEF(ADD)            \
     DEF(SUB)            \
     DEF(MUL)            \
-    DEF(DIV)            \
     DEF(SRA)            \
     DEF(SLA)            \
     DEF(SLL)            \
@@ -35,15 +45,10 @@ using utils::memory::ArenaAllocator;
     DEF(ADDI)           \
     DEF(SUBI)           \
     DEF(MULI)           \
-    DEF(DIVI)           \
     DEF(SRAI)           \
     DEF(SLAI)           \
     DEF(SLLI)           \
     DEF(CAST)           \
-    DEF(CMP)            \
-    DEF(JA)             \
-    DEF(JMP)            \
-    DEF(RET)            \
     DEF(PHI)            \
     DEF(ARG)
 
@@ -69,9 +74,11 @@ enum class InstrProp : InstructionPropT {
 };
 
 // Instructions
-class InstructionBase : public Users {
+class InstructionBase : public Markable, public Users {
 public:
-    InstructionBase(Opcode opcode, OperandType type, ArenaAllocator *const allocator,
+    InstructionBase(Opcode opcode,
+                    OperandType type,
+                    ArenaAllocator *const allocator,
                     size_t id = INVALID_ID,
                     InstructionPropT prop = 0)
         : Users(allocator),
