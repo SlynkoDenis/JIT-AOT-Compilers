@@ -5,6 +5,7 @@
 #include <memory>
 #include <set>
 #include <type_traits>
+#include <unordered_map>
 #include <vector>
 
 
@@ -82,6 +83,15 @@ using ArenaVector = std::vector<T, STLCompliantArenaAllocator<T>>;
 template <NonVoid T>
 using ArenaSet = std::set<T, std::less<T>, STLCompliantArenaAllocator<T>>;
 
+template <NonVoid KeyT, NonVoid ValueT>
+using ArenaUnorderedMap = std::unordered_map<
+    KeyT,
+    ValueT,
+    std::hash<KeyT>,
+    std::equal_to<KeyT>,
+    STLCompliantArenaAllocator<std::pair<const KeyT, ValueT>>>;
+
+// TODO: consider using jemalloc
 class ArenaAllocator final {
 public:
     explicit ArenaAllocator(size_t arenaSize = DEFAULT_ARENA_SIZE,
@@ -127,6 +137,9 @@ public:
 
     template <NonVoid T, typename... ArgsT>
     [[nodiscard]] inline ArenaVector<T> *NewVector(ArgsT &&... args);
+
+    template <NonVoid KeyT, NonVoid ValueT, typename... ArgsT>
+    [[nodiscard]] inline ArenaUnorderedMap<KeyT, ValueT> *NewUnorderedMap(ArgsT &&... args);
 
 public:
     static constexpr size_t DEFAULT_ARENA_SIZE = 4096;
@@ -187,6 +200,12 @@ inline bool operator==(const STLCompliantArenaAllocator<T> &lhs,
 template <NonVoid T, typename... ArgsT>
 [[nodiscard]] inline ArenaVector<T> *ArenaAllocator::NewVector(ArgsT &&... args) {
     return New<ArenaVector<T>>(std::forward<ArgsT>(args)..., ToSTL());
+}
+
+template <NonVoid KeyT, NonVoid ValueT, typename... ArgsT>
+[[nodiscard]] inline ArenaUnorderedMap<KeyT, ValueT> *ArenaAllocator::NewUnorderedMap(ArgsT &&... args)
+{
+    return New<ArenaUnorderedMap<KeyT, ValueT>>(std::forward<ArgsT>(args)..., ToSTL());
 }
 }   // namespace utils::memory
 

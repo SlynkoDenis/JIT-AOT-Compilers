@@ -59,6 +59,10 @@ public:
         *iter = newInstr;
     }
 
+    void SetNewUsers(utils::memory::ArenaVector<InstructionBase *> &&newUsers) {
+        users = std::move(newUsers);
+    }
+
 protected:
     utils::memory::ArenaVector<InstructionBase *> users;
 };

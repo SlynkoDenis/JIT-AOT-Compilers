@@ -14,16 +14,25 @@ class Loop;
 
 class BasicBlock : public Markable {
 public:
+    using IdType = size_t;
+
     BasicBlock(Graph *graph);
     NO_COPY_SEMANTIC(BasicBlock);
     NO_MOVE_SEMANTIC(BasicBlock);
     virtual DEFAULT_DTOR(BasicBlock);
 
-    size_t GetId() const {
+    IdType GetId() const {
         return id;
     }
-    size_t GetSize() const {
-        return size;
+    IdType GetSize() const {
+        return instrsCount;
+    }
+    bool IsEmpty() const {
+        return GetSize() == 0;
+    }
+    bool IsLastInGraph() const;
+    bool HasNoPredecessors() const {
+        return preds.empty();
     }
     utils::memory::ArenaVector<BasicBlock *> &GetPredecessors() {
         return preds;
@@ -90,13 +99,14 @@ public:
         return graph;
     }
 
-    void SetId(size_t newId) {
+    void SetId(IdType newId) {
         id = newId;
     }
     void AddPredecessor(BasicBlock *bblock);
     void AddSuccessor(BasicBlock *bblock);
     void RemovePredecessor(BasicBlock *bblock);
     void RemoveSuccessor(BasicBlock *bblock);
+    void ReplaceSuccessor(BasicBlock *prevSucc, BasicBlock *newSucc);
 
     void SetDominator(BasicBlock *newIDom) {
         dominator = newIDom;
@@ -119,7 +129,15 @@ public:
     void InsertAfter(InstructionBase *after, InstructionBase *target);
     void UnlinkInstruction(InstructionBase *target);
     void ReplaceInstruction(InstructionBase *prevInstr, InstructionBase *newInstr);
-    void ReplaceInDataFlow(InstructionBase *prevInstr, InstructionBase *newInstr);
+
+    // implemented as BasicBlock's method to be able to directly access internal fields
+    std::pair<BasicBlock *, BasicBlock *> SplitAfterInstruction(InstructionBase *instr,
+                                                                bool connectAfterSplit);
+
+    // TODO: might make this method protected & friend with Graph
+    BasicBlock *Copy(
+        Graph *targetGraph,
+        utils::memory::ArenaUnorderedMap<InstructionBase::IdType, InstructionBase *> *instrsTranslation) const;
 
     NO_NEW_DELETE;
 
@@ -128,6 +146,14 @@ public:
     template <typename T>
     class Iterator {
     public:
+        // iterator traits
+        using difference_type = std::ptrdiff_t;
+        using value_type = T;
+        using pointer = T*;
+        using reference = T&;
+        using iterator_category = std::bidirectional_iterator_tag;
+
+        Iterator() : curr(nullptr) {}
         explicit Iterator(T instr) : curr(instr) {}
         Iterator &operator++() {
             curr = curr->GetNextInstruction();
@@ -138,44 +164,46 @@ public:
             ++(*this);
             return retval;
         }
+        Iterator &operator--() {
+            curr = curr->GetPrevInstruction();
+            return *this;
+        }
+        Iterator operator--(int) {
+            auto retval = *this;
+            --(*this);
+            return retval;
+        }
         bool operator==(const Iterator &other) const {
             return curr == other.curr;
         }
-        bool operator!=(const Iterator &other) const {
-            return !(*this == other);
-        }
-        T operator*() {
+        value_type operator*() {
             return curr;
         }
-
-        // iterator traits
-        using difference_type = size_t;
-        using value_type = size_t;
-        using pointer = T*;
-        using reference = T&;
-        using iterator_category = std::forward_iterator_tag;
 
     private:
         T curr;
     };
 
     auto begin() {
-        auto *instr = GetFirstPhiInstruction();
+        InstructionBase *instr = GetFirstPhiInstruction();
         return Iterator{instr != nullptr ? instr : GetFirstInstruction()};
     }
-    auto cbegin() const {
-        auto *instr = GetFirstPhiInstruction();
+    auto begin() const {
+        const InstructionBase *instr = GetFirstPhiInstruction();
         return Iterator{instr != nullptr ? instr : GetFirstInstruction()};
     }
     auto end() {
         return Iterator<decltype(GetLastInstruction())>{nullptr};
     }
-    auto cend() const {
+    auto end() const {
         return Iterator<decltype(GetLastInstruction())>{nullptr};
+    }
+    auto size() const {
+        return GetSize();
     }
 
 public:
-    static constexpr size_t INVALID_ID = static_cast<size_t>(-1);
+    static constexpr IdType INVALID_ID = static_cast<IdType>(-1);
 
 private:
     template <bool PushBack>
@@ -186,12 +214,13 @@ private:
     void replaceInControlFlow(InstructionBase *prevInstr, InstructionBase *newInstr);
 
 private:
-    size_t id = INVALID_ID;
+    IdType id = INVALID_ID;
 
     utils::memory::ArenaVector<BasicBlock *> preds;
+    // for conditional branches the first successor must correspond to true branch
     utils::memory::ArenaVector<BasicBlock *> succs;
 
-    size_t size = 0;
+    size_t instrsCount = 0;
 
     PhiInstruction *firstPhi = nullptr;
     PhiInstruction *lastPhi = nullptr;
@@ -205,6 +234,9 @@ private:
 
     Graph *graph = nullptr;
 };
+
+static_assert(std::input_or_output_iterator<BasicBlock::Iterator<InstructionBase*>>);
+static_assert(std::ranges::range<BasicBlock>);
 }   // namespace ir
 
 #endif  // JIT_AOT_COMPILERS_COURSE_BASIC_BLOCK_H_

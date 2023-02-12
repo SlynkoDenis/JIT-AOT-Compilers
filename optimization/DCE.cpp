@@ -55,6 +55,6 @@ void DCEPass::removeDead() {
 /* static */
 bool DCEPass::instructionHasSideEffects(InstructionBase *instr) {
     ASSERT(instr);
-    return utils::to_underlying(instr->GetOpcode()) <= utils::to_underlying(Opcode::RET);
+    return utils::to_underlying(instr->GetOpcode()) <= utils::to_underlying(Opcode::RETVOID);
 }
 }   // namespace ir

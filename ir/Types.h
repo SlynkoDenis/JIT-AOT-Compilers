@@ -10,6 +10,7 @@
 
 namespace ir {
 enum class OperandType {
+    VOID,
     I8,
     I16,
     I32,
@@ -23,6 +24,7 @@ enum class OperandType {
 };
 
 constexpr std::array<uint64_t, static_cast<size_t>(OperandType::NUM_TYPES)> maxValues{
+    0,
     std::numeric_limits<int8_t>::max(),
     std::numeric_limits<int16_t>::max(),
     std::numeric_limits<int32_t>::max(),

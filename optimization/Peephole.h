@@ -7,26 +7,24 @@
 #include "dumper/EventDumper.h"
 #include "InstructionBase.h"
 #include "Graph.h"
-#include "macros.h"
+#include "PassBase.h"
 
 
 namespace ir {
-class PeepholePass {
+class PeepholePass : public OptimizationPassBase {
 public:
-    explicit PeepholePass(Graph *graph, bool shouldDump = true) : graph(graph) {
-        ASSERT(graph);
+    explicit PeepholePass(Graph *graph, bool shouldDump = true) : OptimizationPassBase(graph)
+    {
         if (shouldDump) {
-            dumper = utils::dumper::EventDumper::AddDumper(graph->GetAllocator(), PASS_NAME);
+            dumper = utils::dumper::EventDumper::AddDumper(graph->GetAllocator(), PASS_NAME).second;
         } else {
             dumper = utils::dumper::EventDumper::AddDumper<utils::dumper::DummyDumper>(
-                graph->GetAllocator(), utils::dumper::DummyDumper::DUMPER_NAME);
+                graph->GetAllocator(), utils::dumper::DummyDumper::DUMPER_NAME).second;
         }
     }
-    NO_COPY_SEMANTIC(PeepholePass);
-    NO_MOVE_SEMANTIC(PeepholePass);
-    virtual DEFAULT_DTOR(PeepholePass);
+    ~PeepholePass() noexcept override = default;
 
-    void Run();
+    void Run() override;
 
     void ProcessAND(InstructionBase *instr);
     void ProcessSRA(InstructionBase *instr);
@@ -49,8 +47,6 @@ private:
     static constexpr const char *PASS_NAME = "peephole";
 
 private:
-    Graph *graph;
-
     ConstantFolding foldingPass;
 
     utils::dumper::EventDumper *dumper;

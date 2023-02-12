@@ -14,7 +14,8 @@
 
 
 namespace ir {
-using FunctionID = uint64_t;
+using FunctionId = size_t;
+static inline constexpr FunctionId INVALID_FUNCTION_ID = static_cast<FunctionId>(-1);
 
 enum class CondCode {
     EQ,
@@ -35,6 +36,13 @@ public:
     virtual const Input &GetInput(size_t idx) const = 0;
     virtual void SetInput(Input newInput, size_t idx) = 0;
     virtual void ReplaceInput(const Input &oldInput, Input newInput) = 0;
+
+    void Dump(utils::dumper::EventDumper *dumper) const override {
+        InstructionBase::Dump(dumper);
+        for (size_t i = 0, end = GetInputsCount(); i < end; ++i) {
+            dumper->Dump<false>(" #", GetInput(i)->GetId());
+        }
+    }
 };
 
 template <int InputsNum>
@@ -116,11 +124,11 @@ public:
         return input;
     }
     const Input &GetInput(size_t idx) const override {
-        ASSERT(idx > 0);
+        ASSERT(idx == 0);
         return input;
     }
     void SetInput(Input newInput, size_t idx) override {
-        ASSERT(idx > 0);
+        ASSERT(idx == 0);
         input = newInput;
         if (input.GetInstruction()) {
             input->AddUser(this);
@@ -146,6 +154,7 @@ public:
         : InputsInstruction(opcode, type, allocator),
           inputs(allocator->ToSTL()) {}
 
+    // TODO: specify correct concept
     template <typename Ins>
     VariableInputsInstruction(Opcode opcode, OperandType type, Ins ins,
                               ArenaAllocator *const allocator)
@@ -160,8 +169,23 @@ public:
         }
     }
 
+    // TODO: try generalizing constructor in respect to `ins` argument (with type-hints)
     template <typename Ins>
     VariableInputsInstruction(Opcode opcode, OperandType type, std::initializer_list<Ins> ins,
+                              ArenaAllocator *const allocator)
+    requires AllowedInputType<Ins>
+        : InputsInstruction(opcode, type, allocator),
+          inputs(ins.begin(), ins.end(), allocator->ToSTL())
+    {
+        for (auto &it : inputs) {
+            if (it.GetInstruction()) {
+                it->AddUser(this);
+            }
+        }
+    }
+
+    template <typename Ins, typename AllocatorT>
+    VariableInputsInstruction(Opcode opcode, OperandType type, std::vector<Ins, AllocatorT> ins,
                               ArenaAllocator *const allocator)
     requires AllowedInputType<Ins>
         : InputsInstruction(opcode, type, allocator),
@@ -252,6 +276,8 @@ class UnaryRegInstruction : public FixedInputsInstruction<1> {
 public:
     UnaryRegInstruction(Opcode opcode, OperandType type, Input input, ArenaAllocator *const allocator)
         : FixedInputsInstruction(opcode, type, input, allocator) {}
+
+    UnaryRegInstruction *Copy(BasicBlock *targetBBlock) const override;
 };
 
 class BinaryRegInstruction : public FixedInputsInstruction<2> {
@@ -259,6 +285,8 @@ public:
     BinaryRegInstruction(Opcode opcode, OperandType type, Input in1, Input in2,
                          ArenaAllocator *const allocator)
         : FixedInputsInstruction(opcode, type, allocator, in1, in2) {}
+
+    BinaryRegInstruction *Copy(BasicBlock *targetBBlock) const override;
 };
 
 class ConstantInstruction : public InstructionBase, public ImmediateMixin<uint64_t> {
@@ -267,6 +295,13 @@ public:
         : InstructionBase(opcode, type, allocator), ImmediateMixin<uint64_t>(0) {}
     ConstantInstruction(Opcode opcode, OperandType type, uint64_t value, ArenaAllocator *const allocator)
         : InstructionBase(opcode, type, allocator), ImmediateMixin<uint64_t>(value) {}
+
+    ConstantInstruction *Copy(BasicBlock *targetBBlock) const override;
+
+    void Dump(utils::dumper::EventDumper *dumper) const override {
+        InstructionBase::Dump(dumper);
+        dumper->Dump<false>(' ', GetValue());
+    }
 };
 
 class BinaryImmInstruction : public FixedInputsInstruction<1>, public ImmediateMixin<uint64_t> {
@@ -274,7 +309,15 @@ public:
     BinaryImmInstruction(Opcode opcode, OperandType type, Input input, uint64_t imm,
                          ArenaAllocator *const allocator)
         : FixedInputsInstruction<1>(opcode, type, input, allocator),
-          ImmediateMixin<uint64_t>(imm) {}
+          ImmediateMixin<uint64_t>(imm)
+    {}
+
+    BinaryImmInstruction *Copy(BasicBlock *targetBBlock) const override;
+
+    void Dump(utils::dumper::EventDumper *dumper) const override {
+        InputsInstruction::Dump(dumper);
+        dumper->Dump<false>(' ', GetValue());
+    }
 };
 
 class CompareInstruction : public FixedInputsInstruction<2>, public ConditionMixin {
@@ -282,7 +325,10 @@ public:
     CompareInstruction(Opcode opcode, OperandType type, CondCode ccode, Input in1, Input in2,
                        ArenaAllocator *const allocator)
         : FixedInputsInstruction(opcode, type, allocator, in1, in2),
-          ConditionMixin(ccode) {}
+          ConditionMixin(ccode)
+    {}
+
+    CompareInstruction *Copy(BasicBlock *targetBBlock) const override;
 };
 
 class CastInstruction : public FixedInputsInstruction<1> {
@@ -290,7 +336,8 @@ public:
     CastInstruction(OperandType fromType, OperandType toType, Input input,
                     ArenaAllocator *const allocator)
         : FixedInputsInstruction(Opcode::CAST, fromType, input, allocator),
-          toType(toType) {}
+          toType(toType)
+    {}
 
     auto GetTargetType() const {
         return toType;
@@ -298,6 +345,8 @@ public:
     void SetTargetType(OperandType newType) {
         toType = newType;
     }
+
+    CastInstruction *Copy(BasicBlock *targetBBlock) const override;
 
 private:
     OperandType toType;
@@ -311,10 +360,12 @@ public:
             OperandType::I64,
             allocator,
             InstructionBase::INVALID_ID,
-            utils::to_underlying(InstrProp::JUMP))
+            utils::to_underlying(InstrProp::CF))
     {}
 
     BasicBlock *GetDestination();
+
+    JumpInstruction *Copy(BasicBlock *targetBBlock) const override;
 };
 
 class CondJumpInstruction : public InstructionBase {
@@ -325,12 +376,14 @@ public:
             OperandType::I64,
             allocator,
             InstructionBase::INVALID_ID,
-            utils::to_underlying(InstrProp::JUMP))
+            utils::to_underlying(InstrProp::CF))
     {}
 
     BasicBlock *GetTrueDestination();
 
     BasicBlock *GetFalseDestination();
+
+    CondJumpInstruction *Copy(BasicBlock *targetBBlock) const override;
 
 private:
     // true branch must always be the first successor, false branch - the second
@@ -342,6 +395,22 @@ class RetInstruction : public FixedInputsInstruction<1> {
 public:
     RetInstruction(OperandType type, Input input, ArenaAllocator *const allocator)
         : FixedInputsInstruction<1>(Opcode::RET, type, input, allocator) {}
+
+    RetInstruction *Copy(BasicBlock *targetBBlock) const override;
+};
+
+class RetVoidInstruction : public InstructionBase {
+public:
+    RetVoidInstruction(ArenaAllocator *const allocator)
+        : InstructionBase(
+            Opcode::RETVOID,
+            OperandType::VOID,
+            allocator,
+            InstructionBase::INVALID_ID,
+            utils::to_underlying(InstrProp::CF))
+    {}
+
+    RetVoidInstruction *Copy(BasicBlock *targetBBlock) const override;
 };
 
 class PhiInstruction : public VariableInputsInstruction {
@@ -370,6 +439,12 @@ public:
         ASSERT(inputs.size() == sourceBBlocks.size());
     }
 
+    utils::memory::ArenaVector<BasicBlock *> &GetSourceBasicBlocks() {
+        return sourceBBlocks;
+    }
+    const utils::memory::ArenaVector<BasicBlock *> &GetSourceBasicBlocks() const {
+        return sourceBBlocks;
+    }
     BasicBlock *GetSourceBasicBlock(size_t idx) {
         return sourceBBlocks.at(idx);
     }
@@ -381,6 +456,14 @@ public:
         sourceBBlocks.at(idx) = bblock;
     }
 
+    void AddPhiInput(Input newInput, BasicBlock *inputSource) {
+        ASSERT(inputSource);
+        AddInput(newInput);
+        sourceBBlocks.push_back(inputSource);
+    }
+
+    PhiInstruction *Copy(BasicBlock *targetBBlock) const override;
+
 private:
     utils::memory::ArenaVector<BasicBlock *> sourceBBlocks;
 };
@@ -389,30 +472,51 @@ class InputArgumentInstruction : public InstructionBase {
 public:
     InputArgumentInstruction(OperandType type, ArenaAllocator *const allocator)
         : InstructionBase(Opcode::ARG, type, allocator) {}
+
+    InputArgumentInstruction *Copy(BasicBlock *targetBBlock) const override;
 };
 
 class CallInstruction : public VariableInputsInstruction {
 public:
-    CallInstruction(OperandType type, FunctionID target, ArenaAllocator *const allocator)
+    CallInstruction(OperandType type, FunctionId target, ArenaAllocator *const allocator)
         : VariableInputsInstruction(Opcode::CALL, type, allocator),
-          callTarget(target)
+          callTarget(target),
+          isInlined(false)
     {}
 
-    template <AllowedInputType Ins>
+    template <typename InputsType>
     CallInstruction(OperandType type,
-                    FunctionID target,
-                    std::initializer_list<Ins> input,
+                    FunctionId target,
+                    InputsType input,
                     ArenaAllocator *const allocator)
         : VariableInputsInstruction(Opcode::CALL, type, input, allocator),
           callTarget(target)
     {}
 
-    FunctionID GetCallTarget() const {
+    FunctionId GetCallTarget() const {
         return callTarget;
+    }
+    void SetCallTarget(FunctionId newTarget) {
+        callTarget = newTarget;
+    }
+    bool IsInlined() const {
+        return isInlined;
+    }
+    void SetIsInlined(bool inlined) {
+        isInlined = inlined;
+    }
+
+    CallInstruction *Copy(BasicBlock *targetBBlock) const override;
+
+    void Dump(utils::dumper::EventDumper *dumper) const {
+        InputsInstruction::Dump(dumper);
+        dumper->Dump<false>(" (to ", GetCallTarget(), ')');
     }
 
 private:
-    FunctionID callTarget;
+    // TODO: add callee function resolution?
+    FunctionId callTarget;
+    bool isInlined;
 };
 
 class LoadInstruction : public InstructionBase, public ImmediateMixin<uint64_t> {
@@ -420,6 +524,13 @@ public:
     LoadInstruction(OperandType type, uint64_t addr, ArenaAllocator *const allocator)
         : InstructionBase(Opcode::LOAD, type, allocator),
           ImmediateMixin<uint64_t>(addr) {}
+
+    LoadInstruction *Copy(BasicBlock *targetBBlock) const override;
+
+    void Dump(utils::dumper::EventDumper *dumper) const override {
+        InstructionBase::Dump(dumper);
+        dumper->Dump<false>(' ', GetValue());
+    }
 };
 
 class StoreInstruction : public FixedInputsInstruction<1>, public ImmediateMixin<uint64_t> {
@@ -427,6 +538,13 @@ public:
     StoreInstruction(Input storedValue, uint64_t addr, ArenaAllocator *const allocator)
         : FixedInputsInstruction<1>(Opcode::STORE, storedValue->GetType(), storedValue, allocator),
           ImmediateMixin<uint64_t>(addr) {}
+
+    StoreInstruction *Copy(BasicBlock *targetBBlock) const override;
+
+    void Dump(utils::dumper::EventDumper *dumper) const override {
+        InputsInstruction::Dump(dumper);
+        dumper->Dump<false>(' ', GetValue());
+    }
 };
 }   // namespace ir
 
