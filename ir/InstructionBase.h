@@ -8,6 +8,7 @@
 #include "marker/marker.h"
 #include "Types.h"
 #include "Users.h"
+#include "dumper/EventDumper.h"
 
 
 namespace ir {
@@ -20,6 +21,8 @@ using utils::memory::ArenaAllocator;
 #define INSTS_LIST(DEF) \
     DEF(DIV)            \
     DEF(DIVI)           \
+    DEF(MOD)            \
+    DEF(MODI)           \
     DEF(CALL)           \
     DEF(LOAD)           \
     DEF(STORE)          \
@@ -27,6 +30,7 @@ using utils::memory::ArenaAllocator;
     DEF(JCMP)           \
     DEF(JMP)            \
     DEF(RET)            \
+    DEF(RETVOID)        \
     DEF(CONST)          \
     DEF(NOT)            \
     DEF(AND)            \
@@ -69,13 +73,15 @@ enum class InstrProp : InstructionPropT {
     ARITH = 0b1,
     MEM = 0b10,
     COMMUTABLE = 0b100,
-    JUMP = 0b1000,
+    CF = 0b1000,
     INPUT = 0b10000,
 };
 
 // Instructions
 class InstructionBase : public Markable, public Users {
 public:
+    using IdType = size_t;
+
     InstructionBase(Opcode opcode,
                     OperandType type,
                     ArenaAllocator *const allocator,
@@ -85,7 +91,8 @@ public:
           id(id),
           opcode(opcode),
           type(type),
-          properties(prop) {}
+          properties(prop)
+    {}
     NO_COPY_SEMANTIC(InstructionBase);
     NO_MOVE_SEMANTIC(InstructionBase);
     virtual DEFAULT_DTOR(InstructionBase);
@@ -115,7 +122,10 @@ public:
         return type;
     }
     const char *GetOpcodeName() const {
-        return getOpcodeName(opcode);
+        return getOpcodeName(GetOpcode());
+    }
+    virtual void Dump(utils::dumper::EventDumper *dumper) const {
+        dumper->Dump<false>('#', GetId(), '\t', GetOpcodeName(), '\t');
     }
     size_t GetId() const {
         return id;
@@ -128,13 +138,16 @@ public:
     }
 
     bool IsInputArgument() const {
-        return opcode == Opcode::ARG;
+        return GetOpcode() == Opcode::ARG;
     }
     bool IsPhi() const {
-        return opcode == Opcode::PHI;
+        return GetOpcode() == Opcode::PHI;
+    }
+    bool IsCall() const {
+        return GetOpcode() == Opcode::CALL;
     }
     bool IsConst() const {
-        return opcode == Opcode::CONST;
+        return GetOpcode() == Opcode::CONST;
     }
     bool HasInputs() const {
         return SatisfiesProperty(InstrProp::INPUT);
@@ -164,6 +177,9 @@ public:
     void UnlinkFromParent();
     void InsertBefore(InstructionBase *inst);
     void InsertAfter(InstructionBase *inst);
+    void ReplaceInputInUsers(InstructionBase *newInput);
+
+    virtual InstructionBase *Copy(BasicBlock *targetBBlock) const = 0;
 
     NO_NEW_DELETE;
 

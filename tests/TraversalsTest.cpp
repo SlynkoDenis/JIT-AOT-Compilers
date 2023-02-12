@@ -8,12 +8,12 @@ class TraversalsTest : public CompilerTestBase {
 
 TEST_F(TraversalsTest, TestDFO) {
     // create graph
-    auto *blockA = GetIRBuilder().CreateEmptyBasicBlock();
-    auto *blockB = GetIRBuilder().CreateEmptyBasicBlock();
-    auto *blockC = GetIRBuilder().CreateEmptyBasicBlock();
-    auto *blockD = GetIRBuilder().CreateEmptyBasicBlock();
+    auto *graph = GetGraph();
+    auto *blockA = graph->CreateEmptyBasicBlock();
+    auto *blockB = graph->CreateEmptyBasicBlock();
+    auto *blockC = graph->CreateEmptyBasicBlock();
+    auto *blockD = graph->CreateEmptyBasicBlock();
 
-    auto *graph = GetIRBuilder().GetGraph();
     graph->SetFirstBasicBlock(blockA);
     graph->ConnectBasicBlocks(blockA, blockB);
     graph->ConnectBasicBlocks(blockA, blockC);
@@ -34,12 +34,12 @@ TEST_F(TraversalsTest, TestDFO) {
 
 TEST_F(TraversalsTest, TestRPO) {
     // create graph
-    auto *blockA = GetIRBuilder().CreateEmptyBasicBlock();
-    auto *blockB = GetIRBuilder().CreateEmptyBasicBlock();
-    auto *blockC = GetIRBuilder().CreateEmptyBasicBlock();
-    auto *blockD = GetIRBuilder().CreateEmptyBasicBlock();
+    auto *graph = GetGraph();
+    auto *blockA = graph->CreateEmptyBasicBlock();
+    auto *blockB = graph->CreateEmptyBasicBlock();
+    auto *blockC = graph->CreateEmptyBasicBlock();
+    auto *blockD = graph->CreateEmptyBasicBlock();
 
-    auto *graph = GetIRBuilder().GetGraph();
     graph->SetFirstBasicBlock(blockA);
     graph->ConnectBasicBlocks(blockA, blockB);
     graph->ConnectBasicBlocks(blockA, blockC);

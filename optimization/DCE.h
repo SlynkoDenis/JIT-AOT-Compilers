@@ -4,29 +4,26 @@
 #include "dumper/DummyDumper.h"
 #include "dumper/EventDumper.h"
 #include "Graph.h"
-#include "macros.h"
+#include "PassBase.h"
 
 
 namespace ir {
-class DCEPass {
+class DCEPass : public OptimizationPassBase {
 public:
     explicit DCEPass(Graph *graph, bool shouldDump = true)
-        : graph(graph),
+        : OptimizationPassBase(graph),
           deadInstrs(graph->GetAllocator()->ToSTL())
     {
-        ASSERT(graph);
         if (shouldDump) {
-            dumper = utils::dumper::EventDumper::AddDumper(graph->GetAllocator(), PASS_NAME);
+            dumper = utils::dumper::EventDumper::AddDumper(graph->GetAllocator(), PASS_NAME).second;
         } else {
             dumper = utils::dumper::EventDumper::AddDumper<utils::dumper::DummyDumper>(
-                graph->GetAllocator(), utils::dumper::DummyDumper::DUMPER_NAME);
+                graph->GetAllocator(), utils::dumper::DummyDumper::DUMPER_NAME).second;
         }
     }
-    NO_COPY_SEMANTIC(DCEPass);
-    NO_MOVE_SEMANTIC(DCEPass);
-    virtual DEFAULT_DTOR(DCEPass);
+    ~DCEPass() noexcept override = default;
 
-    void Run();
+    void Run() override;
 
 private:
     static bool instructionHasSideEffects(InstructionBase *instr);
@@ -39,8 +36,6 @@ private:
     static constexpr const char *PASS_NAME = "dce";
 
 private:
-    Graph *graph;
-
     Marker aliveMarker;
 
     utils::memory::ArenaVector<InstructionBase *> deadInstrs;

@@ -375,7 +375,7 @@ bool PeepholePass::trySUBRepeatedArgs(BinaryRegInstruction *instr) {
 void PeepholePass::replaceWithoutNewInstr(BinaryRegInstruction *instr,
                                           InstructionBase *replacedInstr) {
     ASSERT(instr);
-    instr->GetBasicBlock()->ReplaceInDataFlow(instr, replacedInstr);
+    instr->ReplaceInputInUsers(replacedInstr);
     instr->GetBasicBlock()->UnlinkInstruction(instr);
 
     // these instructions may be deleted later by DCE

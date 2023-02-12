@@ -1,6 +1,6 @@
 #include <array>
 #include "BasicBlock.h"
-#include "InstructionBase.h"
+#include "Instruction.h"
 
 
 namespace ir {
@@ -26,5 +26,14 @@ void InstructionBase::InsertBefore(InstructionBase *inst) {
 void InstructionBase::InsertAfter(InstructionBase *inst) {
     ASSERT(parent);
     parent->InsertAfter(inst, this);
+}
+
+void InstructionBase::ReplaceInputInUsers(InstructionBase *newInput) {
+    newInput->AddUsers(GetUsers());
+    for (auto &it : GetUsers()) {
+        ASSERT(it->HasInputs());
+        auto *typed = static_cast<InputsInstruction *>(it);
+        typed->ReplaceInput(this, newInput);
+    }
 }
 }   // namespace ir

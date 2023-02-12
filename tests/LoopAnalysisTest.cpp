@@ -109,11 +109,11 @@ TEST_F(LoopAnalysisTest, TestLoops4) {
             \  |
              E--
     */
+    auto *graph = GetGraph();
     std::vector<BasicBlock *> bblocks(5);
     for (auto &it : bblocks) {
-        it = GetIRBuilder().CreateEmptyBasicBlock();
+        it = graph->CreateEmptyBasicBlock();
     }
-    auto *graph = GetIRBuilder().GetGraph();
     graph->SetFirstBasicBlock(bblocks[0]);
     graph->ConnectBasicBlocks(bblocks[0], bblocks[1]);
     graph->ConnectBasicBlocks(bblocks[1], bblocks[2]);
@@ -152,11 +152,11 @@ TEST_F(LoopAnalysisTest, TestLoops5) {
       \|
        D
     */
+    auto *graph = GetGraph();
     std::vector<BasicBlock *> bblocks(6);
     for (auto &it : bblocks) {
-        it = GetIRBuilder().CreateEmptyBasicBlock();
+        it = graph->CreateEmptyBasicBlock();
     }
-    auto *graph = GetIRBuilder().GetGraph();
     graph->SetFirstBasicBlock(bblocks[0]);
     for (size_t i = 0; i < 3; ++i) {
         graph->ConnectBasicBlocks(bblocks[i], bblocks[i + 1]);
@@ -201,11 +201,11 @@ TEST_F(LoopAnalysisTest, TestLoops6) {
           |        |
           H---------
     */
+    auto *graph = GetGraph();
     std::vector<BasicBlock *> bblocks(8);
     for (auto &it : bblocks) {
-        it = GetIRBuilder().CreateEmptyBasicBlock();
+        it = graph->CreateEmptyBasicBlock();
     }
-    auto *graph = GetIRBuilder().GetGraph();
     graph->SetFirstBasicBlock(bblocks[0]);
     graph->ConnectBasicBlocks(bblocks[0], bblocks[1]);
     graph->ConnectBasicBlocks(bblocks[1], bblocks[2]);

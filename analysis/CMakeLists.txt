@@ -10,7 +10,6 @@ add_library(analysis STATIC ${SOURCES})
 target_sources(analysis PUBLIC
     DomTree.h
     DSU.h
-    Loop.h
     LoopAnalyzer.h
     Traversals.h
     )

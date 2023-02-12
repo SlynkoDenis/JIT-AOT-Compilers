@@ -2,53 +2,54 @@
 
 
 int main() {
-    Compiler compiler;
-    auto *graph = compiler.GetIRBuilder().CreateGraph();
-    graph->SetFirstBasicBlock(compiler.GetIRBuilder().CreateEmptyBasicBlock());
+    ir::Compiler compiler;
+    auto *graph = compiler.CreateNewGraph();
+    graph->SetFirstBasicBlock(graph->CreateEmptyBasicBlock());
+    auto *instrBuilder = graph->GetInstructionBuilder();
 
     auto u64 = ir::OperandType::U64;
 
     // factorial function
     // basic blocks
-    auto *firstBlock = compiler.GetIRBuilder().CreateEmptyBasicBlock();
-    auto *preLoop = compiler.GetIRBuilder().CreateEmptyBasicBlock();
-    auto *loop = compiler.GetIRBuilder().CreateEmptyBasicBlock();
-    auto *done = compiler.GetIRBuilder().CreateEmptyBasicBlock();
+    auto *firstBlock = graph->CreateEmptyBasicBlock();
+    auto *preLoop = graph->CreateEmptyBasicBlock();
+    auto *loop = graph->CreateEmptyBasicBlock();
+    auto *done = graph->CreateEmptyBasicBlock();
 
     // basic blocks internals
-    auto *inputArgument = compiler.GetInstructionBuilder().CreateARG(ir::OperandType::U32);
-    compiler.GetInstructionBuilder().PushBackInstruction(firstBlock,
+    auto *inputArgument = instrBuilder->CreateARG(ir::OperandType::U32);
+    instrBuilder->PushBackInstruction(firstBlock,
         inputArgument,
-        compiler.GetInstructionBuilder().CreateCONST(u64, 1),
-        compiler.GetInstructionBuilder().CreateCONST(u64, 2),
-        compiler.GetInstructionBuilder().CreateCAST(ir::OperandType::U32, u64, inputArgument));
+        instrBuilder->CreateCONST(u64, 1),
+        instrBuilder->CreateCONST(u64, 2),
+        instrBuilder->CreateCAST(ir::OperandType::U32, u64, inputArgument));
 
     auto *tmp = firstBlock->GetLastInstruction();   // u32tou64 v2, a0
-    auto *phiInst = compiler.GetInstructionBuilder().CreatePHI(u64, {tmp->GetPrevInstruction()}, {firstBlock});
-    compiler.GetInstructionBuilder().PushBackInstruction(preLoop,
+    auto *phiInst = instrBuilder->CreatePHI(u64, {tmp->GetPrevInstruction()}, {firstBlock});
+    instrBuilder->PushBackInstruction(preLoop,
         phiInst,
-        compiler.GetInstructionBuilder().CreateCMP(u64, ir::CondCode::EQ, phiInst, tmp),
-        compiler.GetInstructionBuilder().CreateJCMP());
+        instrBuilder->CreateCMP(u64, ir::CondCode::EQ, phiInst, tmp),
+        instrBuilder->CreateJCMP());
 
     tmp = firstBlock->GetFirstInstruction()->GetNextInstruction();  // movi v0, 1
-    phiInst = compiler.GetInstructionBuilder().CreatePHI(u64, {tmp}, {firstBlock});
-    auto *phiInst2 = compiler.GetInstructionBuilder().CreatePHI(u64, {tmp->GetNextInstruction()}, {firstBlock});
-    compiler.GetInstructionBuilder().PushBackInstruction(loop,
+    phiInst = instrBuilder->CreatePHI(u64, {tmp}, {firstBlock});
+    auto *phiInst2 = instrBuilder->CreatePHI(u64, {tmp->GetNextInstruction()}, {firstBlock});
+    instrBuilder->PushBackInstruction(loop,
         phiInst,
         phiInst2,
-        compiler.GetInstructionBuilder().CreateMUL(u64, phiInst, phiInst2),
-        compiler.GetInstructionBuilder().CreateADDI(u64, phiInst2, 1UL),
-        compiler.GetInstructionBuilder().CreateJMP());
+        instrBuilder->CreateMUL(u64, phiInst, phiInst2),
+        instrBuilder->CreateADDI(u64, phiInst2, 1UL),
+        instrBuilder->CreateJMP());
 
     tmp = loop->GetFirstInstruction();  // mul v0, v0, v1
     loop->GetFirstPhiInstruction()->AddInput(tmp);
     preLoop->GetFirstPhiInstruction()->AddInput(tmp->GetNextInstruction());
 
-    auto *donePhi = compiler.GetInstructionBuilder().CreatePHI(u64,
+    auto *donePhi = instrBuilder->CreatePHI(u64,
         {tmp, firstBlock->GetFirstInstruction()->GetNextInstruction()},
         {loop, firstBlock});
-    compiler.GetInstructionBuilder().PushBackInstruction(done, donePhi);
-    done->PushBackInstruction(compiler.GetInstructionBuilder().CreateRET(u64, done->GetFirstPhiInstruction()));
+    instrBuilder->PushBackInstruction(done, donePhi);
+    done->PushBackInstruction(instrBuilder->CreateRET(u64, done->GetFirstPhiInstruction()));
 
     // connect basic blocks
     graph->ConnectBasicBlocks(firstBlock, preLoop);

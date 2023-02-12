@@ -3,9 +3,11 @@ set(BINARY tests)
 set(SOURCES
     BasicBlockTest.cpp
     CompilerTestBase.h
+    CompilerTestBase.cpp
     DCETest.cpp
     DomTreeTest.cpp
     GraphTest.cpp
+    InliningTest.cpp
     InstructionsTest.cpp
     LoopAnalysisTest.cpp
     main.cpp

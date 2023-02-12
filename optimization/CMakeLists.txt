@@ -1,6 +1,7 @@
 set(SOURCES
     ConstantFolding.cpp
     DCE.cpp
+    Inlining.cpp
     Peephole.cpp
     )
 
@@ -9,6 +10,8 @@ add_library(optimization STATIC ${SOURCES})
 target_sources(optimization PUBLIC
     ConstantFolding.h
     DCE.h
+    Inlining.h
+    PassBase.h
     Peephole.h
     )
 

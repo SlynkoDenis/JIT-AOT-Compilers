@@ -15,11 +15,13 @@ public:
     EventDumper(const std::string &name) : name(name) {}
     virtual DEFAULT_DTOR(EventDumper);
 
-    template <typename... ArgsT>
+    template <bool WithNewLine = true, typename... ArgsT>
     void Dump(const ArgsT&... args) {
         preDump();
         utils::expand_t{(dump(std::move(toString(args))), void(), 0)...};
-        dump("\n");
+        if constexpr (WithNewLine) {
+            dump("\n");
+        }
     }
 
     const std::string &GetName() const {
@@ -27,14 +29,17 @@ public:
     }
 
     template <typename T = EventDumper, typename... ArgsT>
-    static EventDumper *AddDumper(memory::ArenaAllocator *const allocator, const std::string &name,
-                                  ArgsT&&... args)
-    requires std::is_base_of_v<EventDumper, std::remove_cv_t<std::remove_reference_t<T>>> {
+    static std::pair<bool, EventDumper *> AddDumper(
+        memory::ArenaAllocator *const allocator,
+        const std::string &name,
+        ArgsT&&... args)
+    requires std::is_base_of_v<EventDumper, std::remove_cv_t<std::remove_reference_t<T>>>
+    {
         auto it = instances.find(name);
         if (it != instances.end()) {
-            return it->second;
+            return {false, it->second};
         }
-        return createDumper<T>(allocator, name, std::forward(args)...);
+        return {true, createDumper<T>(allocator, name, std::forward(args)...)};
     }
 
     static EventDumper *GetDumper(const std::string &name) {
@@ -68,7 +73,8 @@ private:
     template <typename T = EventDumper, typename... ArgsT>
     static T *createDumper(memory::ArenaAllocator *const allocator, const std::string &name,
                            ArgsT&&... args)
-    requires std::is_base_of_v<EventDumper, std::remove_cv_t<T>> {
+    requires std::is_base_of_v<EventDumper, std::remove_cv_t<T>>
+    {
         auto *dump = allocator->template NewRaw<T>();
         ASSERT(dump != nullptr);
         new(dump) T(name, std::forward(args)...);

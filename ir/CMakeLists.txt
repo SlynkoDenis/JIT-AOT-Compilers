@@ -1,7 +1,10 @@
 set(SOURCES
     BasicBlock.cpp
+    Compiler.cpp
     Graph.cpp
+    GraphCopyHelper.cpp
     InstructionBase.cpp
+    InstructionsCopy.cpp
     )
 
 add_library(ir STATIC ${SOURCES})
@@ -10,13 +13,15 @@ target_sources(ir PUBLIC
     BasicBlock.h
     BasicBlockIterator.h
     Compiler.h
+    CompilerBase.h
     Concepts.h
     Graph.h
+    GraphCopyHelper.h
     Input.h
     Instruction.h
     InstructionBase.h
     InstructionBuilder.h
-    IRBuilder.h
+    Loop.h
     marker/marker.h
     Types.h
     Users.h
