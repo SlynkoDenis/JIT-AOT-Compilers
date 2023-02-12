@@ -17,6 +17,7 @@ target_sources(ir PUBLIC
     InstructionBase.h
     InstructionBuilder.h
     IRBuilder.h
+    marker/marker.h
     Types.h
     Users.h
     )

@@ -3,8 +3,7 @@
 
 int main() {
     Compiler compiler;
-    compiler.GetIRBuilder().CreateGraph();
-    auto *graph = compiler.GetIRBuilder().GetGraph();
+    auto *graph = compiler.GetIRBuilder().CreateGraph();
     graph->SetFirstBasicBlock(compiler.GetIRBuilder().CreateEmptyBasicBlock());
 
     auto u64 = ir::OperandType::U64;
@@ -29,7 +28,7 @@ int main() {
     compiler.GetInstructionBuilder().PushBackInstruction(preLoop,
         phiInst,
         compiler.GetInstructionBuilder().CreateCMP(u64, ir::CondCode::EQ, phiInst, tmp),
-        compiler.GetInstructionBuilder().CreateJA(loop->GetId()));
+        compiler.GetInstructionBuilder().CreateJCMP());
 
     tmp = firstBlock->GetFirstInstruction()->GetNextInstruction();  // movi v0, 1
     phiInst = compiler.GetInstructionBuilder().CreatePHI(u64, {tmp}, {firstBlock});
@@ -39,7 +38,7 @@ int main() {
         phiInst2,
         compiler.GetInstructionBuilder().CreateMUL(u64, phiInst, phiInst2),
         compiler.GetInstructionBuilder().CreateADDI(u64, phiInst2, 1UL),
-        compiler.GetInstructionBuilder().CreateJMP(preLoop->GetId()));
+        compiler.GetInstructionBuilder().CreateJMP());
 
     tmp = loop->GetFirstInstruction();  // mul v0, v0, v1
     loop->GetFirstPhiInstruction()->AddInput(tmp);

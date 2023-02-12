@@ -6,8 +6,7 @@ namespace ir::tests {
 class PeepholesTest : public CompilerTestBase {
 public:
     void SetUp() override {
-        GetIRBuilder().CreateGraph();
-        pass = new PeepholePass(GetIRBuilder().GetGraph(), SHOULD_DUMP);
+        pass = new PeepholePass(GetIRBuilder().CreateGraph(), SHOULD_DUMP);
     }
 
 public:
@@ -61,14 +60,6 @@ static void verifyControlAndDataFlowGraphs(BasicBlock *bblock) {
             ASSERT_EQ(instr, bblock->GetLastInstruction());
         }
         instr = instr->GetNextInstruction();
-    }
-}
-
-static void compareInstructions(std::vector<InstructionBase *> expected, BasicBlock *bblock) {
-    ASSERT_EQ(bblock->GetSize(), expected.size());
-    size_t i = 0;
-    for (auto *instr : *bblock) {
-        ASSERT_EQ(instr, expected[i++]);
     }
 }
 
@@ -399,11 +390,11 @@ static void testAddSubCombination(InstructionBuilder &instrBuilder, IRBuilder &i
     ASSERT_EQ(userInstr, bblock->GetLastInstruction());
     auto *remainedInstr = firstFromAdd ? arg2 : arg1;
     if (firstAdd) {
-        compareInstructions({arg1, arg2, addInstr, userInstr}, bblock);
+        CompilerTestBase::compareInstructions({arg1, arg2, addInstr, userInstr}, bblock);
         ASSERT_EQ(userInstr->GetInput(0), remainedInstr);
     } else {
         auto *newInstr = userInstr->GetPrevInstruction();
-        compareInstructions({arg1, arg2, addInstr, newInstr, userInstr}, bblock);
+        CompilerTestBase::compareInstructions({arg1, arg2, addInstr, newInstr, userInstr}, bblock);
         ASSERT_NE(newInstr, nullptr);
         ASSERT_EQ(newInstr->GetOpcode(), Opcode::NEG);
         auto newInstrArg = static_cast<UnaryRegInstruction *>(newInstr)->GetInput(0);

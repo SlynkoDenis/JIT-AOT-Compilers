@@ -52,8 +52,12 @@ void BasicBlock::pushInstruction(InstructionBase *instr) {
     if (instr->IsPhi()) {
         pushPhi(instr);
     } else if (firstInst == nullptr) {
+        instr->SetPrevInstruction(lastPhi);
         firstInst = instr;
         lastInst = instr;
+        if (lastPhi) {
+            lastPhi->SetNextInstruction(instr);
+        }
     } else {
         if constexpr (PushBack) {
             instr->SetPrevInstruction(lastInst);
@@ -71,9 +75,13 @@ void BasicBlock::pushInstruction(InstructionBase *instr) {
 void BasicBlock::pushPhi(InstructionBase *instr) {
     ASSERT((instr) && instr->IsPhi());
 
-    if (!firstPhi) {
+    if (firstPhi == nullptr) {
         firstPhi = static_cast<PhiInstruction *>(instr);
-        firstPhi->SetNextInstruction(firstInst);
+        lastPhi = firstPhi;
+        lastPhi->SetNextInstruction(firstInst);
+        if (firstInst) {
+            firstInst->SetPrevInstruction(lastPhi);
+        }
     } else {
         instr->SetNextInstruction(firstPhi);
         firstPhi->SetPrevInstruction(instr);
@@ -173,5 +181,31 @@ void BasicBlock::replaceInControlFlow(InstructionBase *prevInstr, InstructionBas
         PushForwardInstruction(newInstr);
     }
     UnlinkInstruction(prevInstr);
+}
+
+// defined here after full declaration of BasicBlock methods
+BasicBlock *JumpInstruction::GetDestination() {
+    auto *bblock = GetBasicBlock();
+    ASSERT(bblock);
+    auto successors = bblock->GetSuccessors();
+    ASSERT(!successors.empty());
+    return successors[0];
+}
+
+BasicBlock *CondJumpInstruction::GetTrueDestination() {
+    return getBranchDestinationImpl<0>();
+}
+
+BasicBlock *CondJumpInstruction::GetFalseDestination() {
+    return getBranchDestinationImpl<1>();
+}
+
+template <int CmpRes>
+BasicBlock *CondJumpInstruction::getBranchDestinationImpl() {
+    auto *bblock = GetBasicBlock();
+    ASSERT(bblock);
+    auto successors = bblock->GetSuccessors();
+    ASSERT(successors.size() == 2);
+    return successors[CmpRes];
 }
 }   // namespace ir

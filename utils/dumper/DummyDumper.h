@@ -11,6 +11,9 @@ public:
         : EventDumper(name) {}
     ~DummyDumper() noexcept override = default;
 
+public:
+    static constexpr const char *DUMPER_NAME = "dummy";
+
 protected:
     void preDump() override {}
     void dump([[maybe_unused]] std::string &&str) override {}

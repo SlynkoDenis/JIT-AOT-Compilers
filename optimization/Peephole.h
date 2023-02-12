@@ -16,10 +16,10 @@ public:
     explicit PeepholePass(Graph *graph, bool shouldDump = true) : graph(graph) {
         ASSERT(graph);
         if (shouldDump) {
-            dumper = utils::dumper::EventDumper::AddDumper(graph->GetAllocator(), "peephole");
+            dumper = utils::dumper::EventDumper::AddDumper(graph->GetAllocator(), PASS_NAME);
         } else {
             dumper = utils::dumper::EventDumper::AddDumper<utils::dumper::DummyDumper>(
-                graph->GetAllocator(), "dummy");
+                graph->GetAllocator(), utils::dumper::DummyDumper::DUMPER_NAME);
         }
     }
     NO_COPY_SEMANTIC(PeepholePass);
@@ -44,6 +44,9 @@ private:
     bool trySUBRepeatedArgs(BinaryRegInstruction *instr);
 
     void replaceWithoutNewInstr(BinaryRegInstruction *instr, InstructionBase *replacedInstr);
+
+private:
+    static constexpr const char *PASS_NAME = "peephole";
 
 private:
     Graph *graph;

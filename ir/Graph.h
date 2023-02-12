@@ -4,13 +4,14 @@
 #include "arena/ArenaAllocator.h"
 #include "BasicBlock.h"
 #include "macros.h"
+#include "marker/marker.h"
 
 
 namespace ir {
 class InstructionBuilder;
 class Loop;
 
-class Graph {
+class Graph : public MarkerManager {
 public:
     Graph(ArenaAllocator *allocator, InstructionBuilder* instrBuilder)
         : allocator(allocator),
