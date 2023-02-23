@@ -3,7 +3,7 @@
 
 #include "Concepts.h"
 #include "Graph.h"
-#include "Instruction.h"
+#include "instructions/Instruction.h"
 #include "macros.h"
 #include <vector>
 
@@ -33,6 +33,14 @@ public:
 
     static void PushBackInstruction(BasicBlock *bblock, InstructionBase *instr) {
         bblock->PushBackInstruction(instr);
+    }
+    template <std::ranges::range InstructionsT>
+    static void PushBackInstruction(BasicBlock *bblock, InstructionsT &&instructions)
+    requires std::is_same_v<typename InstructionsT::value_type, InstructionBase *>
+    {
+        for (auto *instr : instructions) {
+            PushBackInstruction(bblock, instr);
+        }
     }
     template <typename... T>
     static void PushBackInstruction(BasicBlock *bblock, InstructionBase *instr, T *... reminder)
@@ -87,6 +95,12 @@ public:
         CREATE_INST_WITH_PROP(BinaryImmInstruction, ARITHM, Opcode::opcode, type, input, imm);  \
     }
 
+#define CREATE_IMM_INST_WITH_PROP(opcode, prop)                                                 \
+    template <ValidOpType T>                                                                    \
+    BinaryImmInstruction *Create##opcode(OperandType type, Input input, T imm) {                \
+        CREATE_INST_WITH_PROP(BinaryImmInstruction, prop, Opcode::opcode, type, input, imm);    \
+    }
+
     CREATE_COMMUTABLE_ARITHM(AND)
     CREATE_COMMUTABLE_ARITHM(OR)
     CREATE_COMMUTABLE_ARITHM(XOR)
@@ -94,8 +108,24 @@ public:
     CREATE_COMMUTABLE_ARITHM(MUL)
 
     CREATE_ARITHM(SUB)
-    CREATE_ARITHM(DIV)
-    CREATE_ARITHM(MOD)
+    BinaryRegInstruction *CreateDIV(OperandType type, Input in1, Input in2) {
+        CREATE_INST_WITH_PROP(
+            BinaryRegInstruction,
+            SIDE_EFFECTS_ARITHM,
+            Opcode::DIV,
+            type,
+            in1,
+            in2);
+    }
+    BinaryRegInstruction *CreateMOD(OperandType type, Input in1, Input in2) {
+        CREATE_INST_WITH_PROP(
+            BinaryRegInstruction,
+            SIDE_EFFECTS_ARITHM,
+            Opcode::MOD,
+            type,
+            in1,
+            in2);
+    }
     CREATE_ARITHM(SRA)
     CREATE_ARITHM(SLA)
     CREATE_ARITHM(SLL)
@@ -106,8 +136,8 @@ public:
     CREATE_IMM_INST(ADDI)
     CREATE_IMM_INST(SUBI)
     CREATE_IMM_INST(MULI)
-    CREATE_IMM_INST(DIVI)
-    CREATE_IMM_INST(MODI)
+    CREATE_IMM_INST_WITH_PROP(DIVI, SIDE_EFFECTS_ARITHM)
+    CREATE_IMM_INST_WITH_PROP(MODI, SIDE_EFFECTS_ARITHM)
     CREATE_IMM_INST(SRAI)
     CREATE_IMM_INST(SLAI)
     CREATE_IMM_INST(SLLI)
@@ -126,7 +156,14 @@ public:
         CREATE_INST_WITH_PROP(CastInstruction, InstrProp::INPUT, fromType, toType, input);
     }
     CompareInstruction *CreateCMP(OperandType type, CondCode ccode, Input in1, Input in2) {
-        CREATE_INST_WITH_PROP(CompareInstruction, InstrProp::INPUT, Opcode::CMP, type, ccode, in1, in2);
+        CREATE_INST_WITH_PROP(
+            CompareInstruction,
+            utils::underlying_logic_or(InstrProp::INPUT, InstrProp::SIDE_EFFECTS),
+            Opcode::CMP,
+            type,
+            ccode,
+            in1,
+            in2);
     }
     CondJumpInstruction *CreateJCMP() {
         CREATE_FIXED_INST(CondJumpInstruction);
@@ -137,7 +174,7 @@ public:
     RetInstruction *CreateRET(OperandType type, Input input) {
         CREATE_INST_WITH_PROP(
             RetInstruction,
-            utils::underlying_logic_or(InstrProp::CF, InstrProp::INPUT),
+            utils::underlying_logic_or(InstrProp::CF, InstrProp::INPUT, InstrProp::SIDE_EFFECTS),
             type,
             input);
     }
@@ -146,24 +183,46 @@ public:
     }
 
     CallInstruction *CreateCALL(OperandType type, FunctionId target) {
-        CREATE_INST_WITH_PROP(CallInstruction, InstrProp::INPUT, type, target);
+        CREATE_INST_WITH_PROP(
+            CallInstruction,
+            utils::underlying_logic_or(InstrProp::INPUT, InstrProp::SIDE_EFFECTS),
+            type,
+            target);
     }
     template <AllowedInputType Ins>
     CallInstruction *CreateCALL(OperandType type, FunctionId target,
                                 std::initializer_list<Ins> arguments) {
-        CREATE_INST_WITH_PROP(CallInstruction, InstrProp::INPUT, type, target, arguments);
+        CREATE_INST_WITH_PROP(
+            CallInstruction,
+            utils::underlying_logic_or(InstrProp::INPUT, InstrProp::SIDE_EFFECTS),
+            type,
+            target,
+            arguments);
     }
     template <AllowedInputType Ins, typename AllocatorT>
     CallInstruction *CreateCALL(OperandType type, FunctionId target,
                                 std::vector<Ins, AllocatorT> arguments) {
-        CREATE_INST_WITH_PROP(CallInstruction, InstrProp::INPUT, type, target, arguments);
+        CREATE_INST_WITH_PROP(
+            CallInstruction,
+            utils::underlying_logic_or(InstrProp::INPUT, InstrProp::SIDE_EFFECTS),
+            type,
+            target,
+            arguments);
     }
 
     LoadInstruction *CreateLOAD(OperandType type, uint64_t addr) {
-        CREATE_INST_WITH_PROP(LoadInstruction, InstrProp::MEM, type, addr);
+        CREATE_INST_WITH_PROP(
+            LoadInstruction,
+            utils::underlying_logic_or(InstrProp::MEM, InstrProp::SIDE_EFFECTS),
+            type,
+            addr);
     }
     StoreInstruction *CreateSTORE(Input storedValue, uint64_t addr) {
-        CREATE_INST_WITH_PROP(StoreInstruction, InstrProp::MEM, storedValue, addr);
+        CREATE_INST_WITH_PROP(
+            StoreInstruction,
+            utils::underlying_logic_or(InstrProp::MEM, InstrProp::SIDE_EFFECTS),
+            storedValue,
+            addr);
     }
 
     PhiInstruction *CreatePHI(OperandType type) {
@@ -196,10 +255,13 @@ public:
 #undef CREATE_ARITHM
 #undef CREATE_COMMUTABLE_ARITHM
 #undef CREATE_IMM_INST
+#undef CREATE_IMM_INST_WITH_PROP
 
 private:
     static constexpr InstructionPropT ARITHM =
         utils::underlying_logic_or(InstrProp::ARITH, InstrProp::INPUT);
+    static constexpr InstructionPropT SIDE_EFFECTS_ARITHM =
+        utils::underlying_logic_or(InstrProp::ARITH, InstrProp::INPUT, InstrProp::SIDE_EFFECTS);
 
 private:
     ArenaAllocator *const allocator;

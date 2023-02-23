@@ -1,26 +1,9 @@
+#include "CompilerTestBase.h"
 #include "DCE.h"
-#include "Graph.h"
-#include "TestGraphSamples.h"
-#include <vector>
 
 
 namespace ir::tests {
-class DCETest : public TestGraphSamples {
-public:
-    void SetUp() override {
-        TestGraphSamples::SetUp();
-        pass = new DCEPass(GetGraph(), SHOULD_DUMP);
-    }
-    void TearDown() override {
-        delete pass;
-        TestGraphSamples::TearDown();
-    }
-
-public:
-    static constexpr bool SHOULD_DUMP = true;
-
-public:
-    DCEPass *pass = nullptr;
+class DCETest : public CompilerTestBase {
 };
 
 TEST_F(DCETest, TestDCE1) {
@@ -43,7 +26,7 @@ TEST_F(DCETest, TestDCE1) {
     instrBuilder->PushBackInstruction(bblock, arg, v0, v1, v2, ret);
     ASSERT_EQ(bblock->GetSize(), 5);
 
-    pass->Run();
+    PassManager::Run<DCEPass>(GetGraph());
 
     CompilerTestBase::compareInstructions({arg, v0, v2, ret}, bblock);
     ASSERT_EQ(v1->GetBasicBlock(), nullptr);
@@ -100,7 +83,7 @@ TEST_F(DCETest, TestDCE2) {
     graph->ConnectBasicBlocks(bblockFalse, bblockDest);
     ASSERT_EQ(graph->GetBasicBlocksCount(), 5);
 
-    pass->Run();
+    PassManager::Run<DCEPass>(GetGraph());
 
     ASSERT_EQ(graph->GetBasicBlocksCount(), 5);
     CompilerTestBase::compareInstructions({arg0, arg1, constZero, v0, cmp, jcmp}, bblockSource);
@@ -130,7 +113,7 @@ TEST_F(DCETest, TestNoDCE) {
     instrBuilder->PushBackInstruction(bblock, arg0, arg1, v0, v1, v2, ret);
     ASSERT_EQ(bblock->GetSize(), 6);
 
-    pass->Run();
+    PassManager::Run<DCEPass>(GetGraph());
 
     CompilerTestBase::compareInstructions({arg0, arg1, v0, v1, v2, ret}, bblock);
 }

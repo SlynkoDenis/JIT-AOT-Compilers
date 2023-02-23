@@ -5,7 +5,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <type_traits>
-#include "Types.h"
+#include "instructions/Types.h"
 
 
 namespace ir {

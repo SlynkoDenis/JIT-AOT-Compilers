@@ -1,33 +1,26 @@
 #ifndef JIT_AOT_COMPILERS_COURSE_DCE_H_
 #define JIT_AOT_COMPILERS_COURSE_DCE_H_
 
-#include "dumper/DummyDumper.h"
-#include "dumper/EventDumper.h"
 #include "Graph.h"
 #include "PassBase.h"
 
 
 namespace ir {
-class DCEPass : public OptimizationPassBase {
+class DCEPass : public PassBase {
 public:
-    explicit DCEPass(Graph *graph, bool shouldDump = true)
-        : OptimizationPassBase(graph),
+    explicit DCEPass(Graph *graph, bool shouldDump = false)
+        : PassBase(graph, shouldDump),
           deadInstrs(graph->GetAllocator()->ToSTL())
-    {
-        if (shouldDump) {
-            dumper = utils::dumper::EventDumper::AddDumper(graph->GetAllocator(), PASS_NAME).second;
-        } else {
-            dumper = utils::dumper::EventDumper::AddDumper<utils::dumper::DummyDumper>(
-                graph->GetAllocator(), utils::dumper::DummyDumper::DUMPER_NAME).second;
-        }
-    }
+    {}
     ~DCEPass() noexcept override = default;
 
     void Run() override;
 
-private:
-    static bool instructionHasSideEffects(InstructionBase *instr);
+    const char *GetName() const override {
+        return PASS_NAME;
+    }
 
+private:
     void markAlive(InstructionBase *instr);
     void markDead(InstructionBase *instr);
     void removeDead();
@@ -39,8 +32,6 @@ private:
     Marker aliveMarker;
 
     utils::memory::ArenaVector<InstructionBase *> deadInstrs;
-
-    utils::dumper::EventDumper *dumper;
 };
 }   // namespace ir
 

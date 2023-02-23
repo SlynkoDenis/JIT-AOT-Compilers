@@ -2,8 +2,7 @@
 #define JIT_AOT_COMPILERS_COURSE_BASIC_BLOCK_H_
 
 #include "arena/ArenaAllocator.h"
-#include "InstructionBase.h"
-#include "Instruction.h"
+#include "instructions/Instruction.h"
 #include "macros.h"
 #include <vector>
 
@@ -30,9 +29,13 @@ public:
     bool IsEmpty() const {
         return GetSize() == 0;
     }
+    bool IsFirstInGraph() const;
     bool IsLastInGraph() const;
     bool HasNoPredecessors() const {
         return preds.empty();
+    }
+    bool HasNoSuccessors() const {
+        return succs.empty();
     }
     utils::memory::ArenaVector<BasicBlock *> &GetPredecessors() {
         return preds;

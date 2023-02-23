@@ -9,7 +9,7 @@ void DCEPass::Run() {
     auto rpoTraversal = RPO(graph);
     for (auto &bblock : rpoTraversal) {
         for (auto *instr : *bblock) {
-            if (instructionHasSideEffects(instr)) {
+            if (instr->HasSideEffects()) {
                 markAlive(instr);
             }
         }
@@ -50,11 +50,5 @@ void DCEPass::removeDead() {
         instr->GetBasicBlock()->UnlinkInstruction(instr);
     }
     deadInstrs.clear();
-}
-
-/* static */
-bool DCEPass::instructionHasSideEffects(InstructionBase *instr) {
-    ASSERT(instr);
-    return utils::to_underlying(instr->GetOpcode()) <= utils::to_underlying(Opcode::RETVOID);
 }
 }   // namespace ir

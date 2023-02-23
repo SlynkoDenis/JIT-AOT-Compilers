@@ -1,4 +1,6 @@
 #include "CompilerBase.h"
+#include "DCE.h"
+#include "EmptyBlocksRemoval.h"
 #include "Inlining.h"
 #include "InstructionBuilder.h"
 #include "Traversals.h"
@@ -12,6 +14,7 @@ void InliningPass::Run() {
         dumper->Dump("Skip function due to too much instructions: ", instructions_count);
     }
 
+    bool doneInlining = false;
     for (auto *bblock : rpoBBlocks) {
         for (auto *instr : *bblock) {
             if (!instr->IsCall()) {
@@ -28,7 +31,12 @@ void InliningPass::Run() {
                 graph->GetInstructionBuilder());
 
             doInlining(call, copyGraph);
+            doneInlining = true;
         }
+    }
+
+    if (doneInlining) {
+        postInlining(graph);
     }
 }
 
@@ -174,5 +182,13 @@ void InliningPass::relinkBasicBlocks(Graph *callerGraph, Graph *calleeGraph) {
         }
     };
     calleeGraph->ForEachBasicBlock(doRelink);
+}
+
+void InliningPass::postInlining(Graph *graph) {
+    // TODO: may move post-pass routine into PassBase by providing type traits
+    PassManager::Run<EmptyBlocksRemoval>(graph);
+    PassManager::Run<DCEPass>(graph);
+
+    PassManager::SetInvalid<AnalysisFlag::DOM_TREE, AnalysisFlag::LOOP_ANALYSIS>(graph);
 }
 }   // namespace ir

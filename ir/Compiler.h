@@ -3,6 +3,7 @@
 
 #include "arena/ArenaAllocator.h"
 #include "CompilerBase.h"
+#include "CompilerOptions.h"
 #include "InstructionBuilder.h"
 
 
@@ -36,11 +37,16 @@ public:
         functionsGraphs.erase(functionsGraphs.begin() + functionId);
         return true;
     }
+    const CompilerOptions &GetOptions() const override {
+        return options;
+    }
 
 private:
     ArenaAllocator allocator;
 
     ArenaVector<Graph *> functionsGraphs;
+
+    CompilerOptions options;
 };
 }   // namespace ir
 

@@ -4,21 +4,6 @@
 
 namespace ir::tests {
 class PeepholesTest : public CompilerTestBase {
-public:
-    void SetUp() override {
-        CompilerTestBase::SetUp();
-        pass = new PeepholePass(GetGraph(), SHOULD_DUMP);
-    }
-    void TearDown() override {
-        delete pass;
-        CompilerTestBase::TearDown();
-    }
-
-public:
-    static constexpr bool SHOULD_DUMP = true;
-
-public:
-    PeepholePass *pass = nullptr;
 };
 
 // AND
@@ -40,7 +25,7 @@ TEST_F(PeepholesTest, TestAND1) {
     GetInstructionBuilder()->PushBackInstruction(bblock, constZero, arg, andInstr, userInstr);
     auto prevSize = bblock->GetSize();
 
-    pass->Run();
+    PassManager::Run<PeepholePass>(GetGraph());
 
     CompilerTestBase::VerifyControlAndDataFlowGraphs(bblock);
     ASSERT_EQ(bblock->GetSize(), prevSize - 1);
@@ -65,7 +50,7 @@ TEST_F(PeepholesTest, TestAND2) {
     GetGraph()->SetFirstBasicBlock(bblock);
     GetInstructionBuilder()->PushBackInstruction(bblock, constMax, arg, andInstr, userInstr);
 
-    pass->Run();
+    PassManager::Run<PeepholePass>(GetGraph());
 
     CompilerTestBase::VerifyControlAndDataFlowGraphs(bblock);
     compareInstructions({constMax, arg, userInstr}, bblock);
@@ -90,7 +75,7 @@ TEST_F(PeepholesTest, TestANDWithNEGArgs) {
     GetInstructionBuilder()->PushBackInstruction(bblock, arg1, arg2, not1, not2, andInstr, userInstr);
     auto prevSize = bblock->GetSize();
 
-    pass->Run();
+    PassManager::Run<PeepholePass>(GetGraph());
 
     CompilerTestBase::VerifyControlAndDataFlowGraphs(bblock);
     ASSERT_EQ(bblock->GetSize(), prevSize - 1);
@@ -123,7 +108,7 @@ TEST_F(PeepholesTest, TestANDRepeatedArgs) {
     GetGraph()->SetFirstBasicBlock(bblock);
     GetInstructionBuilder()->PushBackInstruction(bblock, arg, andInstr, userInstr);
 
-    pass->Run();
+    PassManager::Run<PeepholePass>(GetGraph());
 
     CompilerTestBase::VerifyControlAndDataFlowGraphs(bblock);
     compareInstructions({arg, userInstr}, bblock);
@@ -148,7 +133,7 @@ TEST_F(PeepholesTest, TestANDFolding) {
     GetInstructionBuilder()->PushBackInstruction(bblock, const1, const2, andInstr);
     auto prevSize = bblock->GetSize();
 
-    pass->Run();
+    PassManager::Run<PeepholePass>(GetGraph());
 
     CompilerTestBase::VerifyControlAndDataFlowGraphs(bblock);
     ASSERT_EQ(bblock->GetSize(), prevSize);
@@ -167,7 +152,7 @@ TEST_F(PeepholesTest, TestNoOptimization##name) {                               
     auto *bblock = GetGraph()->CreateEmptyBasicBlock();                              \
     GetGraph()->SetFirstBasicBlock(bblock);                              \
     GetInstructionBuilder()->PushBackInstruction(bblock, constInstr, arg, targetInstr);  \
-    pass->Run();                                                                        \
+    PassManager::Run<PeepholePass>(GetGraph());                                                                        \
     CompilerTestBase::VerifyControlAndDataFlowGraphs(bblock);                                             \
     compareInstructions({constInstr, arg, targetInstr}, bblock);                        \
 }
@@ -193,7 +178,7 @@ TEST_F(PeepholesTest, TestZeroSRA) {
     GetInstructionBuilder()->PushBackInstruction(bblock, arg, constZero, sraInstr, userInstr);
     auto prevSize = bblock->GetSize();
 
-    pass->Run();
+    PassManager::Run<PeepholePass>(GetGraph());
 
     CompilerTestBase::VerifyControlAndDataFlowGraphs(bblock);
     ASSERT_EQ(bblock->GetSize(), prevSize - 1);
@@ -218,7 +203,7 @@ TEST_F(PeepholesTest, TestSRAZero) {
     GetInstructionBuilder()->PushBackInstruction(bblock, arg, constZero, sraInstr, userInstr);
     auto prevSize = bblock->GetSize();
 
-    pass->Run();
+    PassManager::Run<PeepholePass>(GetGraph());
 
     CompilerTestBase::VerifyControlAndDataFlowGraphs(bblock);
     ASSERT_EQ(bblock->GetSize(), prevSize - 1);
@@ -227,7 +212,7 @@ TEST_F(PeepholesTest, TestSRAZero) {
 }
 
 static void testSRAFolding(InstructionBuilder *instrBuilder, Graph *graph,
-                           PeepholePass *pass, int imm1, int imm2) {
+                           int imm1, int imm2) {
     // case:
     // v1 = imm1
     // v2 = imm2
@@ -244,7 +229,7 @@ static void testSRAFolding(InstructionBuilder *instrBuilder, Graph *graph,
     instrBuilder->PushBackInstruction(bblock, const1, const2, sraInstr);
     auto prevSize = bblock->GetSize();
 
-    pass->Run();
+    PassManager::Run<PeepholePass>(graph);
 
     CompilerTestBase::VerifyControlAndDataFlowGraphs(bblock);
     ASSERT_EQ(bblock->GetSize(), prevSize);
@@ -255,16 +240,16 @@ static void testSRAFolding(InstructionBuilder *instrBuilder, Graph *graph,
 }
 
 TEST_F(PeepholesTest, TestSRAFolding1) {
-    testSRAFolding(GetInstructionBuilder(), GetGraph(), pass, 12345, 3);
+    testSRAFolding(GetInstructionBuilder(), GetGraph(), 12345, 3);
 }
 TEST_F(PeepholesTest, TestSRAFolding2) {
-    testSRAFolding(GetInstructionBuilder(), GetGraph(), pass, 12345, 0);
+    testSRAFolding(GetInstructionBuilder(), GetGraph(), 12345, 0);
 }
 TEST_F(PeepholesTest, TestSRAFolding3) {
-    testSRAFolding(GetInstructionBuilder(), GetGraph(), pass, -12345, 3);
+    testSRAFolding(GetInstructionBuilder(), GetGraph(), -12345, 3);
 }
 TEST_F(PeepholesTest, TestSRAFolding4) {
-    testSRAFolding(GetInstructionBuilder(), GetGraph(), pass, -12345, 0);
+    testSRAFolding(GetInstructionBuilder(), GetGraph(), -12345, 0);
 }
 
 TEST_F(PeepholesTest, TestSRANoOptimization) {
@@ -277,7 +262,7 @@ TEST_F(PeepholesTest, TestSRANoOptimization) {
     GetGraph()->SetFirstBasicBlock(bblock);
     GetInstructionBuilder()->PushBackInstruction(bblock, constInstr, arg, andInstr);
 
-    pass->Run();
+    PassManager::Run<PeepholePass>(GetGraph());
 
     CompilerTestBase::VerifyControlAndDataFlowGraphs(bblock);
     compareInstructions({constInstr, arg, andInstr}, bblock);
@@ -305,7 +290,7 @@ TEST_F(PeepholesTest, TestSUB1) {
     GetInstructionBuilder()->PushBackInstruction(bblock, arg1, arg2, negInstr, subInstr);
     auto prevSize = bblock->GetSize();
 
-    pass->Run();
+    PassManager::Run<PeepholePass>(GetGraph());
 
     CompilerTestBase::VerifyControlAndDataFlowGraphs(bblock);
     ASSERT_EQ(bblock->GetSize(), prevSize);
@@ -322,7 +307,7 @@ TEST_F(PeepholesTest, TestSUB1) {
 }
 
 static void testAddSubCombination(InstructionBuilder *instrBuilder, Graph *graph,
-                                  PeepholePass *pass, bool firstAdd, bool firstFromAdd) {
+                                  bool firstAdd, bool firstFromAdd) {
     auto opType = OperandType::I32;
     auto *arg1 = instrBuilder->CreateARG(opType);
     auto *arg2 = instrBuilder->CreateARG(opType);
@@ -342,7 +327,7 @@ static void testAddSubCombination(InstructionBuilder *instrBuilder, Graph *graph
     graph->SetFirstBasicBlock(bblock);
     instrBuilder->PushBackInstruction(bblock, arg1, arg2, addInstr, subInstr, userInstr);
 
-    pass->Run();
+    PassManager::Run<PeepholePass>(graph);
 
     CompilerTestBase::VerifyControlAndDataFlowGraphs(bblock);
     ASSERT_EQ(userInstr, bblock->GetLastInstruction());
@@ -361,16 +346,16 @@ static void testAddSubCombination(InstructionBuilder *instrBuilder, Graph *graph
 }
 
 TEST_F(PeepholesTest, TestSUB2) {
-    testAddSubCombination(GetInstructionBuilder(), GetGraph(), pass, true, true);
+    testAddSubCombination(GetInstructionBuilder(), GetGraph(), true, true);
 }
 TEST_F(PeepholesTest, TestSUB3) {
-    testAddSubCombination(GetInstructionBuilder(), GetGraph(), pass, true, false);
+    testAddSubCombination(GetInstructionBuilder(), GetGraph(), true, false);
 }
 TEST_F(PeepholesTest, TestSUB4) {
-    testAddSubCombination(GetInstructionBuilder(), GetGraph(), pass, false, true);
+    testAddSubCombination(GetInstructionBuilder(), GetGraph(), false, true);
 }
 TEST_F(PeepholesTest, TestSUB5) {
-    testAddSubCombination(GetInstructionBuilder(), GetGraph(), pass, false, false);
+    testAddSubCombination(GetInstructionBuilder(), GetGraph(), false, false);
 }
 
 TEST_F(PeepholesTest, TestZeroSUB) {
@@ -391,7 +376,7 @@ TEST_F(PeepholesTest, TestZeroSUB) {
     GetInstructionBuilder()->PushBackInstruction(bblock, arg, constZero, subInstr, userInstr);
     auto prevSize = bblock->GetSize();
 
-    pass->Run();
+    PassManager::Run<PeepholePass>(GetGraph());
 
     CompilerTestBase::VerifyControlAndDataFlowGraphs(bblock);
     ASSERT_EQ(bblock->GetSize(), prevSize);
@@ -419,7 +404,7 @@ TEST_F(PeepholesTest, TestSUBZero) {
     GetInstructionBuilder()->PushBackInstruction(bblock, arg, constZero, subInstr, userInstr);
     auto prevSize = bblock->GetSize();
 
-    pass->Run();
+    PassManager::Run<PeepholePass>(GetGraph());
 
     CompilerTestBase::VerifyControlAndDataFlowGraphs(bblock);
     ASSERT_EQ(bblock->GetSize(), prevSize - 1);
@@ -442,7 +427,7 @@ TEST_F(PeepholesTest, TestSUBRepeatedArgs) {
     GetInstructionBuilder()->PushBackInstruction(bblock, arg, subInstr, userInstr);
     auto prevSize = bblock->GetSize();
 
-    pass->Run();
+    PassManager::Run<PeepholePass>(GetGraph());
 
     CompilerTestBase::VerifyControlAndDataFlowGraphs(bblock);
     ASSERT_EQ(bblock->GetSize(), prevSize);
@@ -473,7 +458,7 @@ TEST_F(PeepholesTest, TestSUBFolding) {
     GetInstructionBuilder()->PushBackInstruction(bblock, const1, const2, subInstr);
     auto prevSize = bblock->GetSize();
 
-    pass->Run();
+    PassManager::Run<PeepholePass>(GetGraph());
 
     CompilerTestBase::VerifyControlAndDataFlowGraphs(bblock);
     ASSERT_EQ(bblock->GetSize(), prevSize);
@@ -496,7 +481,7 @@ TEST_F(PeepholesTest, TestAddSubNoOptimizations) {
     GetGraph()->SetFirstBasicBlock(bblock);
     GetInstructionBuilder()->PushBackInstruction(bblock, arg1, arg2, arg3, addInstr, subInstr);
 
-    pass->Run();
+    PassManager::Run<PeepholePass>(GetGraph());
 
     CompilerTestBase::VerifyControlAndDataFlowGraphs(bblock);
     compareInstructions({arg1, arg2, arg3, addInstr, subInstr}, bblock);

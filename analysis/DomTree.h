@@ -3,23 +3,36 @@
 
 #include "arena/ArenaAllocator.h"
 #include "DSU.h"
-#include "Graph.h"
+#include "PassBase.h"
 #include <vector>
 
 
 namespace ir {
-class DomTreeBuilder final {
+class DomTreeBuilder : public PassBase {
 public:
     using VectorBBlocks = ArenaVector<BasicBlock *>;
 
-    void Build(Graph *graph);
+    explicit DomTreeBuilder(Graph *graph) : PassBase(graph, false) {}
+    NO_COPY_SEMANTIC(DomTreeBuilder);
+    NO_MOVE_SEMANTIC(DomTreeBuilder);
+    ~DomTreeBuilder() noexcept override = default;
+
+    void Run();
+
+    void SetGraph(Graph *newGraph) {
+        ASSERT(newGraph);
+        graph = newGraph;
+    }
 
     const VectorBBlocks *GetImmediateDominators() const {
         return idoms;
     }
 
+public:
+    static constexpr AnalysisFlag SET_FLAG = AnalysisFlag::DOM_TREE;
+
 private:
-    DSU resetStructs(Graph *graph);
+    DSU resetStructs();
     void dfsTraverse(BasicBlock *bblock);
     void computeSDoms(DSU &sdomsHelper);
     void computeIDoms();

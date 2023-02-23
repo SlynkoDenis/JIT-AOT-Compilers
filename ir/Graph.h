@@ -1,6 +1,7 @@
 #ifndef JIT_AOT_COMPILERS_COURSE_GRAPH_H_
 #define JIT_AOT_COMPILERS_COURSE_GRAPH_H_
 
+#include "AnalysisValidityManager.h"
 #include <algorithm>
 #include "arena/ArenaAllocator.h"
 #include "BasicBlock.h"
@@ -14,7 +15,7 @@ class CompilerBase;
 class InstructionBuilder;
 class Loop;
 
-class Graph : public MarkerManager {
+class Graph : public MarkerManager, public AnalysisValidityManager {
 public:
     using IdType = FunctionId;
 

@@ -1,6 +1,7 @@
 #ifndef JIT_AOT_COMPILERS_COURSE_COMPILER_BASE_H_
 #define JIT_AOT_COMPILERS_COURSE_COMPILER_BASE_H_
 
+#include "CompilerOptions.h"
 #include "Graph.h"
 #include "InstructionBuilder.h"
 
@@ -19,6 +20,7 @@ public:
     virtual Graph *Optimize(Graph *graph) = 0;
     virtual Graph *GetFunction(FunctionId functionId) = 0;
     virtual bool DeleteFunctionGraph(FunctionId functionId) = 0;
+    virtual const CompilerOptions &GetOptions() const = 0;
 };
 }   // namespace ir
 

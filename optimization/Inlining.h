@@ -1,34 +1,27 @@
 #ifndef JIT_AOT_COMPILERS_COURSE_INLINING_H_
 #define JIT_AOT_COMPILERS_COURSE_INLINING_H_
 
-#include "dumper/DummyDumper.h"
-#include "dumper/EventDumper.h"
-#include "Graph.h"
+#include "CompilerBase.h"
 #include "PassBase.h"
 
 
 namespace ir {
-class InliningPass : public OptimizationPassBase {
+class InliningPass : public PassBase {
 public:
-    InliningPass(Graph *graph,
-                 size_t maxCalleeInstrs,
-                 size_t maxInstrsAfterInlining,
-                 bool shouldDump = true)
-        : OptimizationPassBase(graph),
-          maxCalleeInstrs(maxCalleeInstrs),
-          maxInstrsAfterInlining(maxInstrsAfterInlining)
+    explicit InliningPass(Graph *graph, bool shouldDump = false)
+        : PassBase(graph, shouldDump)
     {
+        maxCalleeInstrs = graph->GetCompiler()->GetOptions().GetMaxCalleeInstrs();
+        maxInstrsAfterInlining = graph->GetCompiler()->GetOptions().GetMaxInstrsAfterInlining();
         ASSERT(maxCalleeInstrs < maxInstrsAfterInlining);
-        if (shouldDump) {
-            dumper = utils::dumper::EventDumper::AddDumper(graph->GetAllocator(), PASS_NAME).second;
-        } else {
-            dumper = utils::dumper::EventDumper::AddDumper<utils::dumper::DummyDumper>(
-                graph->GetAllocator(), utils::dumper::DummyDumper::DUMPER_NAME).second;
-        }
     }
     ~InliningPass() noexcept override = default;
 
     void Run() override;
+
+    const char *GetName() const override {
+        return PASS_NAME;
+    }
 
 private:
     // Returns a pointer to graph to be inlined if inlining is feasible to do, nullptr otherwise.
@@ -49,14 +42,14 @@ private:
     // Links all callee's basic blocks to the resulting caller graph.
     void relinkBasicBlocks(Graph *callerGraph, Graph *calleeGraph);
 
+    void postInlining(Graph *graph);
+
 private:
     static constexpr const char *PASS_NAME = "inlining";
 
 private:
     size_t maxCalleeInstrs;
     size_t maxInstrsAfterInlining;
-
-    utils::dumper::EventDumper *dumper;
 };
 }   // namespace ir
 

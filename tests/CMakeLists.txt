@@ -6,6 +6,7 @@ set(SOURCES
     CompilerTestBase.cpp
     DCETest.cpp
     DomTreeTest.cpp
+    EmptyBlocksRemovalTest.cpp
     GraphTest.cpp
     InliningTest.cpp
     InstructionsTest.cpp

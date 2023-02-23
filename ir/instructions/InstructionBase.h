@@ -17,7 +17,6 @@ class BasicBlock;
 using utils::memory::ArenaAllocator;
 
 // Opcodes & Conditional Codes
-// instruction which shouldn't be collected by DCE are placed in start of the list
 #define INSTS_LIST(DEF) \
     DEF(DIV)            \
     DEF(DIVI)           \
@@ -64,7 +63,14 @@ enum class Opcode {
     NUM_OPCODES = INVALID
 };
 
-const char *getOpcodeName(Opcode opcode);
+constexpr inline const char *getOpcodeName(Opcode opcode) {
+    std::array<const char *, static_cast<size_t>(Opcode::NUM_OPCODES)> names{
+#define OPCODE_NAME(name, ...) #name,
+    INSTS_LIST(OPCODE_NAME)
+#undef OPCODE_NAME
+    };
+    return names[static_cast<size_t>(opcode)];
+}
 
 // Instructions properties, used in optimizations
 using InstructionPropT = uint8_t;
@@ -75,7 +81,26 @@ enum class InstrProp : InstructionPropT {
     COMMUTABLE = 0b100,
     CF = 0b1000,
     INPUT = 0b10000,
+    SIDE_EFFECTS = 0b100000,
 };
+
+constexpr inline InstructionPropT operator|(InstrProp lhs, InstrProp rhs) {
+    return utils::to_underlying(lhs) | utils::to_underlying(rhs);
+}
+
+constexpr inline InstructionPropT operator|(InstructionPropT lhs, InstrProp rhs) {
+    return lhs | utils::to_underlying(rhs);
+}
+
+constexpr inline InstructionPropT operator|(InstrProp lhs, InstructionPropT rhs) {
+    return utils::to_underlying(lhs) | rhs;
+}
+
+template <typename T>
+constexpr inline InstructionPropT &operator|=(InstructionPropT &lhs, T rhs) {
+    lhs = lhs | rhs;
+    return lhs;
+}
 
 // Instructions
 class InstructionBase : public Markable, public Users {
@@ -149,8 +174,14 @@ public:
     bool IsConst() const {
         return GetOpcode() == Opcode::CONST;
     }
+    bool IsBranch() const {
+        return GetOpcode() == Opcode::JCMP;
+    }
     bool HasInputs() const {
         return SatisfiesProperty(InstrProp::INPUT);
+    }
+    bool HasSideEffects() const {
+        return SatisfiesProperty(InstrProp::SIDE_EFFECTS);
     }
 
     void SetPrevInstruction(InstructionBase *inst) {
@@ -168,10 +199,8 @@ public:
     void SetId(size_t newId) {
         id = newId;
     }
-    void SetProperty(InstrProp prop) {
-        properties |= utils::to_underlying(prop);
-    }
-    void SetProperty(InstructionPropT prop) {
+    template <typename T>
+    constexpr inline void SetProperty(T prop) {
         properties |= prop;
     }
     void UnlinkFromParent();

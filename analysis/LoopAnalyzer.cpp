@@ -4,14 +4,13 @@
 
 
 namespace ir {
-void LoopAnalyzer::Analyze(Graph *targetGraph) {
-    ASSERT(targetGraph);
-    if (targetGraph->IsEmpty()) {
+void LoopAnalyzer::Run() {
+    if (graph->IsEmpty()) {
         return;
     }
 
-    resetStructs(targetGraph);
-    DomTreeBuilder().Build(targetGraph);
+    resetStructs();
+    PassManager::Run<DomTreeBuilder>(graph);
 
     collectBackEdges();
     graph->ReleaseMarker(greyMarker);
@@ -21,9 +20,7 @@ void LoopAnalyzer::Analyze(Graph *targetGraph) {
     buildLoopTree();
 }
 
-void LoopAnalyzer::resetStructs(Graph *targetGraph) {
-    graph = targetGraph;
-
+void LoopAnalyzer::resetStructs() {
     blockId = 0;
 
     auto bblocksCount = graph->GetBasicBlocksCount();

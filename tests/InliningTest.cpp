@@ -8,32 +8,24 @@
 namespace ir::tests {
 class InliningTest : public CompilerTestBase {
 public:
-    void SetUp(size_t maxCalleeInstrs, size_t maxInstrsAfterInlining) {
-        pass = new InliningPass(
-            GetGraph(),
-            maxCalleeInstrs,
-            maxInstrsAfterInlining,
-            SHOULD_DUMP);
-    }
-    void TearDown() override {
-        delete pass;
-        CompilerTestBase::TearDown();
-    }
-
     CallInstruction *BuildCallerGraph(bool voidReturn);
 
     Graph *BuildSimpleCallee();
     Graph *BuildMultipleReturnsCallee();
     Graph *BuildVoidReturnCallee();
 
-public:
-    static constexpr bool SHOULD_DUMP = true;
-    static constexpr size_t DEFAULT_MAX_CALLEE_SIZE = 25;
-    static constexpr size_t DEFAULT_MAX_TOTAL_SIZE = 100;
-    static constexpr auto OPS_TYPE = OperandType::I32;
+    void RunPass() {
+        auto *graph = GetGraph();
+        graph->SetAnalysisValid(AnalysisFlag::LOOP_ANALYSIS, true);
+        graph->SetAnalysisValid(AnalysisFlag::DOM_TREE, true);
+        PassManager::Run<InliningPass>(graph);
+        ASSERT_FALSE(graph->IsAnalysisValid(AnalysisFlag::LOOP_ANALYSIS));
+        ASSERT_FALSE(graph->IsAnalysisValid(AnalysisFlag::DOM_TREE));
+    }
 
 public:
-    InliningPass *pass = nullptr;
+    static constexpr bool SHOULD_DUMP = true;
+    static constexpr auto OPS_TYPE = OperandType::I32;
 };
 
 CallInstruction *InliningTest::BuildCallerGraph(bool voidReturn) {
@@ -203,7 +195,6 @@ Graph *InliningTest::BuildVoidReturnCallee() {
 }
 
 TEST_F(InliningTest, TestInlineSimple) {
-    SetUp(DEFAULT_MAX_CALLEE_SIZE, DEFAULT_MAX_TOTAL_SIZE);
     auto *call = BuildCallerGraph(false);
     auto *callerGraph = GetGraph();
     size_t callerBlocksCount = 4;
@@ -217,14 +208,13 @@ TEST_F(InliningTest, TestInlineSimple) {
     call->SetCallTarget(calleeGraph->GetId());
     ASSERT_EQ(compiler.GetFunction(call->GetCallTarget()), calleeGraph);
 
-    pass->Run();
+    RunPass();
 
-    ASSERT_EQ(callerGraph->GetBasicBlocksCount(), callerBlocksCount + calleeBlocksCount);
+    ASSERT_EQ(callerGraph->GetBasicBlocksCount(), callerBlocksCount + calleeBlocksCount - 1);
     VerifyControlAndDataFlowGraphs(callerGraph);
 }
 
 TEST_F(InliningTest, TestInlineMultipleReturns) {
-    SetUp(DEFAULT_MAX_CALLEE_SIZE, DEFAULT_MAX_TOTAL_SIZE);
     auto *call = BuildCallerGraph(false);
     auto *callerGraph = GetGraph();
     size_t callerBlocksCount = 4;
@@ -238,14 +228,13 @@ TEST_F(InliningTest, TestInlineMultipleReturns) {
     call->SetCallTarget(calleeGraph->GetId());
     ASSERT_EQ(compiler.GetFunction(call->GetCallTarget()), calleeGraph);
 
-    pass->Run();
+    RunPass();
 
-    ASSERT_EQ(callerGraph->GetBasicBlocksCount(), callerBlocksCount + calleeBlocksCount);
+    ASSERT_EQ(callerGraph->GetBasicBlocksCount(), callerBlocksCount + calleeBlocksCount - 2);
     VerifyControlAndDataFlowGraphs(callerGraph);
 }
 
 TEST_F(InliningTest, TestInlineVoidReturn) {
-    SetUp(DEFAULT_MAX_CALLEE_SIZE, DEFAULT_MAX_TOTAL_SIZE);
     auto *call = BuildCallerGraph(true);
     auto *callerGraph = GetGraph();
     size_t callerBlocksCount = 4;
@@ -259,9 +248,9 @@ TEST_F(InliningTest, TestInlineVoidReturn) {
     call->SetCallTarget(calleeGraph->GetId());
     ASSERT_EQ(compiler.GetFunction(call->GetCallTarget()), calleeGraph);
 
-    pass->Run();
+    RunPass();
 
-    ASSERT_EQ(callerGraph->GetBasicBlocksCount(), callerBlocksCount + calleeBlocksCount);
+    ASSERT_EQ(callerGraph->GetBasicBlocksCount(), callerBlocksCount + calleeBlocksCount - 1);
     VerifyControlAndDataFlowGraphs(callerGraph);
 }
 }   // namespace ir::tests

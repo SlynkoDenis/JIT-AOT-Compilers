@@ -360,7 +360,7 @@ public:
             OperandType::I64,
             allocator,
             InstructionBase::INVALID_ID,
-            utils::to_underlying(InstrProp::CF))
+            utils::underlying_logic_or(InstrProp::CF, InstrProp::SIDE_EFFECTS))
     {}
 
     BasicBlock *GetDestination();
@@ -376,7 +376,7 @@ public:
             OperandType::I64,
             allocator,
             InstructionBase::INVALID_ID,
-            utils::to_underlying(InstrProp::CF))
+            utils::underlying_logic_or(InstrProp::CF, InstrProp::SIDE_EFFECTS))
     {}
 
     BasicBlock *GetTrueDestination();
@@ -407,7 +407,7 @@ public:
             OperandType::VOID,
             allocator,
             InstructionBase::INVALID_ID,
-            utils::to_underlying(InstrProp::CF))
+            utils::underlying_logic_or(InstrProp::CF, InstrProp::SIDE_EFFECTS))
     {}
 
     RetVoidInstruction *Copy(BasicBlock *targetBBlock) const override;

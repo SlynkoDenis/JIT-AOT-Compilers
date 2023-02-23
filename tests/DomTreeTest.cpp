@@ -5,7 +5,11 @@
 namespace ir::tests {
 class DomTreeTest : public TestGraphSamples {
 public:
-    DomTreeBuilder domTreeBuilder;
+    void RunPass() {
+        ASSERT_FALSE(GetGraph()->IsAnalysisValid(AnalysisFlag::DOM_TREE));
+        PassManager::Run<DomTreeBuilder>(GetGraph());
+        ASSERT_TRUE(GetGraph()->IsAnalysisValid(AnalysisFlag::DOM_TREE));
+    }
 };
 
 static void checkDominatedBlocks(BasicBlock *bblock,
@@ -26,10 +30,9 @@ static void checkDominatedBlocks(BasicBlock *bblock,
 
 TEST_F(DomTreeTest, TestBuilding1) {
     auto preBuiltGraph = BuildCase1();
-    auto *graph = preBuiltGraph.first;
     auto bblocks = preBuiltGraph.second;
 
-    domTreeBuilder.Build(graph);
+    RunPass();
 
     // check dominators
     std::vector<BasicBlock *> expectedDominators{
@@ -50,10 +53,9 @@ TEST_F(DomTreeTest, TestBuilding1) {
 
 TEST_F(DomTreeTest, TestBuilding2) {
     auto preBuiltGraph = BuildCase2();
-    auto *graph = preBuiltGraph.first;
     auto bblocks = preBuiltGraph.second;
 
-    domTreeBuilder.Build(graph);
+    RunPass();
 
     // check dominators
     std::vector<BasicBlock *> expectedDominators{
@@ -79,10 +81,9 @@ TEST_F(DomTreeTest, TestBuilding2) {
 
 TEST_F(DomTreeTest, TestBuilding3) {
     auto preBuiltGraph = BuildCase3();
-    auto *graph = preBuiltGraph.first;
     auto bblocks = preBuiltGraph.second;
 
-    domTreeBuilder.Build(graph);
+    RunPass();
 
     // check dominators
     std::vector<BasicBlock *> expectedDominators{

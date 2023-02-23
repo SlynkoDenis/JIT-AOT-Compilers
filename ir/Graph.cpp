@@ -79,6 +79,7 @@ void Graph::unlinkBasicBlockImpl(BasicBlock *bblock) {
     ASSERT(id < bblocks.size() && bblocks[id] == bblock);
     bblocks[id] = nullptr;
     bblock->SetId(BasicBlock::INVALID_ID);
+    bblock->SetGraph(nullptr);
     ++unlinkedInstructionsCounter;
 }
 
@@ -108,6 +109,10 @@ BasicBlock::BasicBlock(Graph *graph)
       dominated(graph->GetAllocator()->ToSTL()),
       graph(graph)
 {}
+
+bool BasicBlock::IsFirstInGraph() const {
+    return GetGraph()->GetFirstBasicBlock() == this;
+}
 
 bool BasicBlock::IsLastInGraph() const {
     return GetGraph()->GetLastBasicBlock() == this;

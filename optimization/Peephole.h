@@ -3,28 +3,23 @@
 
 #include "arena/ArenaAllocator.h"
 #include "ConstantFolding.h"
-#include "dumper/DummyDumper.h"
-#include "dumper/EventDumper.h"
-#include "InstructionBase.h"
 #include "Graph.h"
 #include "PassBase.h"
 
 
 namespace ir {
-class PeepholePass : public OptimizationPassBase {
+class PeepholePass : public PassBase {
 public:
-    explicit PeepholePass(Graph *graph, bool shouldDump = true) : OptimizationPassBase(graph)
-    {
-        if (shouldDump) {
-            dumper = utils::dumper::EventDumper::AddDumper(graph->GetAllocator(), PASS_NAME).second;
-        } else {
-            dumper = utils::dumper::EventDumper::AddDumper<utils::dumper::DummyDumper>(
-                graph->GetAllocator(), utils::dumper::DummyDumper::DUMPER_NAME).second;
-        }
-    }
+    explicit PeepholePass(Graph *graph, bool shouldDump = false)
+        : PassBase(graph, shouldDump)
+    {}
     ~PeepholePass() noexcept override = default;
 
     void Run() override;
+
+    const char *GetName() const override {
+        return PASS_NAME;
+    }
 
     void ProcessAND(InstructionBase *instr);
     void ProcessSRA(InstructionBase *instr);
@@ -48,8 +43,6 @@ private:
 
 private:
     ConstantFolding foldingPass;
-
-    utils::dumper::EventDumper *dumper;
 };
 }   // namespace ir
 

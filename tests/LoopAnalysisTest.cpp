@@ -6,14 +6,18 @@
 namespace ir::tests {
 class LoopAnalysisTest : public TestGraphSamples {
 public:
-    LoopAnalyzer loopAnalyzer;
+    void RunPass() {
+        ASSERT_FALSE(GetGraph()->IsAnalysisValid(AnalysisFlag::LOOP_ANALYSIS));
+        PassManager::Run<LoopAnalyzer>(GetGraph());
+        ASSERT_TRUE(GetGraph()->IsAnalysisValid(AnalysisFlag::LOOP_ANALYSIS));
+    }
 };
 
 TEST_F(LoopAnalysisTest, TestLoops1) {
     auto preBuiltGraph = BuildCase1();
     auto *graph = preBuiltGraph.first;
 
-    loopAnalyzer.Analyze(graph);
+    RunPass();
 
     auto *rootLoop = graph->GetLoopTree();
     ASSERT_TRUE(rootLoop->IsRoot());
@@ -31,7 +35,7 @@ TEST_F(LoopAnalysisTest, TestLoops2) {
     auto *graph = preBuiltGraph.first;
     auto bblocks = preBuiltGraph.second;
 
-    loopAnalyzer.Analyze(graph);
+    RunPass();
 
     auto *rootLoop = graph->GetLoopTree();
     ASSERT_TRUE(rootLoop->IsRoot());
@@ -71,7 +75,7 @@ TEST_F(LoopAnalysisTest, TestLoops3) {
     auto *graph = preBuiltGraph.first;
     auto bblocks = preBuiltGraph.second;
 
-    loopAnalyzer.Analyze(graph);
+    RunPass();
 
     auto *rootLoop = graph->GetLoopTree();
     ASSERT_TRUE(rootLoop->IsRoot());
@@ -121,7 +125,7 @@ TEST_F(LoopAnalysisTest, TestLoops4) {
     graph->ConnectBasicBlocks(bblocks[3], bblocks[4]);
     graph->ConnectBasicBlocks(bblocks[4], bblocks[1]);
 
-    loopAnalyzer.Analyze(graph);
+    RunPass();
 
     auto *rootLoop = graph->GetLoopTree();
     ASSERT_TRUE(rootLoop->IsRoot());
@@ -166,7 +170,7 @@ TEST_F(LoopAnalysisTest, TestLoops5) {
     graph->ConnectBasicBlocks(bblocks[4], bblocks[5]);
     graph->ConnectBasicBlocks(bblocks[5], bblocks[1]);
 
-    loopAnalyzer.Analyze(graph);
+    RunPass();
 
     auto *rootLoop = graph->GetLoopTree();
     ASSERT_TRUE(rootLoop->IsRoot());
@@ -218,7 +222,7 @@ TEST_F(LoopAnalysisTest, TestLoops6) {
     graph->ConnectBasicBlocks(bblocks[6], bblocks[1]);
     graph->ConnectBasicBlocks(bblocks[7], bblocks[0]);
 
-    loopAnalyzer.Analyze(graph);
+    RunPass();
 
     auto *rootLoop = graph->GetLoopTree();
     ASSERT_TRUE(rootLoop->IsRoot());

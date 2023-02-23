@@ -2,17 +2,30 @@
 #define JIT_AOT_COMPILERS_COURSE_LOOP_ANALYZER_H_
 
 #include "Loop.h"
-#include "macros.h"
+#include "PassBase.h"
 #include <vector>
 
 
 namespace ir {
-class LoopAnalyzer final {
+class LoopAnalyzer : public PassBase {
 public:
-    void Analyze(Graph *targetGraph);
+    explicit LoopAnalyzer(Graph *graph) : PassBase(graph, false) {}
+    NO_COPY_SEMANTIC(LoopAnalyzer);
+    NO_MOVE_SEMANTIC(LoopAnalyzer);
+    ~LoopAnalyzer() noexcept override = default;
+
+    void Run() override;
+
+    void SetGraph(Graph *newGraph) {
+        ASSERT(newGraph);
+        graph = newGraph;
+    }
+
+public:
+    static constexpr AnalysisFlag SET_FLAG = AnalysisFlag::LOOP_ANALYSIS;
 
 private:
-    void resetStructs(Graph *targetGraph);
+    void resetStructs();
 
     void collectBackEdges();
     void populateLoops();
@@ -30,8 +43,6 @@ private:
     }
 
 private:
-    Graph *graph = nullptr;
-
     Marker greyMarker;
     Marker blackMarker;
 

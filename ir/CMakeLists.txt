@@ -10,22 +10,25 @@ set(SOURCES
 add_library(ir STATIC ${SOURCES})
 
 target_sources(ir PUBLIC
+    AnalysisValidityManager.h
     BasicBlock.h
-    BasicBlockIterator.h
     Compiler.h
     CompilerBase.h
+    CompilerOptions.h
     Concepts.h
     Graph.h
     GraphCopyHelper.h
-    Input.h
-    Instruction.h
-    InstructionBase.h
     InstructionBuilder.h
     Loop.h
+    PassBase.h
     marker/marker.h
-    Types.h
-    Users.h
+    instructions/Input.h
+    instructions/Instruction.h
+    instructions/InstructionBase.h
+    instructions/Types.h
+    instructions/Users.h
     )
+
 
 target_include_directories(ir PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}

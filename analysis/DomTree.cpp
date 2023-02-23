@@ -4,13 +4,12 @@
 
 
 namespace ir {
-void DomTreeBuilder::Build(Graph *graph) {
-    ASSERT(graph);
+void DomTreeBuilder::Run() {
     if (graph->IsEmpty()) {
         return;
     }
 
-    auto sdomsHelper = resetStructs(graph);
+    auto sdomsHelper = resetStructs();
 
     dfsTraverse(graph->GetFirstBasicBlock());
     // check graph's connectivity
@@ -19,7 +18,7 @@ void DomTreeBuilder::Build(Graph *graph) {
     computeIDoms();
 }
 
-DSU DomTreeBuilder::resetStructs(Graph *graph) {
+DSU DomTreeBuilder::resetStructs() {
     lastNumber = -1;
 
     auto bblocksCount = graph->GetBasicBlocksCount();
