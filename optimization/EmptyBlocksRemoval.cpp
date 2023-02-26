@@ -4,7 +4,7 @@
 
 namespace ir {
 /* static */
-void EmptyBlocksRemoval::RemoveIfEmpty(BasicBlock *bblock) {
+void EmptyBlocksRemoval::RemoveIfEmpty(BasicBlock *bblock, bool &removed) {
     ASSERT(bblock);
     if (!bblock->IsEmpty() || bblock->IsLastInGraph()) {
         return;
@@ -46,5 +46,13 @@ void EmptyBlocksRemoval::RemoveIfEmpty(BasicBlock *bblock) {
     bblock->GetPredecessors().clear();
     bblock->GetSuccessors().clear();
     bblock->GetGraph()->UnlinkBasicBlock(bblock);
+    removed = true;
+}
+
+void EmptyBlocksRemoval::postRemoval() {
+    PassManager::SetInvalid<
+        AnalysisFlag::DOM_TREE,
+        AnalysisFlag::LOOP_ANALYSIS,
+        AnalysisFlag::RPO>(graph);
 }
 }   // namespace ir

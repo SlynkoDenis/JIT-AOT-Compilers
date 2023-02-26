@@ -1,21 +1,20 @@
 #ifndef JIT_AOT_COMPILERS_COURSE_COMPILER_H_
 #define JIT_AOT_COMPILERS_COURSE_COMPILER_H_
 
-#include "arena/ArenaAllocator.h"
+#include "AllocatorUtils.h"
 #include "CompilerBase.h"
 #include "CompilerOptions.h"
 #include "InstructionBuilder.h"
+#include <memory_resource>
 
 
 namespace ir {
-using namespace utils::memory;
-
 class Compiler : public CompilerBase {
 public:
-    Compiler() : allocator(), functionsGraphs(allocator.ToSTL()) {}
+    Compiler() : memResource(), functionsGraphs(&memResource) {}
 
     Graph *CreateNewGraph() override {
-        auto *instrBuilder = allocator.template New<InstructionBuilder>(&allocator);
+        auto *instrBuilder = utils::template New<InstructionBuilder>(&memResource, &memResource);
         return CreateNewGraph(instrBuilder);
     }
     Graph *CreateNewGraph(InstructionBuilder *instrBuilder);
@@ -42,9 +41,10 @@ public:
     }
 
 private:
-    ArenaAllocator allocator;
+    // TODO: limit maximum memory size
+    std::pmr::monotonic_buffer_resource memResource;
 
-    ArenaVector<Graph *> functionsGraphs;
+    std::pmr::vector<Graph *> functionsGraphs;
 
     CompilerOptions options;
 };

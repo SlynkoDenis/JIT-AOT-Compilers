@@ -1,9 +1,8 @@
 #ifndef JIT_AOT_COMPILERS_COURSE_PASS_BASE_H_
 #define JIT_AOT_COMPILERS_COURSE_PASS_BASE_H_
 
-#include "dumper/DummyDumper.h"
-#include "dumper/EventDumper.h"
 #include "Graph.h"
+#include <log4cpp/Category.hh>
 
 
 namespace ir {
@@ -40,16 +39,8 @@ public:
 
 class PassBase {
 public:
-    PassBase(Graph *graph, bool shouldDump) : graph(graph)
-    {
+    PassBase(Graph *graph) : graph(graph) {
         ASSERT(graph);
-        if (shouldDump) {
-            dumper = utils::dumper::EventDumper::AddDumper(
-                graph->GetAllocator(), GetName()).second;
-        } else {
-            dumper = utils::dumper::EventDumper::AddDumper<utils::dumper::DummyDumper>(
-                graph->GetAllocator(), utils::dumper::DummyDumper::DUMPER_NAME).second;
-        }
     }
     NO_COPY_SEMANTIC(PassBase);
     NO_MOVE_SEMANTIC(PassBase);
@@ -57,14 +48,8 @@ public:
 
     virtual void Run() = 0;
 
-    virtual const char *GetName() const {
-        return "base";
-    }
-
 protected:
     Graph *graph;
-
-    utils::dumper::EventDumper *dumper;
 };
 }   // namespace ir
 

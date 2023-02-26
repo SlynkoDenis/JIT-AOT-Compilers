@@ -1,7 +1,7 @@
 #ifndef JIT_AOT_COMPILERS_COURSE_INSTRUCTION_H_
 #define JIT_AOT_COMPILERS_COURSE_INSTRUCTION_H_
 
-#include "arena/ArenaAllocator.h"
+#include "AllocatorUtils.h"
 #include <array>
 #include "Concepts.h"
 #include <cstdint>
@@ -26,8 +26,8 @@ enum class CondCode {
 
 class InputsInstruction: public InstructionBase {
 public:
-    InputsInstruction(Opcode opcode, OperandType type, ArenaAllocator *const allocator)
-        : InstructionBase(opcode, type, allocator) {}
+    InputsInstruction(Opcode opcode, OperandType type, std::pmr::memory_resource *memResource)
+        : InstructionBase(opcode, type, memResource) {}
     virtual DEFAULT_DTOR(InputsInstruction);
 
     // TODO: add `GetInputs` method
@@ -37,10 +37,11 @@ public:
     virtual void SetInput(Input newInput, size_t idx) = 0;
     virtual void ReplaceInput(const Input &oldInput, Input newInput) = 0;
 
-    void Dump(utils::dumper::EventDumper *dumper) const override {
-        InstructionBase::Dump(dumper);
+protected:
+    void dumpImpl(log4cpp::CategoryStream &stream) const override {
+        InstructionBase::dumpImpl(stream);
         for (size_t i = 0, end = GetInputsCount(); i < end; ++i) {
-            dumper->Dump<false>(" #", GetInput(i)->GetId());
+            stream << " #" << GetInput(i)->GetId();
         }
     }
 };
@@ -48,13 +49,13 @@ public:
 template <int InputsNum>
 class FixedInputsInstruction: public InputsInstruction {
 public:
-    FixedInputsInstruction(Opcode opcode, OperandType type, ArenaAllocator *const allocator)
-        : InputsInstruction(opcode, type, allocator) {}
+    FixedInputsInstruction(Opcode opcode, OperandType type, std::pmr::memory_resource *memResource)
+        : InputsInstruction(opcode, type, memResource) {}
 
     template <IsSameType<Input>... T>
-    FixedInputsInstruction(Opcode opcode, OperandType type, ArenaAllocator *const allocator,
+    FixedInputsInstruction(Opcode opcode, OperandType type, std::pmr::memory_resource *memResource,
                            T... ins)
-        : InputsInstruction(opcode, type, allocator), inputs{ins...}
+        : InputsInstruction(opcode, type, memResource), inputs{ins...}
     {
         for (auto &it : inputs) {
             if (it.GetInstruction()) {
@@ -100,10 +101,10 @@ private:
 template <>
 class FixedInputsInstruction<1>: public InputsInstruction {
 public:
-    FixedInputsInstruction(Opcode opcode, OperandType type, ArenaAllocator *const allocator)
-        : InputsInstruction(opcode, type, allocator) {}
-    FixedInputsInstruction(Opcode opcode, OperandType type, Input input, ArenaAllocator *const allocator)
-        : InputsInstruction(opcode, type, allocator), input(input)
+    FixedInputsInstruction(Opcode opcode, OperandType type, std::pmr::memory_resource *memResource)
+        : InputsInstruction(opcode, type, memResource) {}
+    FixedInputsInstruction(Opcode opcode, OperandType type, Input input, std::pmr::memory_resource *memResource)
+        : InputsInstruction(opcode, type, memResource), input(input)
     {
         if (input.GetInstruction()) {
             input->AddUser(this);
@@ -150,17 +151,17 @@ concept AllowedInputType = (IsSameType<Input, std::remove_cv_t<T>>
 
 class VariableInputsInstruction: public InputsInstruction {
 public:
-    VariableInputsInstruction(Opcode opcode, OperandType type, ArenaAllocator *const allocator)
-        : InputsInstruction(opcode, type, allocator),
-          inputs(allocator->ToSTL()) {}
+    VariableInputsInstruction(Opcode opcode, OperandType type, std::pmr::memory_resource *memResource)
+        : InputsInstruction(opcode, type, memResource),
+          inputs(memResource) {}
 
     // TODO: specify correct concept
     template <typename Ins>
     VariableInputsInstruction(Opcode opcode, OperandType type, Ins ins,
-                              ArenaAllocator *const allocator)
+                              std::pmr::memory_resource *memResource)
     requires AllowedInputType<typename Ins::value_type>
-        : InputsInstruction(opcode, type, allocator),
-          inputs(ins.begin(), ins.end(), allocator->ToSTL())
+        : InputsInstruction(opcode, type, memResource),
+          inputs(ins.begin(), ins.end(), memResource)
     {
         for (auto &it : inputs) {
             if (it.GetInstruction()) {
@@ -172,10 +173,10 @@ public:
     // TODO: try generalizing constructor in respect to `ins` argument (with type-hints)
     template <typename Ins>
     VariableInputsInstruction(Opcode opcode, OperandType type, std::initializer_list<Ins> ins,
-                              ArenaAllocator *const allocator)
+                              std::pmr::memory_resource *memResource)
     requires AllowedInputType<Ins>
-        : InputsInstruction(opcode, type, allocator),
-          inputs(ins.begin(), ins.end(), allocator->ToSTL())
+        : InputsInstruction(opcode, type, memResource),
+          inputs(ins.begin(), ins.end(), memResource)
     {
         for (auto &it : inputs) {
             if (it.GetInstruction()) {
@@ -186,10 +187,10 @@ public:
 
     template <typename Ins, typename AllocatorT>
     VariableInputsInstruction(Opcode opcode, OperandType type, std::vector<Ins, AllocatorT> ins,
-                              ArenaAllocator *const allocator)
+                              std::pmr::memory_resource *memResource)
     requires AllowedInputType<Ins>
-        : InputsInstruction(opcode, type, allocator),
-          inputs(ins.begin(), ins.end(), allocator->ToSTL())
+        : InputsInstruction(opcode, type, memResource),
+          inputs(ins.begin(), ins.end(), memResource)
     {
         for (auto &it : inputs) {
             if (it.GetInstruction()) {
@@ -221,10 +222,10 @@ public:
         *iter = newInput;
     }
 
-    utils::memory::ArenaVector<Input> &GetInputs() {
+    std::pmr::vector<Input> &GetInputs() {
         return inputs;
     }
-    const utils::memory::ArenaVector<Input> &GetInputs() const {
+    const std::pmr::vector<Input> &GetInputs() const {
         return inputs;
     }
     void AddInput(Input newInput) {
@@ -235,7 +236,7 @@ public:
     }
 
 protected:
-    utils::memory::ArenaVector<Input> inputs;
+    std::pmr::vector<Input> inputs;
 };
 
 template <Numeric T>
@@ -274,8 +275,8 @@ private:
 // Specific instructions classes
 class UnaryRegInstruction : public FixedInputsInstruction<1> {
 public:
-    UnaryRegInstruction(Opcode opcode, OperandType type, Input input, ArenaAllocator *const allocator)
-        : FixedInputsInstruction(opcode, type, input, allocator) {}
+    UnaryRegInstruction(Opcode opcode, OperandType type, Input input, std::pmr::memory_resource *memResource)
+        : FixedInputsInstruction(opcode, type, input, memResource) {}
 
     UnaryRegInstruction *Copy(BasicBlock *targetBBlock) const override;
 };
@@ -283,48 +284,50 @@ public:
 class BinaryRegInstruction : public FixedInputsInstruction<2> {
 public:
     BinaryRegInstruction(Opcode opcode, OperandType type, Input in1, Input in2,
-                         ArenaAllocator *const allocator)
-        : FixedInputsInstruction(opcode, type, allocator, in1, in2) {}
+                         std::pmr::memory_resource *memResource)
+        : FixedInputsInstruction(opcode, type, memResource, in1, in2) {}
 
     BinaryRegInstruction *Copy(BasicBlock *targetBBlock) const override;
 };
 
 class ConstantInstruction : public InstructionBase, public ImmediateMixin<uint64_t> {
 public:
-    ConstantInstruction(Opcode opcode, OperandType type, ArenaAllocator *const allocator)
-        : InstructionBase(opcode, type, allocator), ImmediateMixin<uint64_t>(0) {}
-    ConstantInstruction(Opcode opcode, OperandType type, uint64_t value, ArenaAllocator *const allocator)
-        : InstructionBase(opcode, type, allocator), ImmediateMixin<uint64_t>(value) {}
+    ConstantInstruction(Opcode opcode, OperandType type, std::pmr::memory_resource *memResource)
+        : InstructionBase(opcode, type, memResource), ImmediateMixin<uint64_t>(0) {}
+    ConstantInstruction(Opcode opcode, OperandType type, uint64_t value, std::pmr::memory_resource *memResource)
+        : InstructionBase(opcode, type, memResource), ImmediateMixin<uint64_t>(value) {}
 
     ConstantInstruction *Copy(BasicBlock *targetBBlock) const override;
 
-    void Dump(utils::dumper::EventDumper *dumper) const override {
-        InstructionBase::Dump(dumper);
-        dumper->Dump<false>(' ', GetValue());
+protected:
+    void dumpImpl(log4cpp::CategoryStream &stream) const override {
+        InstructionBase::dumpImpl(stream);
+        stream << ' ' << GetValue();
     }
 };
 
 class BinaryImmInstruction : public FixedInputsInstruction<1>, public ImmediateMixin<uint64_t> {
 public:
     BinaryImmInstruction(Opcode opcode, OperandType type, Input input, uint64_t imm,
-                         ArenaAllocator *const allocator)
-        : FixedInputsInstruction<1>(opcode, type, input, allocator),
+                         std::pmr::memory_resource *memResource)
+        : FixedInputsInstruction<1>(opcode, type, input, memResource),
           ImmediateMixin<uint64_t>(imm)
     {}
 
     BinaryImmInstruction *Copy(BasicBlock *targetBBlock) const override;
 
-    void Dump(utils::dumper::EventDumper *dumper) const override {
-        InputsInstruction::Dump(dumper);
-        dumper->Dump<false>(' ', GetValue());
+protected:
+    void dumpImpl(log4cpp::CategoryStream &stream) const override {
+        InputsInstruction::dumpImpl(stream);
+        stream << ' ' << GetValue();
     }
 };
 
 class CompareInstruction : public FixedInputsInstruction<2>, public ConditionMixin {
 public:
     CompareInstruction(Opcode opcode, OperandType type, CondCode ccode, Input in1, Input in2,
-                       ArenaAllocator *const allocator)
-        : FixedInputsInstruction(opcode, type, allocator, in1, in2),
+                       std::pmr::memory_resource *memResource)
+        : FixedInputsInstruction(opcode, type, memResource, in1, in2),
           ConditionMixin(ccode)
     {}
 
@@ -334,8 +337,8 @@ public:
 class CastInstruction : public FixedInputsInstruction<1> {
 public:
     CastInstruction(OperandType fromType, OperandType toType, Input input,
-                    ArenaAllocator *const allocator)
-        : FixedInputsInstruction(Opcode::CAST, fromType, input, allocator),
+                    std::pmr::memory_resource *memResource)
+        : FixedInputsInstruction(Opcode::CAST, fromType, input, memResource),
           toType(toType)
     {}
 
@@ -354,11 +357,11 @@ private:
 
 class JumpInstruction : public InstructionBase {
 public:
-    JumpInstruction(Opcode opcode, ArenaAllocator *const allocator)
+    JumpInstruction(Opcode opcode, std::pmr::memory_resource *memResource)
         : InstructionBase(
             opcode,
             OperandType::I64,
-            allocator,
+            memResource,
             InstructionBase::INVALID_ID,
             utils::underlying_logic_or(InstrProp::CF, InstrProp::SIDE_EFFECTS))
     {}
@@ -370,11 +373,11 @@ public:
 
 class CondJumpInstruction : public InstructionBase {
 public:
-    CondJumpInstruction(ArenaAllocator *const allocator)
+    CondJumpInstruction(std::pmr::memory_resource *memResource)
         : InstructionBase(
             Opcode::JCMP,
             OperandType::I64,
-            allocator,
+            memResource,
             InstructionBase::INVALID_ID,
             utils::underlying_logic_or(InstrProp::CF, InstrProp::SIDE_EFFECTS))
     {}
@@ -393,19 +396,19 @@ private:
 
 class RetInstruction : public FixedInputsInstruction<1> {
 public:
-    RetInstruction(OperandType type, Input input, ArenaAllocator *const allocator)
-        : FixedInputsInstruction<1>(Opcode::RET, type, input, allocator) {}
+    RetInstruction(OperandType type, Input input, std::pmr::memory_resource *memResource)
+        : FixedInputsInstruction<1>(Opcode::RET, type, input, memResource) {}
 
     RetInstruction *Copy(BasicBlock *targetBBlock) const override;
 };
 
 class RetVoidInstruction : public InstructionBase {
 public:
-    RetVoidInstruction(ArenaAllocator *const allocator)
+    RetVoidInstruction(std::pmr::memory_resource *memResource)
         : InstructionBase(
             Opcode::RETVOID,
             OperandType::VOID,
-            allocator,
+            memResource,
             InstructionBase::INVALID_ID,
             utils::underlying_logic_or(InstrProp::CF, InstrProp::SIDE_EFFECTS))
     {}
@@ -415,34 +418,34 @@ public:
 
 class PhiInstruction : public VariableInputsInstruction {
 public:
-    PhiInstruction(OperandType type, ArenaAllocator *const allocator)
-        : VariableInputsInstruction(Opcode::PHI, type, allocator),
-          sourceBBlocks(allocator->ToSTL()) {}
+    PhiInstruction(OperandType type, std::pmr::memory_resource *memResource)
+        : VariableInputsInstruction(Opcode::PHI, type, memResource),
+          sourceBBlocks(memResource) {}
 
     template <typename Ins, typename Sources>
-    PhiInstruction(OperandType type, Ins input, Sources sources, ArenaAllocator *const allocator)
+    PhiInstruction(OperandType type, Ins input, Sources sources, std::pmr::memory_resource *memResource)
     requires std::is_same_v<std::remove_cv_t<typename Sources::value_type>, BasicBlock *>
              && AllowedInputType<typename Ins::value_type>
-        : VariableInputsInstruction(Opcode::PHI, type, input, allocator),
-          sourceBBlocks(sources.cbegin(), sources.cend(), allocator->ToSTL())
+        : VariableInputsInstruction(Opcode::PHI, type, input, memResource),
+          sourceBBlocks(sources.cbegin(), sources.cend(), memResource)
     {
         ASSERT(inputs.size() == sourceBBlocks.size());
     }
 
     template <typename Ins, typename Sources>
     PhiInstruction(OperandType type, std::initializer_list<Ins> input, std::initializer_list<Sources> sources,
-                   ArenaAllocator *const allocator)
+                   std::pmr::memory_resource *memResource)
     requires std::is_same_v<std::remove_cv_t<Sources>, BasicBlock *> && AllowedInputType<Ins>
-        : VariableInputsInstruction(Opcode::PHI, type, input, allocator),
-          sourceBBlocks(sources.begin(), sources.end(), allocator->ToSTL())
+        : VariableInputsInstruction(Opcode::PHI, type, input, memResource),
+          sourceBBlocks(sources.begin(), sources.end(), memResource)
     {
         ASSERT(inputs.size() == sourceBBlocks.size());
     }
 
-    utils::memory::ArenaVector<BasicBlock *> &GetSourceBasicBlocks() {
+    std::pmr::vector<BasicBlock *> &GetSourceBasicBlocks() {
         return sourceBBlocks;
     }
-    const utils::memory::ArenaVector<BasicBlock *> &GetSourceBasicBlocks() const {
+    const std::pmr::vector<BasicBlock *> &GetSourceBasicBlocks() const {
         return sourceBBlocks;
     }
     BasicBlock *GetSourceBasicBlock(size_t idx) {
@@ -465,31 +468,28 @@ public:
     PhiInstruction *Copy(BasicBlock *targetBBlock) const override;
 
 private:
-    utils::memory::ArenaVector<BasicBlock *> sourceBBlocks;
+    std::pmr::vector<BasicBlock *> sourceBBlocks;
 };
 
 class InputArgumentInstruction : public InstructionBase {
 public:
-    InputArgumentInstruction(OperandType type, ArenaAllocator *const allocator)
-        : InstructionBase(Opcode::ARG, type, allocator) {}
+    InputArgumentInstruction(OperandType type, std::pmr::memory_resource *memResource)
+        : InstructionBase(Opcode::ARG, type, memResource) {}
 
     InputArgumentInstruction *Copy(BasicBlock *targetBBlock) const override;
 };
 
 class CallInstruction : public VariableInputsInstruction {
 public:
-    CallInstruction(OperandType type, FunctionId target, ArenaAllocator *const allocator)
-        : VariableInputsInstruction(Opcode::CALL, type, allocator),
-          callTarget(target),
-          isInlined(false)
-    {}
+    CallInstruction(OperandType type, FunctionId target, std::pmr::memory_resource *memResource)
+        : VariableInputsInstruction(Opcode::CALL, type, memResource), callTarget(target) {}
 
     template <typename InputsType>
     CallInstruction(OperandType type,
                     FunctionId target,
                     InputsType input,
-                    ArenaAllocator *const allocator)
-        : VariableInputsInstruction(Opcode::CALL, type, input, allocator),
+                    std::pmr::memory_resource *memResource)
+        : VariableInputsInstruction(Opcode::CALL, type, input, memResource),
           callTarget(target)
     {}
 
@@ -499,51 +499,47 @@ public:
     void SetCallTarget(FunctionId newTarget) {
         callTarget = newTarget;
     }
-    bool IsInlined() const {
-        return isInlined;
-    }
-    void SetIsInlined(bool inlined) {
-        isInlined = inlined;
-    }
 
     CallInstruction *Copy(BasicBlock *targetBBlock) const override;
 
-    void Dump(utils::dumper::EventDumper *dumper) const {
-        InputsInstruction::Dump(dumper);
-        dumper->Dump<false>(" (to ", GetCallTarget(), ')');
+protected:
+    void dumpImpl(log4cpp::CategoryStream &stream) const {
+        InputsInstruction::dumpImpl(stream);
+        stream << " (to " << GetCallTarget() << ')';
     }
 
 private:
     // TODO: add callee function resolution?
     FunctionId callTarget;
-    bool isInlined;
 };
 
 class LoadInstruction : public InstructionBase, public ImmediateMixin<uint64_t> {
 public:
-    LoadInstruction(OperandType type, uint64_t addr, ArenaAllocator *const allocator)
-        : InstructionBase(Opcode::LOAD, type, allocator),
+    LoadInstruction(OperandType type, uint64_t addr, std::pmr::memory_resource *memResource)
+        : InstructionBase(Opcode::LOAD, type, memResource),
           ImmediateMixin<uint64_t>(addr) {}
 
     LoadInstruction *Copy(BasicBlock *targetBBlock) const override;
 
-    void Dump(utils::dumper::EventDumper *dumper) const override {
-        InstructionBase::Dump(dumper);
-        dumper->Dump<false>(' ', GetValue());
+protected:
+    void dumpImpl(log4cpp::CategoryStream &stream) const override {
+        InstructionBase::dumpImpl(stream);
+        stream << ' ' << GetValue();
     }
 };
 
 class StoreInstruction : public FixedInputsInstruction<1>, public ImmediateMixin<uint64_t> {
 public:
-    StoreInstruction(Input storedValue, uint64_t addr, ArenaAllocator *const allocator)
-        : FixedInputsInstruction<1>(Opcode::STORE, storedValue->GetType(), storedValue, allocator),
+    StoreInstruction(Input storedValue, uint64_t addr, std::pmr::memory_resource *memResource)
+        : FixedInputsInstruction<1>(Opcode::STORE, storedValue->GetType(), storedValue, memResource),
           ImmediateMixin<uint64_t>(addr) {}
 
     StoreInstruction *Copy(BasicBlock *targetBBlock) const override;
 
-    void Dump(utils::dumper::EventDumper *dumper) const override {
-        InputsInstruction::Dump(dumper);
-        dumper->Dump<false>(' ', GetValue());
+protected:
+    void dumpImpl(log4cpp::CategoryStream &stream) const override {
+        InputsInstruction::dumpImpl(stream);
+        stream << ' ' << GetValue();
     }
 };
 }   // namespace ir

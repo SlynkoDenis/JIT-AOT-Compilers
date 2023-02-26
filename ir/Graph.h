@@ -3,7 +3,7 @@
 
 #include "AnalysisValidityManager.h"
 #include <algorithm>
-#include "arena/ArenaAllocator.h"
+#include "AllocatorUtils.h"
 #include "BasicBlock.h"
 #include "macros.h"
 #include "marker/marker.h"
@@ -19,17 +19,18 @@ class Graph : public MarkerManager, public AnalysisValidityManager {
 public:
     using IdType = FunctionId;
 
-    Graph(CompilerBase *compiler, ArenaAllocator *allocator, InstructionBuilder *instrBuilder)
+    Graph(CompilerBase *compiler, std::pmr::memory_resource *mem, InstructionBuilder *instrBuilder)
         : compiler(compiler),
-          allocator(allocator),
           firstBlock(nullptr),
           lastBlock(nullptr),
-          bblocks(allocator->ToSTL()),
+          bblocks(mem),
+          rpoBlocks(mem),
           loopTreeRoot(nullptr),
-          instrBuilder(instrBuilder)
+          instrBuilder(instrBuilder),
+          memResource(mem)
     {
         ASSERT(compiler);
-        ASSERT(allocator);
+        ASSERT(memResource);
         ASSERT(instrBuilder);
     }
     NO_COPY_SEMANTIC(Graph);
@@ -48,8 +49,12 @@ public:
         return compiler;
     }
 
-    ArenaAllocator *GetAllocator() const {
-        return allocator;
+    std::pmr::memory_resource *GetMemoryResource() const {
+        return memResource;
+    }
+    template <typename T, typename... ArgsT>
+    [[nodiscard]] T *New(ArgsT&&... args) const {
+        return utils::template New<T>(GetMemoryResource(), std::forward<ArgsT>(args)...);
     }
 
     BasicBlock *GetFirstBasicBlock() {
@@ -69,6 +74,14 @@ public:
     }
     bool IsEmpty() const {
         return GetBasicBlocksCount() == 0;
+    }
+
+    auto GetRPO() const {
+        ASSERT(IsAnalysisValid(AnalysisFlag::RPO));
+        return std::span{rpoBlocks};
+    }
+    void SetRPO(std::pmr::vector<BasicBlock *> &&rpo) {
+        rpoBlocks = std::move(rpo);
     }
 
     Loop *GetLoopTree() {
@@ -133,18 +146,20 @@ private:
     IdType id = INVALID_ID;
 
     CompilerBase *compiler;
-    ArenaAllocator *allocator;
 
     BasicBlock *firstBlock;
     // last basic block collects all control flow exits from the graph
     BasicBlock *lastBlock;
-    utils::memory::ArenaVector<BasicBlock *> bblocks;
+    std::pmr::vector<BasicBlock *> bblocks;
     size_t unlinkedInstructionsCounter = 0;
 
-    // TODO: implement analysis passes' manager, e.g. to monitor validity of the existing RPO
+    std::pmr::vector<BasicBlock *> rpoBlocks;
+
     Loop *loopTreeRoot;
 
     InstructionBuilder *instrBuilder;
+
+    mutable std::pmr::memory_resource *memResource;
 };
 }   // namespace ir
 

@@ -16,11 +16,9 @@ public:
 
     void RunPass() {
         auto *graph = GetGraph();
-        graph->SetAnalysisValid(AnalysisFlag::LOOP_ANALYSIS, true);
-        graph->SetAnalysisValid(AnalysisFlag::DOM_TREE, true);
         PassManager::Run<InliningPass>(graph);
-        ASSERT_FALSE(graph->IsAnalysisValid(AnalysisFlag::LOOP_ANALYSIS));
         ASSERT_FALSE(graph->IsAnalysisValid(AnalysisFlag::DOM_TREE));
+        ASSERT_FALSE(graph->IsAnalysisValid(AnalysisFlag::LOOP_ANALYSIS));
     }
 
 public:
@@ -58,7 +56,7 @@ CallInstruction *InliningTest::BuildCallerGraph(bool voidReturn) {
     GetGraph()->ConnectBasicBlocks(firstBlock, trueBranch);
     auto *newFibValue = instrBuilder->CreateADD(OPS_TYPE, curFibValue, prevFibValue);
     auto *decrementedFibNumber = instrBuilder->CreateSUBI(OPS_TYPE, argFibNumber, 1);
-    auto args = utils::memory::ArenaVector<Input>(GetGraph()->GetAllocator()->ToSTL());
+    std::pmr::vector<Input> args(GetGraph()->GetMemoryResource());
     args.push_back(newFibValue);
     args.push_back(curFibValue);
     args.push_back(decrementedFibNumber);
@@ -195,6 +193,7 @@ Graph *InliningTest::BuildVoidReturnCallee() {
 }
 
 TEST_F(InliningTest, TestInlineSimple) {
+    ASSERT_EQ(GetGraph()->GetBasicBlocksCount(), 0);
     auto *call = BuildCallerGraph(false);
     auto *callerGraph = GetGraph();
     size_t callerBlocksCount = 4;

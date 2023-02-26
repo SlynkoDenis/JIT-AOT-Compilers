@@ -10,7 +10,7 @@ size_t Graph::CountInstructions() const {
 }
 
 BasicBlock *Graph::CreateEmptyBasicBlock(bool isTerminal) {
-    auto *bblock = allocator->template New<BasicBlock>(this);
+    auto *bblock = New<BasicBlock>(this);
     AddBasicBlock(bblock);
     if (isTerminal) {
         if (!GetLastBasicBlock()) {
@@ -56,8 +56,7 @@ void Graph::UnlinkBasicBlock(BasicBlock *bblock) {
         removePredecessors(bblock);
         removeSuccessors(bblock);
     } else {
-        // TODO: replace `ifdef DEBUG` with `ifndef NDEBUG`
-#ifdef DEBUG
+#ifndef NDEBUG
         for (auto *pred : bblock->GetPredecessors()) {
             auto succs = pred->GetSuccessors();
             ASSERT(std::find(succs.begin(), succs.end(), bblock) == succs.end());
@@ -66,7 +65,7 @@ void Graph::UnlinkBasicBlock(BasicBlock *bblock) {
             auto preds = succ->GetPredecessors();
             ASSERT(std::find(preds.begin(), preds.end(), bblock) == preds.end());
         }
-#endif
+#endif  // NDEBUG
 
         bblock->GetPredecessors().clear();
         bblock->GetSuccessors().clear();
@@ -104,9 +103,9 @@ void Graph::removeSuccessors(BasicBlock *bblock) {
 // defined here after full declaration of Graph's methods
 BasicBlock::BasicBlock(Graph *graph)
     : id(INVALID_ID),
-      preds(graph->GetAllocator()->ToSTL()),
-      succs(graph->GetAllocator()->ToSTL()),
-      dominated(graph->GetAllocator()->ToSTL()),
+      preds(graph->GetMemoryResource()),
+      succs(graph->GetMemoryResource()),
+      dominated(graph->GetMemoryResource()),
       graph(graph)
 {}
 

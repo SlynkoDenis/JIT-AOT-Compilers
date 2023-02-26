@@ -6,7 +6,8 @@
 
 namespace ir {
 void PeepholePass::Run() {
-    for (auto &bblock : RPO(graph)) {
+    PassManager::Run<RPO>(graph);
+    for (auto &bblock : graph->GetRPO()) {
         for (auto *instr = bblock->GetFirstInstruction(); instr != nullptr;
              instr = instr->GetNextInstruction()) {
             switch (instr->GetOpcode()) {
@@ -31,7 +32,7 @@ void PeepholePass::ProcessAND(InstructionBase *instr) {
     BinaryRegInstruction *typed = static_cast<BinaryRegInstruction *>(instr);
 
     if (foldingPass.ProcessAND(typed)) {
-        dumper->Dump("Folded AND instruction");
+        getLogger(log4cpp::Priority::INFO) << "Folded AND instruction";
         return;
     }
 
@@ -57,7 +58,7 @@ void PeepholePass::ProcessSRA(InstructionBase *instr) {
     BinaryRegInstruction *typed = static_cast<BinaryRegInstruction *>(instr);
 
     if (foldingPass.ProcessSRA(typed)) {
-        dumper->Dump("Folded SRA instruction");
+        getLogger(log4cpp::Priority::INFO) << "Folded SRA instruction";
         return;
     }
 
@@ -74,7 +75,7 @@ void PeepholePass::ProcessSUB(InstructionBase *instr) {
     BinaryRegInstruction *typed = static_cast<BinaryRegInstruction *>(instr);
 
     if (foldingPass.ProcessSUB(typed)) {
-        dumper->Dump("Folded SUB instruction");
+        getLogger(log4cpp::Priority::INFO) << "Folded SUB instruction";
         return;
     }
 
@@ -99,12 +100,12 @@ bool PeepholePass::tryConstantAND(BinaryRegInstruction *instr, Input checked, In
         if (inputInstr->GetValue() == static_cast<ConstantInstruction::Type>(0)) {
             // case: v1 = v0 & 0 -> v1 = 0
             replaceWithoutNewInstr(instr, inputInstr);
-            dumper->Dump("One of the AND inputs is constant zero");
+            getLogger(log4cpp::Priority::INFO) << "One of the AND inputs is constant zero";
             return true;
         } else if (inputInstr->GetValue() == GetMaxValue(instr->GetType())) {
             // case: v1 = v0 & (0 - 1) -> v1 = v0
             replaceWithoutNewInstr(instr, second.GetInstruction());
-            dumper->Dump("One of the AND inputs is logical one");
+            getLogger(log4cpp::Priority::INFO) << "One of the AND inputs is logical one";
             return true;
         }
     }
@@ -144,7 +145,7 @@ bool PeepholePass::tryANDAfterNOT(BinaryRegInstruction *instr) {
         input2->RemoveUser(instr);
         instr->GetBasicBlock()->ReplaceInstruction(instr, notInstr);
 
-        dumper->Dump("Applied AND: 'v2 = ~v0 & ~v1' -> 'v2 = ~(v0 | v1)' peephole");
+        getLogger(log4cpp::Priority::INFO) << "Applied AND: 'v2 = ~v0 & ~v1' -> 'v2 = ~(v0 | v1)' peephole";
         return true;
     }
     return false;
@@ -156,7 +157,7 @@ bool PeepholePass::tryANDRepeatedArgs(BinaryRegInstruction *instr) {
     if (input1 == input2) {
         // case: v1 = v0 & v0 -> v1 = v0
         replaceWithoutNewInstr(instr, input1.GetInstruction());
-        dumper->Dump("Applied AND: 'v1 = v0 & v0' -> 'v1 = v0' peephole");
+        getLogger(log4cpp::Priority::INFO) << "Applied AND: 'v1 = v0 & v0' -> 'v1 = v0' peephole";
         return true;
     }
     return false;
@@ -189,7 +190,7 @@ bool PeepholePass::trySequencedSRA(BinaryRegInstruction *instr) {
         base2->AddUser(instr);
         addInstr->AddUser(instr);
 
-        dumper->Dump("Applied SRA -> SRA peephole");
+        getLogger(log4cpp::Priority::INFO) << "Applied SRA -> SRA peephole";
         return true;
     } else if (base->GetOpcode() == Opcode::SRAI) {
         auto *typed = static_cast<BinaryImmInstruction *>(base);
@@ -208,7 +209,7 @@ bool PeepholePass::trySequencedSRA(BinaryRegInstruction *instr) {
         base2->AddUser(instr);
         addInstr->AddUser(instr);
 
-        dumper->Dump("Applied SRAI -> SRA peephole");
+        getLogger(log4cpp::Priority::INFO) << "Applied SRAI -> SRA peephole";
         return true;
     }
     return false;
@@ -221,7 +222,7 @@ bool PeepholePass::trySRAZero(BinaryRegInstruction *instr) {
         auto *typed = static_cast<ConstantInstruction *>(input1.GetInstruction());
         if (typed->GetValue() == 0) {
             replaceWithoutNewInstr(instr, typed);
-            dumper->Dump("Applied '0 >>> v' peephole");
+            getLogger(log4cpp::Priority::INFO) << "Applied '0 >>> v' peephole";
             return true;
         }
     }
@@ -229,7 +230,7 @@ bool PeepholePass::trySRAZero(BinaryRegInstruction *instr) {
         auto *typed = static_cast<ConstantInstruction *>(input2.GetInstruction());
         if (typed->GetValue() == 0) {
             replaceWithoutNewInstr(instr, input1.GetInstruction());
-            dumper->Dump("Applied 'v >>> 0' peephole");
+            getLogger(log4cpp::Priority::INFO) << "Applied 'v >>> 0' peephole";
             return true;
         }
     }
@@ -254,7 +255,7 @@ bool PeepholePass::trySUBAfterNEG(BinaryRegInstruction *instr, Input checked, In
         checked->RemoveUser(instr);
         second->ReplaceUser(instr, newInstr);
 
-        dumper->Dump("Applied NEG -> SUB peephole");
+        getLogger(log4cpp::Priority::INFO) << "Applied NEG -> SUB peephole";
         return true;
     }
     return false;
@@ -281,7 +282,7 @@ bool PeepholePass::trySUBAfterADD(BinaryRegInstruction *instr) {
         }
         if (newInstr) {
             replaceWithoutNewInstr(instr, newInstr);
-            dumper->Dump("Applied ADD -> SUB peephole");
+            getLogger(log4cpp::Priority::INFO) << "Applied ADD -> SUB peephole";
             return true;
         }
     } else if (instrInput1->GetOpcode() == Opcode::ADDI) {
@@ -291,7 +292,7 @@ bool PeepholePass::trySUBAfterADD(BinaryRegInstruction *instr) {
             auto *constInstr = graph->GetInstructionBuilder()->CreateCONST(instr->GetType(), typed->GetValue());
             typed->RemoveUser(instr);
             instr->GetBasicBlock()->ReplaceInstruction(instr, constInstr);
-            dumper->Dump("Applied ADDI -> SUB peephole");
+            getLogger(log4cpp::Priority::INFO) << "Applied ADDI -> SUB peephole";
             return true;
         }
     }
@@ -319,7 +320,7 @@ bool PeepholePass::trySUBAfterADD(BinaryRegInstruction *instr) {
             instrInput1->RemoveUser(instr);
             instrInput2->RemoveUser(instr);
             instr->GetBasicBlock()->ReplaceInstruction(instr, negInstr);
-            dumper->Dump("Applied ADD -> SUB peephole");
+            getLogger(log4cpp::Priority::INFO) << "Applied ADD -> SUB peephole";
             return true;
         }
     } else if (instrInput2->GetOpcode() == Opcode::ADDI) {
@@ -329,7 +330,7 @@ bool PeepholePass::trySUBAfterADD(BinaryRegInstruction *instr) {
             auto *constInstr = graph->GetInstructionBuilder()->CreateCONST(instr->GetType(), -(typed->GetValue()));
             typed->RemoveUser(instr);
             instr->GetBasicBlock()->ReplaceInstruction(instr, constInstr);
-            dumper->Dump("Applied ADDI -> SUB peephole");
+            getLogger(log4cpp::Priority::INFO) << "Applied ADDI -> SUB peephole";
             return true;
         }
     }
@@ -346,7 +347,7 @@ bool PeepholePass::trySUBZero(BinaryRegInstruction *instr) {
             input1->RemoveUser(instr);
             input2->ReplaceUser(instr, negInstr);
             instr->GetBasicBlock()->ReplaceInstruction(instr, negInstr);
-            dumper->Dump("Applied SUB: '0 - v' peephole");
+            getLogger(log4cpp::Priority::INFO) << "Applied SUB: '0 - v' peephole";
             return true;
         }
     }
@@ -354,7 +355,7 @@ bool PeepholePass::trySUBZero(BinaryRegInstruction *instr) {
         auto *typed = static_cast<ConstantInstruction *>(input2.GetInstruction());
         if (typed->GetValue() == 0) {
             replaceWithoutNewInstr(instr, input1.GetInstruction());
-            dumper->Dump("Applied SUB: 'v - 0' peephole");
+            getLogger(log4cpp::Priority::INFO) << "Applied SUB: 'v - 0' peephole";
             return true;
         }
     }
@@ -366,7 +367,7 @@ bool PeepholePass::trySUBRepeatedArgs(BinaryRegInstruction *instr) {
         // case: v1 = v0 - v0 -> v1 = 0
         auto *constZero = graph->GetInstructionBuilder()->CreateCONST(instr->GetType(), 0);
         instr->GetBasicBlock()->ReplaceInstruction(instr, constZero);
-        dumper->Dump("Applied SUB: 'v1 = v0 - v0' -> 'v1 = 0' peephole");
+        getLogger(log4cpp::Priority::INFO) << "Applied SUB: 'v1 = v0 - v0' -> 'v1 = 0' peephole";
         return true;
     }
     return false;

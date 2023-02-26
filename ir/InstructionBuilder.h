@@ -15,10 +15,10 @@ namespace ir {
 // in order to prevent dangling pointers.
 class InstructionBuilder {
 public:
-    explicit InstructionBuilder(ArenaAllocator *const allocator)
-        : allocator(allocator), instrs(allocator->ToSTL())
+    explicit InstructionBuilder(std::pmr::memory_resource *memResource)
+        : allocator(memResource), instrs(memResource)
     {
-        ASSERT(allocator);
+        ASSERT(memResource);
     }
     NO_COPY_SEMANTIC(InstructionBuilder);
     NO_MOVE_SEMANTIC(InstructionBuilder);
@@ -59,23 +59,23 @@ public:
         PushForwardInstruction(bblock, reminder...);
     }
 
-#define CREATE_FIXED_INST(name)                             \
-    auto *inst = allocator->template New<name>(allocator);  \
-    instrs.push_back(inst);                                 \
-    inst->SetId(instrs.size());                             \
+#define CREATE_FIXED_INST(name)                                                         \
+    auto *inst = utils::template New<name>(allocator, allocator.resource());    \
+    instrs.push_back(inst);                                                             \
+    inst->SetId(instrs.size());                                                         \
     return inst
 
-#define CREATE_INST(name, ...)                                          \
-    auto *inst = allocator->template New<name>(__VA_ARGS__, allocator); \
-    instrs.push_back(inst);                                             \
-    inst->SetId(instrs.size());                                         \
+#define CREATE_INST(name, ...)                                                                      \
+    auto *inst = utils::template New<name>(allocator, __VA_ARGS__, allocator.resource());   \
+    instrs.push_back(inst);                                                                         \
+    inst->SetId(instrs.size());                                                                     \
     return inst
 
-#define CREATE_INST_WITH_PROP(name, prop, ...)                          \
-    auto *inst = allocator->template New<name>(__VA_ARGS__, allocator); \
-    instrs.push_back(inst);                                             \
-    inst->SetId(instrs.size());                                         \
-    inst->SetProperty(prop);                                            \
+#define CREATE_INST_WITH_PROP(name, prop, ...)                                                      \
+    auto *inst = utils::template New<name>(allocator, __VA_ARGS__, allocator.resource());   \
+    instrs.push_back(inst);                                                                         \
+    inst->SetId(instrs.size());                                                                     \
+    inst->SetProperty(prop);                                                                        \
     return inst
 
 #define CREATE_ARITHM(opcode)                                                                   \
@@ -264,9 +264,9 @@ private:
         utils::underlying_logic_or(InstrProp::ARITH, InstrProp::INPUT, InstrProp::SIDE_EFFECTS);
 
 private:
-    ArenaAllocator *const allocator;
+    std::pmr::polymorphic_allocator<> allocator;
 
-    utils::memory::ArenaVector<InstructionBase *> instrs;
+    std::pmr::vector<InstructionBase *> instrs;
 };
 }   // namespace ir
 

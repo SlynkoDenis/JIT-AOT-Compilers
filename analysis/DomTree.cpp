@@ -22,32 +22,14 @@ DSU DomTreeBuilder::resetStructs() {
     lastNumber = -1;
 
     auto bblocksCount = graph->GetBasicBlocksCount();
-    auto *allocator = graph->GetAllocator();
-    if (sdoms == nullptr) {
-        sdoms = allocator->template NewVector<size_t>(bblocksCount, BasicBlock::INVALID_ID);
-        sdomsSet = allocator->template NewVector<VectorBBlocks>(bblocksCount,
-                                                                VectorBBlocks(allocator->ToSTL()));
-        idoms = allocator->template NewVector<BasicBlock *>(bblocksCount, nullptr);
-        labels = allocator->template NewVector<BasicBlock *>(bblocksCount, nullptr);
-        orderedBBlocks = allocator->template NewVector<BasicBlock *>(bblocksCount, nullptr);
-        bblocksParents = allocator->template NewVector<BasicBlock *>(bblocksCount, nullptr);
-    } else {
-        sdoms->clear();
-        sdomsSet->clear();
-        idoms->clear();
-        labels->clear();
-        orderedBBlocks->clear();
-        bblocksParents->clear();
+    sdoms.resize(bblocksCount, BasicBlock::INVALID_ID);
+    sdomsSet.resize(bblocksCount);
+    idoms.resize(bblocksCount, nullptr);
+    labels.resize(bblocksCount, nullptr);
+    orderedBBlocks.resize(bblocksCount, nullptr);
+    bblocksParents.resize(bblocksCount, nullptr);
 
-        sdoms->resize(bblocksCount, BasicBlock::INVALID_ID);
-        sdomsSet->resize(bblocksCount, VectorBBlocks(allocator->ToSTL()));
-        idoms->resize(bblocksCount, nullptr);
-        labels->resize(bblocksCount, nullptr);
-        orderedBBlocks->resize(bblocksCount, nullptr);
-        bblocksParents->resize(bblocksCount, nullptr);
-    }
-
-    return DSU(labels, sdoms, allocator);
+    return DSU(labels, sdoms, graph->GetMemoryResource());
 }
 
 void DomTreeBuilder::dfsTraverse(BasicBlock *bblock) {
@@ -55,7 +37,7 @@ void DomTreeBuilder::dfsTraverse(BasicBlock *bblock) {
     ASSERT((bblock) && (lastNumber < static_cast<int>(getSize())));
 
     auto id = bblock->GetId();
-    labels->at(id) = bblock;
+    labels.at(id) = bblock;
     setSemiDomNumber(bblock, lastNumber);
     setOrderedBlock(lastNumber, bblock);
 

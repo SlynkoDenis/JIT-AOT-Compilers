@@ -1,7 +1,7 @@
 #ifndef JIT_AOT_COMPILERS_COURSE_USERS_H_
 #define JIT_AOT_COMPILERS_COURSE_USERS_H_
 
-#include "arena/ArenaAllocator.h"
+#include "AllocatorUtils.h"
 #include <span>
 
 
@@ -10,15 +10,15 @@ class InstructionBase;
 
 class Users {
 public:
-    explicit Users(utils::memory::ArenaAllocator *const allocator)
-        : users(allocator->ToSTL())
+    explicit Users(std::pmr::memory_resource *memResource)
+        : users(memResource)
     {
-        ASSERT(allocator);
+        ASSERT(memResource);
     }
-    Users(std::span<InstructionBase *> instrs, utils::memory::ArenaAllocator *const allocator)
-        : users(instrs.begin(), instrs.end(), allocator->ToSTL())
+    Users(std::span<InstructionBase *> instrs, std::pmr::memory_resource *memResource)
+        : users(instrs.begin(), instrs.end(), memResource)
     {
-        ASSERT(allocator);
+        ASSERT(memResource);
     }
     NO_COPY_SEMANTIC(Users);
     NO_MOVE_SEMANTIC(Users);
@@ -28,10 +28,10 @@ public:
         return users.size();
     }
 
-    const utils::memory::ArenaVector<InstructionBase *> &GetUsers() const {
+    const std::pmr::vector<InstructionBase *> &GetUsers() const {
         return users;
     }
-    std::span<InstructionBase *> GetUsers() {
+    auto GetUsers() {
         return std::span(users);
     }
 
@@ -59,12 +59,12 @@ public:
         *iter = newInstr;
     }
 
-    void SetNewUsers(utils::memory::ArenaVector<InstructionBase *> &&newUsers) {
+    void SetNewUsers(std::pmr::vector<InstructionBase *> &&newUsers) {
         users = std::move(newUsers);
     }
 
 protected:
-    utils::memory::ArenaVector<InstructionBase *> users;
+    std::pmr::vector<InstructionBase *> users;
 };
 }   // namespace ir
 

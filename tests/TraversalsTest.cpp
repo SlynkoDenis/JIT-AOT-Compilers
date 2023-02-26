@@ -47,7 +47,11 @@ TEST_F(TraversalsTest, TestRPO) {
     graph->ConnectBasicBlocks(blockC, blockD);
 
     // do reverse post-order traversal
-    auto bblocks = RPO(graph);
+    PassManager::Run<RPO>(graph);
+    ASSERT_TRUE(graph->IsAnalysisValid(AnalysisFlag::RPO));
+
+    auto rpoBlocks = graph->GetRPO();
+    auto bblocks = std::vector(rpoBlocks.begin(), rpoBlocks.end());
     ASSERT_EQ(bblocks.size(), 4);
     ASSERT_EQ(bblocks[0], blockA);
     ASSERT_TRUE(bblocks[1] == blockB || bblocks[1] == blockC);
@@ -56,7 +60,11 @@ TEST_F(TraversalsTest, TestRPO) {
 
     // change layout and do RPO once again
     graph->ConnectBasicBlocks(blockD, blockA);
-    auto bblocks2 = RPO(graph);
+
+    PassManager::Run<RPO>(graph);
+    ASSERT_TRUE(graph->IsAnalysisValid(AnalysisFlag::RPO));
+
+    auto bblocks2 = graph->GetRPO();
     ASSERT_EQ(bblocks.size(), bblocks2.size());
     for (size_t i = 0; i < bblocks.size(); ++i) {
         ASSERT_EQ(bblocks[i], bblocks2[i]);

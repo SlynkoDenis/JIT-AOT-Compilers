@@ -3,13 +3,13 @@
 
 namespace ir {
 // implement Copy overrided methods for general classes
-#define OVERRIDE_GENERAL_CLASS_COPY(name, ...)                                      \
-name *name::Copy(BasicBlock *targetBBlock) const {                                  \
-    auto *allocator = targetBBlock->GetGraph()->GetAllocator();                     \
-    auto *instr = allocator->template New<name>(__VA_ARGS__, allocator);            \
-    targetBBlock->GetGraph()->GetInstructionBuilder()->AttachInstruction(instr);    \
-    instr->SetProperty(GetProperties());                                            \
-    return instr;                                                                   \
+#define OVERRIDE_GENERAL_CLASS_COPY(name, ...)                                          \
+name *name::Copy(BasicBlock *targetBBlock) const {                                      \
+    auto *graph = targetBBlock->GetGraph();                                             \
+    auto *instr = graph->template New<name>(__VA_ARGS__, graph->GetMemoryResource());   \
+    graph->GetInstructionBuilder()->AttachInstruction(instr);                           \
+    instr->SetProperty(GetProperties());                                                \
+    return instr;                                                                       \
 }
 
 OVERRIDE_GENERAL_CLASS_COPY(BinaryImmInstruction, GetOpcode(), GetType(), GetInput(0), GetValue())

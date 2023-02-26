@@ -9,7 +9,7 @@ BasicBlock *DSU::Find(BasicBlock *bblock) {
     }
     compressUniversum(bblock);
     // return node with min semi-dominator in ancestors chain
-    return labels->at(bblock->GetId());
+    return labels.at(bblock->GetId());
 }
 
 void DSU::compressUniversum(BasicBlock *bblock) {
@@ -22,10 +22,10 @@ void DSU::compressUniversum(BasicBlock *bblock) {
 
     compressUniversum(anc);
 
-    auto minForBBlock = labels->at(bblock->GetId());
-    auto minForAnc = labels->at(anc->GetId());
-    if (sdoms->at(minForAnc->GetId()) < sdoms->at(minForBBlock->GetId())) {
-        labels->at(bblock->GetId()) = minForAnc;  // update min semi-dominator
+    auto minForBBlock = labels.at(bblock->GetId());
+    auto minForAnc = labels.at(anc->GetId());
+    if (sdoms.at(minForAnc->GetId()) < sdoms.at(minForBBlock->GetId())) {
+        labels.at(bblock->GetId()) = minForAnc;  // update min semi-dominator
     }
     setUniversum(bblock->GetId(), getUniversum(anc->GetId()));  // link to the root
 }

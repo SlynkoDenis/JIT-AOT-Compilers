@@ -1,6 +1,10 @@
 # Huawei 2022 JIT & AOT Compilers Course
 
-### How to build
+### Dependencies
+
+Install dependencies by running `sudo ./scripts/install_deps.sh`
+
+### Build
 
 Run:
 - `git submodule update --init --recursive`
