@@ -45,6 +45,13 @@ public:
         size_t index = mark & utils::to_underlying(MarkersConstants::INDEX_MASK);
         markersSlots[index] = false;
     }
+    size_t GetMarkerIndex() const {
+        return currentIndex;
+    }
+    void SetMarkerIndex(size_t newIndex) {
+        ASSERT(newIndex < utils::to_underlying(MarkersConstants::MAX_VALUE));
+        currentIndex = std::max(currentIndex, newIndex);
+    }
 
 private:
     size_t currentIndex = 0;
@@ -76,7 +83,8 @@ public:
     }
 
 private:
-    std::array<Marker, utils::to_underlying(MarkersConstants::MAX_MARKERS)> markers;
+    std::array<Marker, utils::to_underlying(MarkersConstants::MAX_MARKERS)>
+        markers{utils::to_underlying(MarkersConstants::UNDEF_VALUE)};
 };
 }   // namespace ir
 

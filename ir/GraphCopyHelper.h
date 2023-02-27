@@ -6,22 +6,21 @@
 
 
 namespace ir {
-using namespace utils::memory;
-
 class GraphCopyHelper final {
 public:
-    GraphCopyHelper(const Graph *source) : source(source)
-    {
-        ASSERT(source);
-    }
+    static Graph *CreateCopy(const Graph *source, Graph *copyTarget);
+
+private:
+    GraphCopyHelper(const Graph *source, Graph *copyTarget)
+        : source(source),
+          target(copyTarget),
+          instrsTranslation(copyTarget->GetMemoryResource()),
+          visited(copyTarget->GetMemoryResource())
+    {}
     NO_COPY_SEMANTIC(GraphCopyHelper);
     NO_MOVE_SEMANTIC(GraphCopyHelper);
     DEFAULT_DTOR(GraphCopyHelper);
 
-    Graph *CreateCopy(Graph *copyTarget);
-
-private:
-    void reset(Graph *copyTarget);
     void dfoCopy(const BasicBlock *currentBBlock);
     void fixDFG();
 
@@ -29,8 +28,8 @@ private:
     const Graph *source;
     Graph *target;
 
-    ArenaUnorderedMap<InstructionBase::IdType, InstructionBase *> *instrsTranslation = nullptr;
-    ArenaUnorderedMap<BasicBlock::IdType, BasicBlock *> *visited = nullptr;
+    std::pmr::unordered_map<InstructionBase::IdType, InstructionBase *> instrsTranslation;
+    std::pmr::unordered_map<BasicBlock::IdType, BasicBlock *> visited;
 };
 }   // namespace ir
 

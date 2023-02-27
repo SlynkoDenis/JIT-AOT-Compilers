@@ -98,8 +98,10 @@ TEST_F(GraphTest, TestGraphCopy) {
 
     // as no transformation passes are applied on either of graphs
     // they can be compared using Instructions IDs
-    auto origRPO = RPO(originalGraph);
-    auto copyRPO = RPO(copyGraph);
+    PassManager::Run<RPO>(originalGraph);
+    PassManager::Run<RPO>(copyGraph);
+    auto origRPO = originalGraph->GetRPO();
+    auto copyRPO = copyGraph->GetRPO();
 
     ASSERT_EQ(origRPO.size(), copyRPO.size());
     for (int i = 0, bblockCount = origRPO.size(); i < bblockCount; ++i) {

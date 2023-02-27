@@ -1,7 +1,7 @@
 #ifndef JIT_AOT_COMPILERS_COURSE_CONSTANT_FOLDING_H_
 #define JIT_AOT_COMPILERS_COURSE_CONSTANT_FOLDING_H_
 
-#include "arena/ArenaAllocator.h"
+#include "AllocatorUtils.h"
 #include "BasicBlock.h"
 #include "Graph.h"
 #include "macros.h"

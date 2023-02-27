@@ -4,17 +4,15 @@
 #include "Concepts.h"
 #include <cstdint>
 #include "helpers.h"
+#include <log4cpp/Category.hh>
 #include "macros.h"
 #include "marker/marker.h"
 #include "Types.h"
 #include "Users.h"
-#include "dumper/EventDumper.h"
 
 
 namespace ir {
 class BasicBlock;
-
-using utils::memory::ArenaAllocator;
 
 // Opcodes & Conditional Codes
 #define INSTS_LIST(DEF) \
@@ -109,10 +107,10 @@ public:
 
     InstructionBase(Opcode opcode,
                     OperandType type,
-                    ArenaAllocator *const allocator,
+                    std::pmr::memory_resource *memResource,
                     size_t id = INVALID_ID,
                     InstructionPropT prop = 0)
-        : Users(allocator),
+        : Users(memResource),
           id(id),
           opcode(opcode),
           type(type),
@@ -149,8 +147,9 @@ public:
     const char *GetOpcodeName() const {
         return getOpcodeName(GetOpcode());
     }
-    virtual void Dump(utils::dumper::EventDumper *dumper) const {
-        dumper->Dump<false>('#', GetId(), '\t', GetOpcodeName(), '\t');
+    void Dump(log4cpp::Category &logger) const {
+        auto stream = logger << log4cpp::Priority::INFO;
+        dumpImpl(stream);
     }
     size_t GetId() const {
         return id;
@@ -214,6 +213,11 @@ public:
 
 public:
     static constexpr size_t INVALID_ID = static_cast<size_t>(0) - 1;
+
+protected:
+    virtual void dumpImpl(log4cpp::CategoryStream &stream) const {
+        stream << '#' << GetId() << '\t' << GetOpcodeName() << '\t';
+    }
 
 private:
     size_t id;

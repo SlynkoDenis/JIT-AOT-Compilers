@@ -6,7 +6,7 @@
 // TODO: move builders & compiler into a dedicated ir's subdirectory
 namespace ir {
 Graph *Compiler::CreateNewGraph(InstructionBuilder *instrBuilder) {
-    auto *graph = allocator.template New<Graph>(this, &allocator, instrBuilder);
+    auto *graph = utils::template New<Graph>(&memResource, this, &memResource, instrBuilder);
     graph->SetId(functionsGraphs.size());
     functionsGraphs.push_back(graph);
     return graph;
@@ -15,29 +15,28 @@ Graph *Compiler::CreateNewGraph(InstructionBuilder *instrBuilder) {
 // Depth first ordered graph copy algorithm implementation.
 Graph *Compiler::CopyGraph(const Graph *source, InstructionBuilder *instrBuilder) {
     ASSERT((source) && (instrBuilder));
-    GraphCopyHelper helper(source);
-    return helper.CreateCopy(CreateNewGraph(instrBuilder));
+    return GraphCopyHelper::CreateCopy(source, CreateNewGraph(instrBuilder));
 }
 
 // defined here after full declaration of Compiler's methods
 void copyInstruction(
     BasicBlock *targetBlock,
     const InstructionBase *orig,
-    ArenaUnorderedMap<InstructionBase::IdType, InstructionBase *> *instrsTranslation)
+    std::pmr::unordered_map<InstructionBase::IdType, InstructionBase *> &instrsTranslation)
 {
-    ASSERT((targetBlock) && (orig) && (instrsTranslation));
+    ASSERT((targetBlock) && (orig));
 
-    auto it = instrsTranslation->find(orig->GetId());
-    ASSERT(it == instrsTranslation->end());
+    auto it = instrsTranslation.find(orig->GetId());
+    ASSERT(it == instrsTranslation.end());
 
     auto *copy = orig->Copy(targetBlock);
     targetBlock->PushBackInstruction(copy);
-    instrsTranslation->insert(it, {orig->GetId(), copy});
+    instrsTranslation.insert(it, {orig->GetId(), copy});
 }
 
 BasicBlock *BasicBlock::Copy(
     Graph *targetGraph,
-    ArenaUnorderedMap<InstructionBase::IdType, InstructionBase *> *instrsTranslation) const
+    std::pmr::unordered_map<InstructionBase::IdType, InstructionBase *> &instrsTranslation) const
 {
     ASSERT(targetGraph);
     auto *result = targetGraph->CreateEmptyBasicBlock();

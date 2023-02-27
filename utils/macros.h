@@ -6,7 +6,7 @@
 
 #define UNLIKELY(expr) (__builtin_expect((expr) != 0, false))
 
-#ifdef DEBUG
+#ifndef NDEBUG
 
 #define ASSERT_FAIL(expr) utils::AssertionFail((expr), __FILE__, __LINE__, __FUNCTION__)
 #define ASSERT(expr)            \
@@ -14,15 +14,11 @@
         ASSERT_FAIL(#expr);     \
     }
 
-#define DEBUG_OBJ_DUMP(obj) obj.Dump()
-
 #else
 
 #define ASSERT(expr) static_cast<void>(0)
 
-#define DEBUG_OBJ_DUMP(obj) static_cast<void>(0)
-
-#endif
+#endif  // NDEBUG
 
 #define WARNING(mess) utils::PrintWarning((mess), __FILE__, __LINE__, __FUNCTION__)
 #define UNREACHABLE(mess) utils::AssertionFail(mess, __FILE__, __LINE__, __FUNCTION__)

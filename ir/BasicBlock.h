@@ -1,9 +1,10 @@
 #ifndef JIT_AOT_COMPILERS_COURSE_BASIC_BLOCK_H_
 #define JIT_AOT_COMPILERS_COURSE_BASIC_BLOCK_H_
 
-#include "arena/ArenaAllocator.h"
+#include "AllocatorUtils.h"
 #include "instructions/Instruction.h"
 #include "macros.h"
+#include <unordered_map>
 #include <vector>
 
 
@@ -37,16 +38,16 @@ public:
     bool HasNoSuccessors() const {
         return succs.empty();
     }
-    utils::memory::ArenaVector<BasicBlock *> &GetPredecessors() {
+    std::pmr::vector<BasicBlock *> &GetPredecessors() {
         return preds;
     }
-    const utils::memory::ArenaVector<BasicBlock *> &GetPredecessors() const {
+    const std::pmr::vector<BasicBlock *> &GetPredecessors() const {
         return preds;
     }
-    utils::memory::ArenaVector<BasicBlock *> &GetSuccessors() {
+    std::pmr::vector<BasicBlock *> &GetSuccessors() {
         return succs;
     }
-    const utils::memory::ArenaVector<BasicBlock *> &GetSuccessors() const {
+    const std::pmr::vector<BasicBlock *> &GetSuccessors() const {
         return succs;
     }
     InstructionBase *GetFirstInstruction() {
@@ -80,10 +81,10 @@ public:
     const BasicBlock *GetDominator() const {
         return dominator;
     }
-    utils::memory::ArenaVector<BasicBlock *> &GetDominatedBlocks() {
+    std::pmr::vector<BasicBlock *> &GetDominatedBlocks() {
         return dominated;
     }
-    const utils::memory::ArenaVector<BasicBlock *> &GetDominatedBlocks() const {
+    const std::pmr::vector<BasicBlock *> &GetDominatedBlocks() const {
         return dominated;
     }
     bool Dominates(const BasicBlock *bblock) const;
@@ -140,7 +141,7 @@ public:
     // TODO: might make this method protected & friend with Graph
     BasicBlock *Copy(
         Graph *targetGraph,
-        utils::memory::ArenaUnorderedMap<InstructionBase::IdType, InstructionBase *> *instrsTranslation) const;
+        std::pmr::unordered_map<InstructionBase::IdType, InstructionBase *> &instrsTranslation) const;
 
     NO_NEW_DELETE;
 
@@ -219,9 +220,9 @@ private:
 private:
     IdType id = INVALID_ID;
 
-    utils::memory::ArenaVector<BasicBlock *> preds;
+    std::pmr::vector<BasicBlock *> preds;
     // for conditional branches the first successor must correspond to true branch
-    utils::memory::ArenaVector<BasicBlock *> succs;
+    std::pmr::vector<BasicBlock *> succs;
 
     size_t instrsCount = 0;
 
@@ -231,7 +232,7 @@ private:
     InstructionBase *lastInst = nullptr;
 
     BasicBlock *dominator = nullptr;
-    utils::memory::ArenaVector<BasicBlock *> dominated;
+    std::pmr::vector<BasicBlock *> dominated;
 
     Loop *loop = nullptr;
 

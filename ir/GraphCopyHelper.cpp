@@ -2,51 +2,44 @@
 
 
 namespace ir {
-Graph *GraphCopyHelper::CreateCopy(Graph *copyTarget) {
-    ASSERT((copyTarget) && copyTarget->IsEmpty());
-    reset(copyTarget);
-    dfoCopy(source->GetFirstBasicBlock());
-    ASSERT(target->GetBasicBlocksCount() == source->GetBasicBlocksCount());
-    fixDFG();
-    return target;
-}
-
-void GraphCopyHelper::reset(Graph *copyTarget) {
-    ASSERT(copyTarget);
-    target = copyTarget;
-    auto *allocator = copyTarget->GetAllocator();
-    instrsTranslation = allocator->NewUnorderedMap<InstructionBase::IdType, InstructionBase *>();
-    visited = allocator->NewUnorderedMap<BasicBlock::IdType, BasicBlock *>();
+/* static */
+Graph *GraphCopyHelper::CreateCopy(const Graph *source, Graph *copyTarget) {
+    ASSERT((source) && (copyTarget) && copyTarget->IsEmpty());
+    GraphCopyHelper helper(source, copyTarget);
+    helper.dfoCopy(source->GetFirstBasicBlock());
+    ASSERT(helper.target->GetBasicBlocksCount() == helper.source->GetBasicBlocksCount());
+    helper.fixDFG();
+    return copyTarget;
 }
 
 void GraphCopyHelper::dfoCopy(const BasicBlock *currentBBlock) {
-    ASSERT((currentBBlock) && !visited->contains(currentBBlock->GetId()));
+    ASSERT((currentBBlock) && !visited.contains(currentBBlock->GetId()));
 
     auto *bblockCopy = currentBBlock->Copy(target, instrsTranslation);
-    if UNLIKELY(currentBBlock == source->GetFirstBasicBlock()) {
+    if (currentBBlock == source->GetFirstBasicBlock()) {
         target->SetFirstBasicBlock(bblockCopy);
     }
-    if UNLIKELY(currentBBlock == source->GetLastBasicBlock()) {
+    if (currentBBlock == source->GetLastBasicBlock()) {
         target->SetLastBasicBlock(bblockCopy);
     }
-    visited->insert({currentBBlock->GetId(), bblockCopy});
+    visited.insert({currentBBlock->GetId(), bblockCopy});
 
     for (const auto *succ : currentBBlock->GetSuccessors()) {
-        auto succCopyIter = visited->find(succ->GetId());
-        if (succCopyIter != visited->end()) {
+        auto succCopyIter = visited.find(succ->GetId());
+        if (succCopyIter != visited.end()) {
             // basic block was already visited
             target->ConnectBasicBlocks(bblockCopy, succCopyIter->second);
         } else {
             // visit basic block and attach the created copy with its predecessor
             dfoCopy(succ);
-            target->ConnectBasicBlocks(bblockCopy, visited->at(succ->GetId()));
+            target->ConnectBasicBlocks(bblockCopy, visited.at(succ->GetId()));
         }
     }
 }
 
 void GraphCopyHelper::fixDFG() {
-    ASSERT(target->CountInstructions() == instrsTranslation->size());
-    auto *translation = instrsTranslation;
+    ASSERT(target->CountInstructions() == instrsTranslation.size());
+    auto *translation = &instrsTranslation;
 
     target->ForEachBasicBlock([translation](BasicBlock *bblock) {
         ASSERT(bblock);
@@ -61,7 +54,7 @@ void GraphCopyHelper::fixDFG() {
             }
 
             // set correct users
-            utils::memory::ArenaVector<InstructionBase *> newUsers(translation->get_allocator());
+            std::pmr::vector<InstructionBase *> newUsers(translation->get_allocator());
             newUsers.reserve(instr->UsersCount());
             for (auto *user : instr->GetUsers()) {
                 newUsers.push_back(translation->at(user->GetId()));

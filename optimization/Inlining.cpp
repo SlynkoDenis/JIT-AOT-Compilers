@@ -8,14 +8,14 @@
 
 namespace ir {
 void InliningPass::Run() {
-    auto rpoBBlocks = RPO(graph);
+    PassManager::Run<RPO>(graph);
     auto instructions_count = graph->CountInstructions();
     if (instructions_count >= maxInstrsAfterInlining) {
-        dumper->Dump("Skip function due to too much instructions: ", instructions_count);
+        getLogger(log4cpp::Priority::INFO) << "Skip function due to too much instructions: " << instructions_count;
     }
 
     bool doneInlining = false;
-    for (auto *bblock : rpoBBlocks) {
+    for (auto *bblock : graph->GetRPO()) {
         for (auto *instr : *bblock) {
             if (!instr->IsCall()) {
                 continue;
@@ -42,40 +42,29 @@ void InliningPass::Run() {
 
 const Graph *InliningPass::canInlineFunction(CallInstruction *call,
                                              size_t callerInstrsCount) {
-    if (call->IsInlined()) {
-        dumper->Dump("Already inlined, skipping. id = ", call->GetCallTarget());
-        return nullptr;
-    }
-
     // without a fully-functioning IRBuilder InliningPass must rely on compiler
     // already having a Graph for the callee function
     const auto *callee = graph->GetCompiler()->GetFunction(call->GetCallTarget());
     if (callee == nullptr) {
-        dumper->Dump("No IR graph found, skipping. id = ", call->GetCallTarget());
+        getLogger(log4cpp::Priority::INFO) << "No IR graph found, skipping. id = " << call->GetCallTarget();
         return nullptr;
     }
     if (callee == graph) {
-        dumper->Dump("Recursion call found, skipping");
+        getLogger(log4cpp::Priority::INFO) << "Recursion call found, skipping";
         return nullptr;
     }
 
     auto instrsCount = callee->CountInstructions();
     if (instrsCount >= maxCalleeInstrs) {
-        dumper->Dump(
-            "Too many instructions: ",
-            instrsCount,
-            " when limit is ",
-            maxCalleeInstrs,
-            ". id = ",
-            call->GetCallTarget());
+        getLogger(log4cpp::Priority::INFO) << 
+            "Too many instructions: " << instrsCount << " when limit is " << maxCalleeInstrs <<
+            ". id = " << call->GetCallTarget();
         return nullptr;
     }
     if (callerInstrsCount + instrsCount >= maxInstrsAfterInlining) {
-        dumper->Dump(
-            "Too many instructions after inlining: ",
-            callerInstrsCount + instrsCount,
-            " when limit is ",
-            maxInstrsAfterInlining);
+        getLogger(log4cpp::Priority::INFO) << 
+            "Too many instructions after inlining: " << callerInstrsCount + instrsCount <<
+            " when limit is " << maxInstrsAfterInlining;
         return nullptr;
     }
 
@@ -84,16 +73,15 @@ const Graph *InliningPass::canInlineFunction(CallInstruction *call,
 
 void InliningPass::doInlining(CallInstruction *call, Graph *callee) {
     ASSERT((call) && (callee));
+    graph->SetMarkerIndex(callee->GetMarkerIndex());
 
     auto blocks = call->GetBasicBlock()->SplitAfterInstruction(call, false);
     propagateArguments(call, callee);
     propagateReturnValue(call, callee, blocks.second);
     call->GetBasicBlock()->UnlinkInstruction(call);
-    // TODO: set correct MarkerManager values in callee graph
 
     inlineReadyGraph(callee, blocks.first, blocks.second);
-    // TODO: run optimizations after inlining
-    dumper->Dump("Inlined function #", callee->GetId());
+    getLogger(log4cpp::Priority::INFO) << "Inlined function #" << callee->GetId();
 }
 
 void InliningPass::propagateArguments(CallInstruction *call, Graph *callee) {
@@ -185,10 +173,13 @@ void InliningPass::relinkBasicBlocks(Graph *callerGraph, Graph *calleeGraph) {
 }
 
 void InliningPass::postInlining(Graph *graph) {
+    PassManager::SetInvalid<
+        AnalysisFlag::DOM_TREE,
+        AnalysisFlag::LOOP_ANALYSIS,
+        AnalysisFlag::RPO>(graph);
+
     // TODO: may move post-pass routine into PassBase by providing type traits
     PassManager::Run<EmptyBlocksRemoval>(graph);
     PassManager::Run<DCEPass>(graph);
-
-    PassManager::SetInvalid<AnalysisFlag::DOM_TREE, AnalysisFlag::LOOP_ANALYSIS>(graph);
 }
 }   // namespace ir

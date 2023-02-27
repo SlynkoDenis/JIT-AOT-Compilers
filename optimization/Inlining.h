@@ -2,14 +2,15 @@
 #define JIT_AOT_COMPILERS_COURSE_INLINING_H_
 
 #include "CompilerBase.h"
+#include "logger.h"
 #include "PassBase.h"
 
 
 namespace ir {
-class InliningPass : public PassBase {
+class InliningPass : public PassBase, public utils::Logger {
 public:
-    explicit InliningPass(Graph *graph, bool shouldDump = false)
-        : PassBase(graph, shouldDump)
+    explicit InliningPass(Graph *graph)
+        : PassBase(graph), utils::Logger(log4cpp::Category::getInstance(GetName()))
     {
         maxCalleeInstrs = graph->GetCompiler()->GetOptions().GetMaxCalleeInstrs();
         maxInstrsAfterInlining = graph->GetCompiler()->GetOptions().GetMaxInstrsAfterInlining();
@@ -19,7 +20,7 @@ public:
 
     void Run() override;
 
-    const char *GetName() const override {
+    const char *GetName() const {
         return PASS_NAME;
     }
 

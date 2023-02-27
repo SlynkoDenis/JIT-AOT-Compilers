@@ -9,17 +9,16 @@
 namespace ir {
 class LoopAnalyzer : public PassBase {
 public:
-    explicit LoopAnalyzer(Graph *graph) : PassBase(graph, false) {}
+    explicit LoopAnalyzer(Graph *graph)
+        : PassBase(graph),
+          dfsBlocks(graph->GetMemoryResource()),
+          loops(graph->GetMemoryResource())
+    {}
     NO_COPY_SEMANTIC(LoopAnalyzer);
     NO_MOVE_SEMANTIC(LoopAnalyzer);
     ~LoopAnalyzer() noexcept override = default;
 
     void Run() override;
-
-    void SetGraph(Graph *newGraph) {
-        ASSERT(newGraph);
-        graph = newGraph;
-    }
 
 public:
     static constexpr AnalysisFlag SET_FLAG = AnalysisFlag::LOOP_ANALYSIS;
@@ -31,9 +30,8 @@ private:
     void populateLoops();
     void buildLoopTree();
 
-    void dfsBackEdgesSearch(BasicBlock *bblock, ArenaAllocator *const allocator);
-    void addLoopInfo(BasicBlock *header, BasicBlock *backEdgeSource,
-                     ArenaAllocator *const allocator);
+    void dfsBackEdgesSearch(BasicBlock *bblock);
+    void addLoopInfo(BasicBlock *header, BasicBlock *backEdgeSource);
 
     void populateReducibleLoop(Loop *loop);
     void dfsPopulateLoops(Loop *loop, BasicBlock *bblock);
@@ -47,9 +45,9 @@ private:
     Marker blackMarker;
 
     size_t blockId = 0;
-    ArenaVector<BasicBlock *> *dfsBlocks = nullptr;
+    std::pmr::vector<BasicBlock *> dfsBlocks;
 
-    ArenaVector<Loop *> *loops = nullptr;
+    std::pmr::vector<Loop *> loops;
 };
 }   // namespace ir
 

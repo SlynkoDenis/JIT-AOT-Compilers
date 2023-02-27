@@ -10,6 +10,7 @@ namespace ir {
 enum class AnalysisFlag : uint8_t {
     DOM_TREE = 0,
     LOOP_ANALYSIS,
+    RPO,
     INVALID,
     ANALYSIS_COUNT = INVALID,
 };
@@ -29,7 +30,7 @@ public:
     }
 
 private:
-    std::bitset<utils::to_underlying(AnalysisFlag::ANALYSIS_COUNT)> mask;
+    std::bitset<utils::to_underlying(AnalysisFlag::ANALYSIS_COUNT)> mask{false};
 };
 }   // namespace ir
 

@@ -94,7 +94,7 @@ TEST_F(BasicBlockTest, TestSplitAfterInstruction) {
     graph->SetFirstBasicBlock(splittedBlock);
     auto *arg0 = instrBuilder->CreateARG(type);
     auto *arg1 = instrBuilder->CreateARG(type);
-    utils::memory::ArenaVector<Input> args(GetGraph()->GetAllocator()->ToSTL());
+    std::pmr::vector<Input> args(GetGraph()->GetMemoryResource());
     args.push_back(arg0);
     args.push_back(arg1);
     auto *call = instrBuilder->CreateCALL(type, INVALID_FUNCTION_ID, args);

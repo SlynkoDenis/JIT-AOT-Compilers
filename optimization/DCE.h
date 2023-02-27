@@ -2,21 +2,23 @@
 #define JIT_AOT_COMPILERS_COURSE_DCE_H_
 
 #include "Graph.h"
+#include "logger.h"
 #include "PassBase.h"
 
 
 namespace ir {
-class DCEPass : public PassBase {
+class DCEPass : public PassBase, public utils::Logger {
 public:
-    explicit DCEPass(Graph *graph, bool shouldDump = false)
-        : PassBase(graph, shouldDump),
-          deadInstrs(graph->GetAllocator()->ToSTL())
+    explicit DCEPass(Graph *graph)
+        : PassBase(graph),
+          utils::Logger(log4cpp::Category::getInstance(GetName())),
+          deadInstrs(graph->GetMemoryResource())
     {}
     ~DCEPass() noexcept override = default;
 
     void Run() override;
 
-    const char *GetName() const override {
+    const char *GetName() const {
         return PASS_NAME;
     }
 
@@ -31,7 +33,7 @@ private:
 private:
     Marker aliveMarker;
 
-    utils::memory::ArenaVector<InstructionBase *> deadInstrs;
+    std::pmr::vector<InstructionBase *> deadInstrs;
 };
 }   // namespace ir
 

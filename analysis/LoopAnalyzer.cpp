@@ -22,31 +22,20 @@ void LoopAnalyzer::Run() {
 
 void LoopAnalyzer::resetStructs() {
     blockId = 0;
-
-    auto bblocksCount = graph->GetBasicBlocksCount();
-    if (dfsBlocks == nullptr) {
-        auto *allocator = graph->GetAllocator();
-        dfsBlocks = allocator->template NewVector<BasicBlock *>(bblocksCount, nullptr);
-        loops = allocator->template NewVector<Loop *>();
-    } else {
-        dfsBlocks->clear();
-        dfsBlocks->clear();
-        loops->clear();
-
-        dfsBlocks->resize(bblocksCount, nullptr);
-    }
+    dfsBlocks.resize(graph->GetBasicBlocksCount(), nullptr);
+    loops.clear();
     greyMarker = graph->GetNewMarker();
     blackMarker = graph->GetNewMarker();
 }
 
 void LoopAnalyzer::collectBackEdges() {
     ASSERT(graph);
-    dfsBackEdgesSearch(graph->GetFirstBasicBlock(), graph->GetAllocator());
+    dfsBackEdgesSearch(graph->GetFirstBasicBlock());
     ASSERT(blockId == graph->GetBasicBlocksCount());
 }
 
 void LoopAnalyzer::populateLoops() {
-    for (auto *bblock : *dfsBlocks) {
+    for (auto *bblock : dfsBlocks) {
         auto *loop = bblock->GetLoop();
         if (loop == nullptr || loop->GetHeader() != bblock) {
             continue;
@@ -66,11 +55,11 @@ void LoopAnalyzer::populateLoops() {
 
 void LoopAnalyzer::buildLoopTree() {
     ASSERT(graph);
-    auto *allocator = graph->GetAllocator();
-    auto *rootLoop = allocator->template New<Loop>(loops->size(), nullptr, false, allocator, true);
-    loops->push_back(rootLoop);
+    auto *rootLoop = graph->template New<Loop>(
+        loops.size(), nullptr, false, graph->GetMemoryResource(), true);
+    loops.push_back(rootLoop);
 
-    for (auto *bblock : *dfsBlocks) {
+    for (auto *bblock : dfsBlocks) {
         auto *loop = bblock->GetLoop();
         if (loop == nullptr) {
             rootLoop->AddBasicBlock(bblock);
@@ -83,32 +72,31 @@ void LoopAnalyzer::buildLoopTree() {
     graph->SetLoopTree(rootLoop);
 }
 
-void LoopAnalyzer::dfsBackEdgesSearch(BasicBlock *bblock, ArenaAllocator *const allocator) {
+void LoopAnalyzer::dfsBackEdgesSearch(BasicBlock *bblock) {
     ASSERT(bblock);
 
     bblock->SetMarker(greyMarker);
     for (auto *succ : bblock->GetSuccessors()) {
         if (succ->IsMarkerSet(greyMarker)) {
-            addLoopInfo(succ, bblock, allocator);
+            addLoopInfo(succ, bblock);
         } else if (!succ->IsMarkerSet(blackMarker)) {
-            dfsBackEdgesSearch(succ, allocator);
+            dfsBackEdgesSearch(succ);
         }
     }
     bblock->ClearMarker(greyMarker);
     bblock->SetMarker(blackMarker);
 
-    dfsBlocks->at(blockId++) = bblock;
+    dfsBlocks[blockId++] = bblock;
 }
 
-void LoopAnalyzer::addLoopInfo(BasicBlock *header, BasicBlock *backEdgeSource,
-                               ArenaAllocator *const allocator) {
+void LoopAnalyzer::addLoopInfo(BasicBlock *header, BasicBlock *backEdgeSource) {
     auto *loop = header->GetLoop();
     if (loop == nullptr) {
-        loop = allocator->template New<Loop>(loops->size(), header,
-                                             isLoopIrreducible(header, backEdgeSource), allocator);
+        loop = graph->template New<Loop>(
+            loops.size(), header, isLoopIrreducible(header, backEdgeSource), graph->GetMemoryResource());
         loop->AddBasicBlock(header);
         loop->AddBackEdge(backEdgeSource);
-        loops->push_back(loop);
+        loops.push_back(loop);
 
         header->SetLoop(loop);
     } else {

@@ -1,23 +1,23 @@
 #ifndef JIT_AOT_COMPILERS_COURSE_PEEPHOLE_H_
 #define JIT_AOT_COMPILERS_COURSE_PEEPHOLE_H_
 
-#include "arena/ArenaAllocator.h"
+#include "AllocatorUtils.h"
 #include "ConstantFolding.h"
 #include "Graph.h"
+#include "logger.h"
 #include "PassBase.h"
 
 
 namespace ir {
-class PeepholePass : public PassBase {
+class PeepholePass : public PassBase, public utils::Logger {
 public:
-    explicit PeepholePass(Graph *graph, bool shouldDump = false)
-        : PassBase(graph, shouldDump)
-    {}
+    explicit PeepholePass(Graph *graph)
+        : PassBase(graph), utils::Logger(log4cpp::Category::getInstance(GetName())) {}
     ~PeepholePass() noexcept override = default;
 
     void Run() override;
 
-    const char *GetName() const override {
+    const char *GetName() const {
         return PASS_NAME;
     }
 

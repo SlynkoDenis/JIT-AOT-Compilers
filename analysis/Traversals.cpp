@@ -1,6 +1,6 @@
 #include "Graph.h"
+#include "logger.h"
 #include "Traversals.h"
-#include "dumper/StdOutputDumper.h"
 
 
 namespace ir {
@@ -17,18 +17,17 @@ void dumpBasicBlock(const BasicBlock *bblock) {
     }
     std::cout << ">\n";
 
-    auto *dumper = utils::dumper::EventDumper::AddDumper<utils::dumper::StdOutputDumper>(
-        bblock->GetGraph()->GetAllocator(),
-        "StdOutputDumper").second;
+    auto &logger = utils::Logger::GetRoot();
     for (auto *instr : *bblock) {
-        instr->Dump(dumper);
+        instr->Dump(logger);
         std::cout << '\n';
     }
     std::cout << '\n';
 }
 
 void DumpGraphRPO(const Graph *graph) {
-    auto rpoBBlocks = RPO(graph);
+    // run RPO regardless of RPO contained in graph due to possible code errors
+    auto rpoBBlocks = RPO::DoRPO(graph);
     std::cout << "======================================\n";
     for (auto bblock : rpoBBlocks) {
         dumpBasicBlock(bblock);

@@ -14,7 +14,7 @@ public:
     }
 
     void TearDown() override {
-        compiler.DeleteFunctionGraph(graph->GetId());
+        ASSERT_TRUE(compiler.DeleteFunctionGraph(graph->GetId()));
         graph = nullptr;
     }
 
