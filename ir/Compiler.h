@@ -1,37 +1,53 @@
 #ifndef JIT_AOT_COMPILERS_COURSE_COMPILER_H_
 #define JIT_AOT_COMPILERS_COURSE_COMPILER_H_
 
-#include "arena/ArenaAllocator.h"
-#include "Graph.h"
+#include "AllocatorUtils.h"
+#include "CompilerBase.h"
+#include "CompilerOptions.h"
 #include "InstructionBuilder.h"
-#include "IRBuilder.h"
-#include "macros.h"
+#include <memory_resource>
 
 
-class CompilerBase {
-public:
-    CompilerBase() = default;
-    NO_COPY_SEMANTIC(CompilerBase);
-    NO_MOVE_SEMANTIC(CompilerBase);
-    virtual DEFAULT_DTOR(CompilerBase);
-};
-
+namespace ir {
 class Compiler : public CompilerBase {
 public:
-    Compiler() : allocator(), instrBuilder(&allocator), irBuilder(&allocator) {}
+    Compiler() : memResource(), functionsGraphs(&memResource) {}
 
-    ir::InstructionBuilder &GetInstructionBuilder() {
-        return instrBuilder;
+    Graph *CreateNewGraph() override {
+        auto *instrBuilder = utils::template New<InstructionBuilder>(&memResource, &memResource);
+        return CreateNewGraph(instrBuilder);
     }
-    ir::IRBuilder &GetIRBuilder() {
-        return irBuilder;
+    Graph *CreateNewGraph(InstructionBuilder *instrBuilder);
+    Graph *CopyGraph(const Graph *source, InstructionBuilder *instrBuilder) override;
+    Graph *Optimize(Graph *graph) override {
+        // TODO: run optimizations here
+        return graph;
+    }
+    Graph *GetFunction(FunctionId functionId) override {
+        if (functionId >= functionsGraphs.size()) {
+            return nullptr;
+        }
+        return functionsGraphs[functionId];
+    }
+    bool DeleteFunctionGraph(FunctionId functionId) override {
+        if (functionId >= functionsGraphs.size()) {
+            return false;
+        }
+        functionsGraphs.erase(functionsGraphs.begin() + functionId);
+        return true;
+    }
+    const CompilerOptions &GetOptions() const override {
+        return options;
     }
 
 private:
-    utils::memory::ArenaAllocator allocator;
+    // TODO: limit maximum memory size
+    std::pmr::monotonic_buffer_resource memResource;
 
-    ir::InstructionBuilder instrBuilder;
-    ir::IRBuilder irBuilder;
+    std::pmr::vector<Graph *> functionsGraphs;
+
+    CompilerOptions options;
 };
+}   // namespace ir
 
-#endif
+#endif  // JIT_AOT_COMPILERS_COURSE_COMPILER_H_

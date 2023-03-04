@@ -1,36 +1,29 @@
 #ifndef JIT_AOT_COMPILERS_COURSE_PEEPHOLE_H_
 #define JIT_AOT_COMPILERS_COURSE_PEEPHOLE_H_
 
-#include "arena/ArenaAllocator.h"
+#include "AllocatorUtils.h"
 #include "ConstantFolding.h"
-#include "dumper/DummyDumper.h"
-#include "dumper/EventDumper.h"
-#include "InstructionBase.h"
 #include "Graph.h"
-#include "macros.h"
+#include "logger.h"
+#include "PassBase.h"
 
 
 namespace ir {
-class PeepholePass {
+class PeepholePass : public PassBase, public utils::Logger {
 public:
-    explicit PeepholePass(Graph *graph, bool shouldDump = true) : graph(graph) {
-        ASSERT(graph);
-        if (shouldDump) {
-            dumper = utils::dumper::EventDumper::AddDumper(graph->GetAllocator(), PASS_NAME);
-        } else {
-            dumper = utils::dumper::EventDumper::AddDumper<utils::dumper::DummyDumper>(
-                graph->GetAllocator(), utils::dumper::DummyDumper::DUMPER_NAME);
-        }
+    explicit PeepholePass(Graph *graph)
+        : PassBase(graph), utils::Logger(log4cpp::Category::getInstance(GetName())) {}
+    ~PeepholePass() noexcept override = default;
+
+    bool Run() override;
+
+    const char *GetName() const {
+        return PASS_NAME;
     }
-    NO_COPY_SEMANTIC(PeepholePass);
-    NO_MOVE_SEMANTIC(PeepholePass);
-    virtual DEFAULT_DTOR(PeepholePass);
 
-    void Run();
-
-    void ProcessAND(InstructionBase *instr);
-    void ProcessSRA(InstructionBase *instr);
-    void ProcessSUB(InstructionBase *instr);
+    bool ProcessAND(InstructionBase *instr);
+    bool ProcessSRA(InstructionBase *instr);
+    bool ProcessSUB(InstructionBase *instr);
 
 private:
     bool tryConstantAND(BinaryRegInstruction *instr, Input checked, Input second);
@@ -49,11 +42,7 @@ private:
     static constexpr const char *PASS_NAME = "peephole";
 
 private:
-    Graph *graph;
-
     ConstantFolding foldingPass;
-
-    utils::dumper::EventDumper *dumper;
 };
 }   // namespace ir
 

@@ -5,7 +5,9 @@ set(SOURCES
     CompilerTestBase.h
     DCETest.cpp
     DomTreeTest.cpp
+    EmptyBlocksRemovalTest.cpp
     GraphTest.cpp
+    InliningTest.cpp
     InstructionsTest.cpp
     LoopAnalysisTest.cpp
     main.cpp

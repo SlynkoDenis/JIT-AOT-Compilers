@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.24)
+cmake_minimum_required(VERSION 3.22)
 project(JIT_AOT)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -23,21 +23,25 @@ function(add_git_submodule dir)
 
 endfunction(add_git_submodule)
 
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/")
 
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Debug)
 endif()
-if(${CMAKE_BUILD_TYPE} MATCHES "Debug")
-    add_definitions(-DDEBUG)
+if(NOT ${CMAKE_BUILD_TYPE} MATCHES "Debug")
+    add_definitions(-DNDEBUG)
 endif()
 
 add_link_options("-fuse-ld=lld")
 
-set(CMAKE_CXX_FLAGS "-Wall -Wextra -Werror")
+set(CMAKE_CXX_FLAGS "-Wall -Wextra -Werror -fconcepts-diagnostics-depth=3")
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+
+find_package(log4cplus REQUIRED)
+include_directories(${log4cplus_INCLUDE_DIR})
 
 add_executable(fact main.cpp)
 add_subdirectory(utils)
@@ -51,6 +55,7 @@ if(${CMAKE_BUILD_TYPE} MATCHES "Debug")
 endif()
 
 target_link_libraries(fact PUBLIC
+    ${log4cplus_LIB}
     analysis
     ir
     utils

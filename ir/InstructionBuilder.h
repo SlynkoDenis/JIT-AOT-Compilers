@@ -3,25 +3,47 @@
 
 #include "Concepts.h"
 #include "Graph.h"
-#include "Instruction.h"
+#include "instructions/Instruction.h"
 #include "macros.h"
 #include <vector>
 
 
 namespace ir {
+// Per-graph instruction builder.
+// Contains pointers to constructed instructions; instances of this class
+// must be destroyed before the corresponding allocator object frees the memory
+// in order to prevent dangling pointers.
 class InstructionBuilder {
 public:
-    explicit InstructionBuilder(ArenaAllocator *const allocator)
-        : allocator(allocator), instrs(allocator->ToSTL()) {}
+    explicit InstructionBuilder(std::pmr::memory_resource *memResource)
+        : allocator(memResource), instrs(memResource)
+    {
+        ASSERT(memResource);
+    }
     NO_COPY_SEMANTIC(InstructionBuilder);
     NO_MOVE_SEMANTIC(InstructionBuilder);
     virtual DEFAULT_DTOR(InstructionBuilder);
 
-    void PushBackInstruction(BasicBlock *bblock, InstructionBase *instr) {
+    void AttachInstruction(InstructionBase *inst) {
+        ASSERT((inst) && (inst->GetId() == InstructionBase::INVALID_ID));
+        ASSERT(std::find(instrs.begin(), instrs.end(), inst) == instrs.end());
+        instrs.push_back(inst);
+        inst->SetId(instrs.size());
+    }
+
+    static void PushBackInstruction(BasicBlock *bblock, InstructionBase *instr) {
         bblock->PushBackInstruction(instr);
     }
+    template <std::ranges::range InstructionsT>
+    static void PushBackInstruction(BasicBlock *bblock, InstructionsT &&instructions)
+    requires std::is_same_v<typename InstructionsT::value_type, InstructionBase *>
+    {
+        for (auto *instr : instructions) {
+            PushBackInstruction(bblock, instr);
+        }
+    }
     template <typename... T>
-    void PushBackInstruction(BasicBlock *bblock, InstructionBase *instr, T *... reminder)
+    static void PushBackInstruction(BasicBlock *bblock, InstructionBase *instr, T *... reminder)
     requires InstructionType<InstructionBase, T...> {
         bblock->PushBackInstruction(instr);
         PushBackInstruction(bblock, reminder...);
@@ -37,24 +59,29 @@ public:
         PushForwardInstruction(bblock, reminder...);
     }
 
-#define CREATE_FIXED_INST(name)                             \
-    auto *inst = allocator->template New<name>(allocator);  \
-    instrs.push_back(inst);                                 \
-    inst->SetId(instrs.size());                             \
+#define CREATE_FIXED_INST(name)                                                         \
+    auto *inst = utils::template New<name>(allocator, allocator.resource());    \
+    instrs.push_back(inst);                                                             \
+    inst->SetId(instrs.size());                                                         \
     return inst
 
-#define CREATE_INST(name, ...)                                          \
-    auto *inst = allocator->template New<name>(__VA_ARGS__, allocator); \
-    instrs.push_back(inst);                                             \
-    inst->SetId(instrs.size());                                         \
+#define CREATE_INST(name, ...)                                                                      \
+    auto *inst = utils::template New<name>(allocator, __VA_ARGS__, allocator.resource());   \
+    instrs.push_back(inst);                                                                         \
+    inst->SetId(instrs.size());                                                                     \
     return inst
 
-#define CREATE_INST_WITH_PROP(name, prop, ...)                          \
-    auto *inst = allocator->template New<name>(__VA_ARGS__, allocator); \
-    instrs.push_back(inst);                                             \
-    inst->SetId(instrs.size());                                         \
-    inst->SetProperty(prop);                                            \
+#define CREATE_INST_WITH_PROP(name, prop, ...)                                                      \
+    auto *inst = utils::template New<name>(allocator, __VA_ARGS__, allocator.resource());   \
+    instrs.push_back(inst);                                                                         \
+    inst->SetId(instrs.size());                                                                     \
+    inst->SetProperty(prop);                                                                        \
     return inst
+
+#define CREATE_ARITHM(opcode)                                                                   \
+    BinaryRegInstruction *Create##opcode(OperandType type, Input in1, Input in2) {              \
+        CREATE_INST_WITH_PROP(BinaryRegInstruction, ARITHM, Opcode::opcode, type, in1, in2);    \
+    }
 
 #define CREATE_COMMUTABLE_ARITHM(opcode)                                                    \
     BinaryRegInstruction *Create##opcode(OperandType type, Input in1, Input in2) {          \
@@ -68,27 +95,40 @@ public:
         CREATE_INST_WITH_PROP(BinaryImmInstruction, ARITHM, Opcode::opcode, type, input, imm);  \
     }
 
+#define CREATE_IMM_INST_WITH_PROP(opcode, prop)                                                 \
+    template <ValidOpType T>                                                                    \
+    BinaryImmInstruction *Create##opcode(OperandType type, Input input, T imm) {                \
+        CREATE_INST_WITH_PROP(BinaryImmInstruction, prop, Opcode::opcode, type, input, imm);    \
+    }
+
     CREATE_COMMUTABLE_ARITHM(AND)
     CREATE_COMMUTABLE_ARITHM(OR)
     CREATE_COMMUTABLE_ARITHM(XOR)
     CREATE_COMMUTABLE_ARITHM(ADD)
     CREATE_COMMUTABLE_ARITHM(MUL)
 
-    BinaryRegInstruction *CreateSUB(OperandType type, Input in1, Input in2) {
-        CREATE_INST_WITH_PROP(BinaryRegInstruction, ARITHM, Opcode::SUB, type, in1, in2);
-    }
+    CREATE_ARITHM(SUB)
     BinaryRegInstruction *CreateDIV(OperandType type, Input in1, Input in2) {
-        CREATE_INST_WITH_PROP(BinaryRegInstruction, ARITHM, Opcode::DIV, type, in1, in2);
+        CREATE_INST_WITH_PROP(
+            BinaryRegInstruction,
+            SIDE_EFFECTS_ARITHM,
+            Opcode::DIV,
+            type,
+            in1,
+            in2);
     }
-    BinaryRegInstruction *CreateSRA(OperandType type, Input in1, Input in2) {
-        CREATE_INST_WITH_PROP(BinaryRegInstruction, ARITHM, Opcode::SRA, type, in1, in2);
+    BinaryRegInstruction *CreateMOD(OperandType type, Input in1, Input in2) {
+        CREATE_INST_WITH_PROP(
+            BinaryRegInstruction,
+            SIDE_EFFECTS_ARITHM,
+            Opcode::MOD,
+            type,
+            in1,
+            in2);
     }
-    BinaryRegInstruction *CreateSLA(OperandType type, Input in1, Input in2) {
-        CREATE_INST_WITH_PROP(BinaryRegInstruction, ARITHM, Opcode::SLA, type, in1, in2);
-    }
-    BinaryRegInstruction *CreateSLL(OperandType type, Input in1, Input in2) {
-        CREATE_INST_WITH_PROP(BinaryRegInstruction, ARITHM, Opcode::SLL, type, in1, in2);
-    }
+    CREATE_ARITHM(SRA)
+    CREATE_ARITHM(SLA)
+    CREATE_ARITHM(SLL)
 
     CREATE_IMM_INST(ANDI)
     CREATE_IMM_INST(ORI)
@@ -96,7 +136,8 @@ public:
     CREATE_IMM_INST(ADDI)
     CREATE_IMM_INST(SUBI)
     CREATE_IMM_INST(MULI)
-    CREATE_IMM_INST(DIVI)
+    CREATE_IMM_INST_WITH_PROP(DIVI, SIDE_EFFECTS_ARITHM)
+    CREATE_IMM_INST_WITH_PROP(MODI, SIDE_EFFECTS_ARITHM)
     CREATE_IMM_INST(SRAI)
     CREATE_IMM_INST(SLAI)
     CREATE_IMM_INST(SLLI)
@@ -115,7 +156,14 @@ public:
         CREATE_INST_WITH_PROP(CastInstruction, InstrProp::INPUT, fromType, toType, input);
     }
     CompareInstruction *CreateCMP(OperandType type, CondCode ccode, Input in1, Input in2) {
-        CREATE_INST_WITH_PROP(CompareInstruction, InstrProp::INPUT, Opcode::CMP, type, ccode, in1, in2);
+        CREATE_INST_WITH_PROP(
+            CompareInstruction,
+            utils::underlying_logic_or(InstrProp::INPUT, InstrProp::SIDE_EFFECTS),
+            Opcode::CMP,
+            type,
+            ccode,
+            in1,
+            in2);
     }
     CondJumpInstruction *CreateJCMP() {
         CREATE_FIXED_INST(CondJumpInstruction);
@@ -126,24 +174,55 @@ public:
     RetInstruction *CreateRET(OperandType type, Input input) {
         CREATE_INST_WITH_PROP(
             RetInstruction,
-            utils::underlying_logic_or(InstrProp::JUMP, InstrProp::INPUT),
+            utils::underlying_logic_or(InstrProp::CF, InstrProp::INPUT, InstrProp::SIDE_EFFECTS),
             type,
             input);
     }
+    RetVoidInstruction *CreateRETVOID() {
+        CREATE_FIXED_INST(RetVoidInstruction);
+    }
 
-    CallInstruction *CreateCALL(OperandType type, FunctionID target) {
-        CREATE_INST(CallInstruction, type, target);
+    CallInstruction *CreateCALL(OperandType type, FunctionId target) {
+        CREATE_INST_WITH_PROP(
+            CallInstruction,
+            utils::underlying_logic_or(InstrProp::INPUT, InstrProp::SIDE_EFFECTS),
+            type,
+            target);
     }
     template <AllowedInputType Ins>
-    CallInstruction *CreateCALL(OperandType type, FunctionID target, std::initializer_list<Ins> input) {
-        CREATE_INST(CallInstruction, type, target, input);
+    CallInstruction *CreateCALL(OperandType type, FunctionId target,
+                                std::initializer_list<Ins> arguments) {
+        CREATE_INST_WITH_PROP(
+            CallInstruction,
+            utils::underlying_logic_or(InstrProp::INPUT, InstrProp::SIDE_EFFECTS),
+            type,
+            target,
+            arguments);
+    }
+    template <AllowedInputType Ins, typename AllocatorT>
+    CallInstruction *CreateCALL(OperandType type, FunctionId target,
+                                std::vector<Ins, AllocatorT> arguments) {
+        CREATE_INST_WITH_PROP(
+            CallInstruction,
+            utils::underlying_logic_or(InstrProp::INPUT, InstrProp::SIDE_EFFECTS),
+            type,
+            target,
+            arguments);
     }
 
     LoadInstruction *CreateLOAD(OperandType type, uint64_t addr) {
-        CREATE_INST_WITH_PROP(LoadInstruction, InstrProp::MEM, type, addr);
+        CREATE_INST_WITH_PROP(
+            LoadInstruction,
+            utils::underlying_logic_or(InstrProp::MEM, InstrProp::SIDE_EFFECTS),
+            type,
+            addr);
     }
     StoreInstruction *CreateSTORE(Input storedValue, uint64_t addr) {
-        CREATE_INST_WITH_PROP(StoreInstruction, InstrProp::MEM, storedValue, addr);
+        CREATE_INST_WITH_PROP(
+            StoreInstruction,
+            utils::underlying_logic_or(InstrProp::MEM, InstrProp::SIDE_EFFECTS),
+            storedValue,
+            addr);
     }
 
     PhiInstruction *CreatePHI(OperandType type) {
@@ -170,18 +249,24 @@ public:
         CREATE_INST(InputArgumentInstruction, type);
     }
 
+#undef CREATE_FIXED_INST
 #undef CREATE_INST
 #undef CREATE_INST_WITH_PROP
+#undef CREATE_ARITHM
 #undef CREATE_COMMUTABLE_ARITHM
 #undef CREATE_IMM_INST
+#undef CREATE_IMM_INST_WITH_PROP
 
 private:
-    static constexpr InstructionPropT ARITHM = utils::underlying_logic_or(InstrProp::ARITH, InstrProp::INPUT);
+    static constexpr InstructionPropT ARITHM =
+        utils::underlying_logic_or(InstrProp::ARITH, InstrProp::INPUT);
+    static constexpr InstructionPropT SIDE_EFFECTS_ARITHM =
+        utils::underlying_logic_or(InstrProp::ARITH, InstrProp::INPUT, InstrProp::SIDE_EFFECTS);
 
 private:
-    ArenaAllocator *const allocator;
+    std::pmr::polymorphic_allocator<> allocator;
 
-    utils::memory::ArenaVector<InstructionBase *> instrs;
+    std::pmr::vector<InstructionBase *> instrs;
 };
 }   // namespace ir
 

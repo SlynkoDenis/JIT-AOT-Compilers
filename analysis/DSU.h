@@ -1,7 +1,7 @@
 #ifndef JIT_AOT_COMPILERS_COURSE_DSU_H_
 #define JIT_AOT_COMPILERS_COURSE_DSU_H_
 
-#include "arena/ArenaAllocator.h"
+#include "AllocatorUtils.h"
 #include "BasicBlock.h"
 #include "macros.h"
 #include <numeric>
@@ -10,17 +10,16 @@
 
 
 namespace ir {
-using utils::memory::ArenaVector;
-
 class DSU final {
 public:
     DSU() = delete;
-    DSU(utils::memory::ArenaVector<BasicBlock *> *labels,
-        const utils::memory::ArenaVector<size_t> *sdoms,
-        ArenaAllocator *const allocator)
-        : universum(labels->size(), nullptr, allocator->ToSTL()),
+    DSU(std::pmr::vector<BasicBlock *> &labels,
+        const std::pmr::vector<size_t> &sdoms,
+        std::pmr::memory_resource *memResource)
+        : universum(labels.size(), nullptr, memResource),
           labels(labels),
-          sdoms(sdoms) {}
+          sdoms(sdoms)
+    {}
     DEFAULT_COPY_SEMANTIC(DSU);
     DEFAULT_MOVE_SEMANTIC(DSU);
     DEFAULT_DTOR(DSU);
@@ -39,21 +38,24 @@ public:
 
 private:
     BasicBlock *getUniversum(size_t id) {
-        return universum.at(id);
+        ASSERT(id < universum.size());
+        return universum[id];
     }
     const BasicBlock *getUniversum(size_t id) const {
-        return universum.at(id);
+        ASSERT(id < universum.size());
+        return universum[id];
     }
     void setUniversum(size_t id, BasicBlock *bblock) {
-        universum.at(id) = bblock;
+        ASSERT(id < universum.size());
+        universum[id] = bblock;
     }
 
     void compressUniversum(BasicBlock *bblock);
 
 private:
-    ArenaVector<BasicBlock *> universum;
-    ArenaVector<BasicBlock *> *labels;
-    const ArenaVector<size_t> *sdoms;
+    std::pmr::vector<BasicBlock *> universum;
+    std::pmr::vector<BasicBlock *> &labels;
+    const std::pmr::vector<size_t> &sdoms;
 };
 }   // namespace ir
 

@@ -3,13 +3,14 @@
 
 
 namespace ir {
-void DCEPass::Run() {
+bool DCEPass::Run() {
     aliveMarker = graph->GetNewMarker();
 
-    auto rpoTraversal = RPO(graph);
+    PassManager::Run<RPO>(graph);
+    auto rpoTraversal = graph->GetRPO();
     for (auto &bblock : rpoTraversal) {
         for (auto *instr : *bblock) {
-            if (instructionHasSideEffects(instr)) {
+            if (instr->HasSideEffects()) {
                 markAlive(instr);
             }
         }
@@ -23,12 +24,15 @@ void DCEPass::Run() {
         }
     }
 
+    bool foundDead = !deadInstrs.empty();
     removeDead();
+    return foundDead;
 }
 
 void DCEPass::markAlive(InstructionBase *instr) {
     ASSERT(instr);
-    dumper->Dump("Marking live instruction ", instr->GetId(), ' ', instr->GetOpcodeName());
+    GetLogger(utils::LogPriority::DEBUG)
+        << "Marking live instruction " << instr->GetId() << ' ' << instr->GetOpcodeName();
     auto wasSet = instr->SetMarker(aliveMarker);
     if (instr->HasInputs() && wasSet) {
         auto *inputInstr = static_cast<InputsInstruction*>(instr);
@@ -40,7 +44,8 @@ void DCEPass::markAlive(InstructionBase *instr) {
 
 void DCEPass::markDead(InstructionBase *instr) {
     ASSERT(instr);
-    dumper->Dump("Removing dead instruction ", instr->GetId(), ' ', instr->GetOpcodeName());
+    GetLogger(utils::LogPriority::INFO)
+        << "Removing dead instruction " << instr->GetId() << ' ' << instr->GetOpcodeName();
     deadInstrs.push_back(instr);
     // TODO: handle PHI case?
 }
@@ -50,11 +55,5 @@ void DCEPass::removeDead() {
         instr->GetBasicBlock()->UnlinkInstruction(instr);
     }
     deadInstrs.clear();
-}
-
-/* static */
-bool DCEPass::instructionHasSideEffects(InstructionBase *instr) {
-    ASSERT(instr);
-    return utils::to_underlying(instr->GetOpcode()) <= utils::to_underlying(Opcode::RET);
 }
 }   // namespace ir

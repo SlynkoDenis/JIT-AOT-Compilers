@@ -1,21 +1,24 @@
 #include "debug.h"
+#include "logger.h"
 
 
-void utils::AssertionFail(const char *expr, const char *file, unsigned line, const char *function) {
-    std::cerr << "ASSERTION FAILED: " << expr << std::endl;
-    std::cerr << "IN " << file << ":" << std::dec << line << ":" << function << std::endl;
+namespace utils {
+void AssertionFail(const char *expr, const char *file, unsigned line, const char *function) {
+    Logger::GetRoot() << utils::LogPriority::CRIT << "ASSERTION FAILED: " << expr;
+    Logger::GetRoot() << utils::LogPriority::CRIT << "IN " << file << ":" << std::dec << line << ":" << function;
     std::terminate();
 }
 
-void utils::PrintWarning(const char *mess, const char *file, unsigned line, const char *function) {
-    std::cerr << "WARNING: " << mess << std::endl;
-    std::cerr << "IN " << file << ":" << std::dec << line << ":" << function << std::endl;
+void PrintWarning(const char *mess, const char *file, unsigned line, const char *function) {
+    Logger::GetRoot() << utils::LogPriority::WARN << "WARNING: " << mess;
+    Logger::GetRoot() << utils::LogPriority::WARN << "IN " << file << ":" << std::dec << line << ":" << function;
 }
 
-void utils::AssertionFail(std::string expr, const char *file, unsigned line, const char *function) {
+void AssertionFail(std::string expr, const char *file, unsigned line, const char *function) {
     AssertionFail(expr.data(), file, line, function);
 }
 
-void utils::PrintWarning(std::string mess, const char *file, unsigned line, const char *function) {
+void PrintWarning(std::string mess, const char *file, unsigned line, const char *function) {
     PrintWarning(mess.data(), file, line, function);
 }
+}   // namespace utils

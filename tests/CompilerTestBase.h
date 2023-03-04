@@ -2,25 +2,32 @@
 #define JIT_AOT_COMPILERS_COURSE_COMPILER_TEST_BASE_H_
 
 #include "Compiler.h"
+#include "InstructionBuilder.h"
+#include "GraphChecker.h"
 #include "gtest/gtest.h"
+#include "PassBase.h"
 
 
 namespace ir::tests {
 class CompilerTestBase : public ::testing::Test {
 public:
     void SetUp() override {
-        GetIRBuilder().CreateGraph();
+        graph = compiler.CreateNewGraph();
     }
 
     void TearDown() override {
-        GetIRBuilder().Clear();
+        ASSERT_TRUE(compiler.DeleteFunctionGraph(graph->GetId()));
+        graph = nullptr;
     }
 
-    IRBuilder &GetIRBuilder() {
-        return compiler.GetIRBuilder();
+    Graph *GetGraph() {
+        return graph;
     }
-    InstructionBuilder &GetInstructionBuilder() {
-        return compiler.GetInstructionBuilder();
+    InstructionBuilder *GetInstructionBuilder(Graph *targetGraph = nullptr) {
+        if (targetGraph == nullptr) {
+            targetGraph = GetGraph();
+        }
+        return targetGraph->GetInstructionBuilder();
     }
 
     static void compareInstructions(std::vector<InstructionBase *> expected, BasicBlock *bblock) {
@@ -31,8 +38,18 @@ public:
         }
     }
 
+    static void VerifyControlAndDataFlowGraphs(Graph *graph) {
+        PassManager::Run<GraphChecker>(graph);
+    }
+    static void VerifyControlAndDataFlowGraphs(const BasicBlock *bblock) {
+        GraphChecker::VerifyControlAndDataFlowGraphs(bblock);
+    }
+
 public:
     Compiler compiler;
+
+protected:
+    Graph *graph = nullptr;
 };
 }   // namespace ir::tests
 

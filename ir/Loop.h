@@ -19,16 +19,19 @@ public:
     Loop(size_t id,
          BasicBlock *header,
          bool isIrreducible,
-         ArenaAllocator *const allocator,
+         std::pmr::memory_resource *memResource,
          bool isRoot = false)
         : id(id),
           header(header),
-          backEdges(allocator->ToSTL()),
-          basicBlocks(allocator->ToSTL()),
+          backEdges(memResource),
+          basicBlocks(memResource),
           outerLoop(nullptr),
-          innerLoops(allocator->ToSTL()),
+          innerLoops(memResource),
           isIrreducible(isIrreducible),
-          isRoot(isRoot) {}
+          isRoot(isRoot)
+    {
+        ASSERT(memResource);
+    }
 
     auto GetId() const {
         return id;
@@ -45,17 +48,17 @@ public:
         ASSERT(std::find(backEdges.begin(), backEdges.end(), backEdgeSource) == backEdges.end());
         backEdges.push_back(backEdgeSource);
     }
-    ArenaVector<BasicBlock *> GetBackEdges() {
+    std::pmr::vector<BasicBlock *> GetBackEdges() {
         return backEdges;
     }
-    const ArenaVector<BasicBlock *> &GetBackEdges() const {
+    const std::pmr::vector<BasicBlock *> &GetBackEdges() const {
         return backEdges;
     }
 
-    ArenaVector<BasicBlock *> GetBasicBlocks() {
+    std::pmr::vector<BasicBlock *> GetBasicBlocks() {
         return basicBlocks;
     }
-    const ArenaVector<BasicBlock *> &GetBasicBlocks() const {
+    const std::pmr::vector<BasicBlock *> &GetBasicBlocks() const {
         return basicBlocks;
     }
     void AddBasicBlock(BasicBlock *bblock) {
@@ -75,7 +78,7 @@ public:
     void SetOuterLoop(Loop *loop) {
         outerLoop = loop;
     }
-    const ArenaVector<Loop *> &GetInnerLoops() const {
+    const std::pmr::vector<Loop *> &GetInnerLoops() const {
         return innerLoops;
     }
     void AddInnerLoop(Loop *loop) {
@@ -101,12 +104,12 @@ private:
 
     BasicBlock *header;
     // TODO: may replace with set
-    ArenaVector<BasicBlock *> backEdges;
+    std::pmr::vector<BasicBlock *> backEdges;
 
-    ArenaVector<BasicBlock *> basicBlocks;
+    std::pmr::vector<BasicBlock *> basicBlocks;
 
     Loop *outerLoop;
-    ArenaVector<Loop *> innerLoops;
+    std::pmr::vector<Loop *> innerLoops;
 
     bool isIrreducible;
 

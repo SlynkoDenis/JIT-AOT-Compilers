@@ -4,6 +4,7 @@
 #include "Concepts.h"
 #include <cstdint>
 #include "helpers.h"
+#include <log4cpp/Category.hh>
 #include "macros.h"
 #include "marker/marker.h"
 #include "Types.h"
@@ -13,13 +14,12 @@
 namespace ir {
 class BasicBlock;
 
-using utils::memory::ArenaAllocator;
-
 // Opcodes & Conditional Codes
-// instruction which shouldn't be collected by DCE are placed in start of the list
 #define INSTS_LIST(DEF) \
     DEF(DIV)            \
     DEF(DIVI)           \
+    DEF(MOD)            \
+    DEF(MODI)           \
     DEF(CALL)           \
     DEF(LOAD)           \
     DEF(STORE)          \
@@ -27,6 +27,7 @@ using utils::memory::ArenaAllocator;
     DEF(JCMP)           \
     DEF(JMP)            \
     DEF(RET)            \
+    DEF(RETVOID)        \
     DEF(CONST)          \
     DEF(NOT)            \
     DEF(AND)            \
@@ -60,7 +61,14 @@ enum class Opcode {
     NUM_OPCODES = INVALID
 };
 
-const char *getOpcodeName(Opcode opcode);
+constexpr inline const char *getOpcodeName(Opcode opcode) {
+    std::array<const char *, static_cast<size_t>(Opcode::NUM_OPCODES)> names{
+#define OPCODE_NAME(name, ...) #name,
+    INSTS_LIST(OPCODE_NAME)
+#undef OPCODE_NAME
+    };
+    return names[static_cast<size_t>(opcode)];
+}
 
 // Instructions properties, used in optimizations
 using InstructionPropT = uint8_t;
@@ -69,23 +77,45 @@ enum class InstrProp : InstructionPropT {
     ARITH = 0b1,
     MEM = 0b10,
     COMMUTABLE = 0b100,
-    JUMP = 0b1000,
+    CF = 0b1000,
     INPUT = 0b10000,
+    SIDE_EFFECTS = 0b100000,
 };
+
+constexpr inline InstructionPropT operator|(InstrProp lhs, InstrProp rhs) {
+    return utils::to_underlying(lhs) | utils::to_underlying(rhs);
+}
+
+constexpr inline InstructionPropT operator|(InstructionPropT lhs, InstrProp rhs) {
+    return lhs | utils::to_underlying(rhs);
+}
+
+constexpr inline InstructionPropT operator|(InstrProp lhs, InstructionPropT rhs) {
+    return utils::to_underlying(lhs) | rhs;
+}
+
+template <typename T>
+constexpr inline InstructionPropT &operator|=(InstructionPropT &lhs, T rhs) {
+    lhs = lhs | rhs;
+    return lhs;
+}
 
 // Instructions
 class InstructionBase : public Markable, public Users {
 public:
+    using IdType = size_t;
+
     InstructionBase(Opcode opcode,
                     OperandType type,
-                    ArenaAllocator *const allocator,
+                    std::pmr::memory_resource *memResource,
                     size_t id = INVALID_ID,
                     InstructionPropT prop = 0)
-        : Users(allocator),
+        : Users(memResource),
           id(id),
           opcode(opcode),
           type(type),
-          properties(prop) {}
+          properties(prop)
+    {}
     NO_COPY_SEMANTIC(InstructionBase);
     NO_MOVE_SEMANTIC(InstructionBase);
     virtual DEFAULT_DTOR(InstructionBase);
@@ -115,7 +145,20 @@ public:
         return type;
     }
     const char *GetOpcodeName() const {
-        return getOpcodeName(opcode);
+        return getOpcodeName(GetOpcode());
+    }
+    void Dump(log4cpp::Category &logger) const {
+        auto stream = logger << utils::LogPriority::INFO;
+        dumpImpl(stream);
+        // dump users
+        if (!users.empty()) {
+            stream << "\t(";
+            for (size_t i = 0, end = users.size() - 1; i < end; ++i) {
+                ASSERT(users[i]);
+                stream << users[i]->GetId() << ", ";
+            }
+            stream << users.back()->GetId() << ")";
+        }
     }
     size_t GetId() const {
         return id;
@@ -128,16 +171,25 @@ public:
     }
 
     bool IsInputArgument() const {
-        return opcode == Opcode::ARG;
+        return GetOpcode() == Opcode::ARG;
     }
     bool IsPhi() const {
-        return opcode == Opcode::PHI;
+        return GetOpcode() == Opcode::PHI;
+    }
+    bool IsCall() const {
+        return GetOpcode() == Opcode::CALL;
     }
     bool IsConst() const {
-        return opcode == Opcode::CONST;
+        return GetOpcode() == Opcode::CONST;
+    }
+    bool IsBranch() const {
+        return GetOpcode() == Opcode::JCMP;
     }
     bool HasInputs() const {
         return SatisfiesProperty(InstrProp::INPUT);
+    }
+    bool HasSideEffects() const {
+        return SatisfiesProperty(InstrProp::SIDE_EFFECTS);
     }
 
     void SetPrevInstruction(InstructionBase *inst) {
@@ -155,20 +207,26 @@ public:
     void SetId(size_t newId) {
         id = newId;
     }
-    void SetProperty(InstrProp prop) {
-        properties |= utils::to_underlying(prop);
-    }
-    void SetProperty(InstructionPropT prop) {
+    template <typename T>
+    constexpr inline void SetProperty(T prop) {
         properties |= prop;
     }
     void UnlinkFromParent();
     void InsertBefore(InstructionBase *inst);
     void InsertAfter(InstructionBase *inst);
+    void ReplaceInputInUsers(InstructionBase *newInput);
+
+    virtual InstructionBase *Copy(BasicBlock *targetBBlock) const = 0;
 
     NO_NEW_DELETE;
 
 public:
     static constexpr size_t INVALID_ID = static_cast<size_t>(0) - 1;
+
+protected:
+    virtual void dumpImpl(log4cpp::CategoryStream &stream) const {
+        stream << '#' << GetId() << '\t' << GetOpcodeName() << '\t';
+    }
 
 private:
     size_t id;

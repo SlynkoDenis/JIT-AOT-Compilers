@@ -43,6 +43,20 @@ void BasicBlock::RemoveSuccessor(BasicBlock *bblock) {
     succs.erase(it);
 }
 
+void BasicBlock::ReplaceSuccessor(BasicBlock *prevSucc, BasicBlock *newSucc) {
+    ASSERT((prevSucc) && (newSucc));
+    auto it = std::find(succs.begin(), succs.end(), prevSucc);
+    ASSERT(it != succs.end());
+    *it = newSucc;
+}
+
+void BasicBlock::ReplacePredecessor(BasicBlock *prevPred, BasicBlock *newPred) {
+    ASSERT((prevPred) && (newPred));
+    auto it = std::find(preds.begin(), preds.end(), prevPred);
+    ASSERT(it != preds.end());
+    *it = newPred;
+}
+
 template <bool PushBack>
 void BasicBlock::pushInstruction(InstructionBase *instr) {
     ASSERT((instr) && (instr->GetBasicBlock() == nullptr)
@@ -69,7 +83,7 @@ void BasicBlock::pushInstruction(InstructionBase *instr) {
             firstInst = instr;
         }
     }
-    size += 1;
+    instrsCount += 1;
 }
 
 void BasicBlock::pushPhi(InstructionBase *instr) {
@@ -111,7 +125,7 @@ void BasicBlock::InsertBefore(InstructionBase *before, InstructionBase *target) 
     if (!prev) {
         firstInst = target;
     }
-    size += 1;
+    instrsCount += 1;
 }
 
 void BasicBlock::InsertAfter(InstructionBase *after, InstructionBase *target) {
@@ -127,9 +141,10 @@ void BasicBlock::InsertAfter(InstructionBase *after, InstructionBase *target) {
     if (!next) {
         lastInst = target;
     }
-    size += 1;
+    instrsCount += 1;
 }
 
+// TODO: write unit test for this method
 void BasicBlock::UnlinkInstruction(InstructionBase *target) {
     ASSERT((target) && (target->GetBasicBlock() == this));
     target->SetBasicBlock(nullptr);
@@ -138,36 +153,43 @@ void BasicBlock::UnlinkInstruction(InstructionBase *target) {
     target->SetPrevInstruction(nullptr);
     target->SetNextInstruction(nullptr);
 
+    // basic connection
     if (prev) {
         prev->SetNextInstruction(next);
-    } else {
-        firstInst = next;
     }
     if (next) {
         next->SetPrevInstruction(prev);
-    } else {
-        lastInst = prev;
     }
 
-    if (target == firstPhi) {
-        firstPhi = nullptr;
+    // update members of basic block
+    if (target->IsPhi()) {
+        if (target == firstPhi) {
+            if (target == lastPhi) {
+                firstPhi = nullptr;
+                lastPhi = nullptr;
+            } else {
+                ASSERT((next) && next->IsPhi());
+                firstPhi = static_cast<PhiInstruction *>(next);
+            }
+        } else if (target == lastPhi) {
+            ASSERT((prev) && prev->IsPhi());
+            lastPhi = static_cast<PhiInstruction *>(prev);
+        }
+    } else {
+        if (target == firstInst) {
+            firstInst = next;
+        }
+        if (target == lastInst) {
+            lastInst = (prev && prev->IsPhi()) ? nullptr : prev;
+        }
     }
-    size -= 1;
+    instrsCount -= 1;
 }
 
 void BasicBlock::ReplaceInstruction(InstructionBase *prevInstr, InstructionBase *newInstr) {
-    ReplaceInDataFlow(prevInstr, newInstr);
+    prevInstr->ReplaceInputInUsers(newInstr);
     replaceInControlFlow(prevInstr, newInstr);
     // TODO: replace users in inputs of prevInstr to newInstr
-}
-
-void BasicBlock::ReplaceInDataFlow(InstructionBase *prevInstr, InstructionBase *newInstr) {
-    newInstr->AddUsers(prevInstr->GetUsers());
-    for (auto &it : prevInstr->GetUsers()) {
-        ASSERT(it->HasInputs());
-        auto *typed = static_cast<InputsInstruction *>(it);
-        typed->ReplaceInput(prevInstr, newInstr);
-    }
 }
 
 void BasicBlock::replaceInControlFlow(InstructionBase *prevInstr, InstructionBase *newInstr) {
@@ -183,7 +205,7 @@ void BasicBlock::replaceInControlFlow(InstructionBase *prevInstr, InstructionBas
     UnlinkInstruction(prevInstr);
 }
 
-// defined here after full declaration of BasicBlock methods
+// defined here after full declaration of BasicBlock's methods
 BasicBlock *JumpInstruction::GetDestination() {
     auto *bblock = GetBasicBlock();
     ASSERT(bblock);
