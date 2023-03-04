@@ -4,10 +4,10 @@
 
 namespace ir {
 /* static */
-void EmptyBlocksRemoval::RemoveIfEmpty(BasicBlock *bblock, bool &removed) {
+bool EmptyBlocksRemoval::RemoveIfEmpty(BasicBlock *bblock) {
     ASSERT(bblock);
     if (!bblock->IsEmpty() || bblock->IsLastInGraph()) {
-        return;
+        return false;
     }
     if (bblock->HasNoPredecessors() && !bblock->HasNoSuccessors()) {
         ASSERT(bblock->IsFirstInGraph() && bblock->GetSuccessors().size() == 1);
@@ -21,6 +21,7 @@ void EmptyBlocksRemoval::RemoveIfEmpty(BasicBlock *bblock, bool &removed) {
             auto succs = bblock->GetSuccessors();
             ASSERT(succs.size() == 1);
             successorToSet = succs[0];
+            successorToSet->RemovePredecessor(bblock);
         }
         for (auto *pred : bblock->GetPredecessors()) {
             ASSERT(pred);
@@ -39,6 +40,7 @@ void EmptyBlocksRemoval::RemoveIfEmpty(BasicBlock *bblock, bool &removed) {
                 }
                 pred->RemoveSuccessor(bblock);
             } else {
+                successorToSet->AddPredecessor(pred);
                 pred->ReplaceSuccessor(bblock, successorToSet);
             }
         }
@@ -46,7 +48,7 @@ void EmptyBlocksRemoval::RemoveIfEmpty(BasicBlock *bblock, bool &removed) {
     bblock->GetPredecessors().clear();
     bblock->GetSuccessors().clear();
     bblock->GetGraph()->UnlinkBasicBlock(bblock);
-    removed = true;
+    return true;
 }
 
 void EmptyBlocksRemoval::postRemoval() {

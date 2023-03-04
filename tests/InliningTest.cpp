@@ -60,7 +60,8 @@ CallInstruction *InliningTest::BuildCallerGraph(bool voidReturn) {
     args.push_back(newFibValue);
     args.push_back(curFibValue);
     args.push_back(decrementedFibNumber);
-    auto *recursiveCall = instrBuilder->CreateCALL(OPS_TYPE, GetGraph()->GetId(), args);
+    auto *recursiveCall = instrBuilder->CreateCALL(
+        voidReturn ? OperandType::VOID : OPS_TYPE, GetGraph()->GetId(), args);
     InstructionBase *recursiveRet = nullptr;
     if (voidReturn) {
         recursiveRet = instrBuilder->CreateRETVOID();
@@ -209,8 +210,7 @@ TEST_F(InliningTest, TestInlineSimple) {
 
     RunPass();
 
-    ASSERT_EQ(callerGraph->GetBasicBlocksCount(), callerBlocksCount + calleeBlocksCount - 1);
-    VerifyControlAndDataFlowGraphs(callerGraph);
+    ASSERT_EQ(callerGraph->GetBasicBlocksCount(), 2 * callerBlocksCount + calleeBlocksCount - 1);
 }
 
 TEST_F(InliningTest, TestInlineMultipleReturns) {
@@ -229,8 +229,8 @@ TEST_F(InliningTest, TestInlineMultipleReturns) {
 
     RunPass();
 
-    ASSERT_EQ(callerGraph->GetBasicBlocksCount(), callerBlocksCount + calleeBlocksCount - 2);
-    VerifyControlAndDataFlowGraphs(callerGraph);
+    ASSERT_EQ(callerGraph->GetBasicBlocksCount(),
+              2 * callerBlocksCount + calleeBlocksCount + 2);
 }
 
 TEST_F(InliningTest, TestInlineVoidReturn) {
@@ -249,7 +249,6 @@ TEST_F(InliningTest, TestInlineVoidReturn) {
 
     RunPass();
 
-    ASSERT_EQ(callerGraph->GetBasicBlocksCount(), callerBlocksCount + calleeBlocksCount - 1);
-    VerifyControlAndDataFlowGraphs(callerGraph);
+    ASSERT_EQ(callerGraph->GetBasicBlocksCount(), 2 * callerBlocksCount + calleeBlocksCount - 1);
 }
 }   // namespace ir::tests

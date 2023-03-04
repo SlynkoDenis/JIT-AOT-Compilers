@@ -11,6 +11,7 @@
 #include <span>
 #include "Types.h"
 #include <vector>
+#include "logger.h"
 
 
 namespace ir {
@@ -36,6 +37,11 @@ public:
     virtual const Input &GetInput(size_t idx) const = 0;
     virtual void SetInput(Input newInput, size_t idx) = 0;
     virtual void ReplaceInput(const Input &oldInput, Input newInput) = 0;
+    virtual void RemoveUserFromInputs() {
+        for (size_t i = 0, end = GetInputsCount(); i < end; ++i) {
+            GetInput(i)->RemoveUser(this);
+        }
+    }
 
 protected:
     void dumpImpl(log4cpp::CategoryStream &stream) const override {
@@ -153,7 +159,8 @@ class VariableInputsInstruction: public InputsInstruction {
 public:
     VariableInputsInstruction(Opcode opcode, OperandType type, std::pmr::memory_resource *memResource)
         : InputsInstruction(opcode, type, memResource),
-          inputs(memResource) {}
+          inputs(memResource)
+    {}
 
     // TODO: specify correct concept
     template <typename Ins>
@@ -489,9 +496,7 @@ public:
                     FunctionId target,
                     InputsType input,
                     std::pmr::memory_resource *memResource)
-        : VariableInputsInstruction(Opcode::CALL, type, input, memResource),
-          callTarget(target)
-    {}
+        : VariableInputsInstruction(Opcode::CALL, type, input, memResource), callTarget(target) {}
 
     FunctionId GetCallTarget() const {
         return callTarget;

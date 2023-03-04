@@ -22,21 +22,15 @@ Graph *Compiler::CopyGraph(const Graph *source, InstructionBuilder *instrBuilder
 void copyInstruction(
     BasicBlock *targetBlock,
     const InstructionBase *orig,
-    std::pmr::unordered_map<InstructionBase::IdType, InstructionBase *> &instrsTranslation)
+    GraphTranslationHelper &translationHelper)
 {
     ASSERT((targetBlock) && (orig));
-
-    auto it = instrsTranslation.find(orig->GetId());
-    ASSERT(it == instrsTranslation.end());
-
     auto *copy = orig->Copy(targetBlock);
     targetBlock->PushBackInstruction(copy);
-    instrsTranslation.insert(it, {orig->GetId(), copy});
+    translationHelper.InsertInstructionsPair(orig, copy);
 }
 
-BasicBlock *BasicBlock::Copy(
-    Graph *targetGraph,
-    std::pmr::unordered_map<InstructionBase::IdType, InstructionBase *> &instrsTranslation) const
+BasicBlock *BasicBlock::Copy(Graph *targetGraph, GraphTranslationHelper &translationHelper) const
 {
     ASSERT(targetGraph);
     auto *result = targetGraph->CreateEmptyBasicBlock();
@@ -49,19 +43,17 @@ BasicBlock *BasicBlock::Copy(
         }
     }
     for (auto *end = GetLastInstruction(); instr != end; instr = instr->GetNextInstruction()) {
-        copyInstruction(result, instr, instrsTranslation);
+        copyInstruction(result, instr, translationHelper);
     }
     // copy the last instruction
-    copyInstruction(result, instr, instrsTranslation);
+    copyInstruction(result, instr, translationHelper);
 
     ASSERT(result->GetFirstInstruction());
     ASSERT(result->GetLastInstruction());
     return result;
 }
 
-// TODO: write unit tests for this method
-std::pair<BasicBlock *, BasicBlock *> BasicBlock::SplitAfterInstruction(InstructionBase *instr,
-                                                                        bool connectAfterSplit) {
+BasicBlock *BasicBlock::SplitAfterInstruction(InstructionBase *instr, bool connectAfterSplit) {
     ASSERT((instr) && instr->GetBasicBlock() == this);
     auto *nextInstr = instr->GetNextInstruction();
     ASSERT(nextInstr);
@@ -108,6 +100,6 @@ std::pair<BasicBlock *, BasicBlock *> BasicBlock::SplitAfterInstruction(Instruct
         lastInst = instr;
     }
 
-    return {this, newBBlock};
+    return newBBlock;
 }
 }   // namespace ir

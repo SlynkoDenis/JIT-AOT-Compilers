@@ -3,7 +3,7 @@
 
 
 namespace ir {
-void DCEPass::Run() {
+bool DCEPass::Run() {
     aliveMarker = graph->GetNewMarker();
 
     PassManager::Run<RPO>(graph);
@@ -24,12 +24,14 @@ void DCEPass::Run() {
         }
     }
 
+    bool foundDead = !deadInstrs.empty();
     removeDead();
+    return foundDead;
 }
 
 void DCEPass::markAlive(InstructionBase *instr) {
     ASSERT(instr);
-    getLogger(log4cpp::Priority::DEBUG)
+    GetLogger(utils::LogPriority::DEBUG)
         << "Marking live instruction " << instr->GetId() << ' ' << instr->GetOpcodeName();
     auto wasSet = instr->SetMarker(aliveMarker);
     if (instr->HasInputs() && wasSet) {
@@ -42,7 +44,7 @@ void DCEPass::markAlive(InstructionBase *instr) {
 
 void DCEPass::markDead(InstructionBase *instr) {
     ASSERT(instr);
-    getLogger(log4cpp::Priority::INFO)
+    GetLogger(utils::LogPriority::INFO)
         << "Removing dead instruction " << instr->GetId() << ' ' << instr->GetOpcodeName();
     deadInstrs.push_back(instr);
     // TODO: handle PHI case?

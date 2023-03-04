@@ -20,7 +20,6 @@ void dumpBasicBlock(const BasicBlock *bblock) {
     auto &logger = utils::Logger::GetRoot();
     for (auto *instr : *bblock) {
         instr->Dump(logger);
-        std::cout << '\n';
     }
     std::cout << '\n';
 }

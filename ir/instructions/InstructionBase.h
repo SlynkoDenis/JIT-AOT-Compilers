@@ -148,8 +148,17 @@ public:
         return getOpcodeName(GetOpcode());
     }
     void Dump(log4cpp::Category &logger) const {
-        auto stream = logger << log4cpp::Priority::INFO;
+        auto stream = logger << utils::LogPriority::INFO;
         dumpImpl(stream);
+        // dump users
+        if (!users.empty()) {
+            stream << "\t(";
+            for (size_t i = 0, end = users.size() - 1; i < end; ++i) {
+                ASSERT(users[i]);
+                stream << users[i]->GetId() << ", ";
+            }
+            stream << users.back()->GetId() << ")";
+        }
     }
     size_t GetId() const {
         return id;

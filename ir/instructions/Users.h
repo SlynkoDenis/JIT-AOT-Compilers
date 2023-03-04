@@ -2,6 +2,7 @@
 #define JIT_AOT_COMPILERS_COURSE_USERS_H_
 
 #include "AllocatorUtils.h"
+#include "logger.h"
 #include <span>
 
 
@@ -16,6 +17,13 @@ public:
         ASSERT(memResource);
     }
     Users(std::span<InstructionBase *> instrs, std::pmr::memory_resource *memResource)
+        : users(instrs.begin(), instrs.end(), memResource)
+    {
+        ASSERT(memResource);
+    }
+    template <typename AllocatorT>
+    Users(const std::vector<InstructionBase *, AllocatorT> &instrs,
+          std::pmr::memory_resource *memResource)
         : users(instrs.begin(), instrs.end(), memResource)
     {
         ASSERT(memResource);
@@ -35,6 +43,9 @@ public:
         return std::span(users);
     }
 
+    void ReserveUsers(size_t usersCount) {
+        users.reserve(usersCount);
+    }
     void AddUser(InstructionBase *instr) {
         ASSERT(instr);
         users.push_back(instr);
@@ -61,6 +72,9 @@ public:
 
     void SetNewUsers(std::pmr::vector<InstructionBase *> &&newUsers) {
         users = std::move(newUsers);
+    }
+    void SetNewUsers(const std::pmr::vector<InstructionBase *> &newUsers) {
+        users = newUsers;
     }
 
 protected:

@@ -4,12 +4,12 @@
 #include "AllocatorUtils.h"
 #include "instructions/Instruction.h"
 #include "macros.h"
-#include <unordered_map>
 #include <vector>
 
 
 namespace ir {
 class Graph;
+class GraphTranslationHelper;
 class Loop;
 
 class BasicBlock : public Markable {
@@ -37,6 +37,9 @@ public:
     }
     bool HasNoSuccessors() const {
         return succs.empty();
+    }
+    bool HasPredecessor(const BasicBlock *bblock) const {
+        return std::find(preds.begin(), preds.end(), bblock) != preds.end();
     }
     std::pmr::vector<BasicBlock *> &GetPredecessors() {
         return preds;
@@ -111,6 +114,7 @@ public:
     void RemovePredecessor(BasicBlock *bblock);
     void RemoveSuccessor(BasicBlock *bblock);
     void ReplaceSuccessor(BasicBlock *prevSucc, BasicBlock *newSucc);
+    void ReplacePredecessor(BasicBlock *prevPred, BasicBlock *newPred);
 
     void SetDominator(BasicBlock *newIDom) {
         dominator = newIDom;
@@ -135,13 +139,10 @@ public:
     void ReplaceInstruction(InstructionBase *prevInstr, InstructionBase *newInstr);
 
     // implemented as BasicBlock's method to be able to directly access internal fields
-    std::pair<BasicBlock *, BasicBlock *> SplitAfterInstruction(InstructionBase *instr,
-                                                                bool connectAfterSplit);
+    BasicBlock *SplitAfterInstruction(InstructionBase *instr, bool connectAfterSplit);
 
     // TODO: might make this method protected & friend with Graph
-    BasicBlock *Copy(
-        Graph *targetGraph,
-        std::pmr::unordered_map<InstructionBase::IdType, InstructionBase *> &instrsTranslation) const;
+    BasicBlock *Copy(Graph *targetGraph, GraphTranslationHelper &translationHelper) const;
 
     NO_NEW_DELETE;
 

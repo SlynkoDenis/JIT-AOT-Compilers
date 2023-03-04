@@ -15,15 +15,15 @@ public:
         : PassBase(graph), utils::Logger(log4cpp::Category::getInstance(GetName())) {}
     ~PeepholePass() noexcept override = default;
 
-    void Run() override;
+    bool Run() override;
 
     const char *GetName() const {
         return PASS_NAME;
     }
 
-    void ProcessAND(InstructionBase *instr);
-    void ProcessSRA(InstructionBase *instr);
-    void ProcessSUB(InstructionBase *instr);
+    bool ProcessAND(InstructionBase *instr);
+    bool ProcessSRA(InstructionBase *instr);
+    bool ProcessSUB(InstructionBase *instr);
 
 private:
     bool tryConstantAND(BinaryRegInstruction *instr, Input checked, Input second);

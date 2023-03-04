@@ -16,19 +16,19 @@ public:
     DEFAULT_DTOR(PassManager);
 
     template <typename PassT, typename... ArgsT>
-    static void Run(Graph *graph, ArgsT... args)
+    static bool Run(Graph *graph, ArgsT... args)
     requires std::is_base_of_v<PassBase, PassT>
     {
         if constexpr (utils::has_set_flag_v<PassT>) {
             static_assert(std::is_same_v<std::remove_cv_t<decltype(PassT::SET_FLAG)>, AnalysisFlag>);
             if (graph->IsAnalysisValid(PassT::SET_FLAG)) {
-                return;
+                return true;
             }
-            PassT(graph, args...).Run();
+            auto res = PassT(graph, args...).Run();
             graph->SetAnalysisValid(PassT::SET_FLAG, true);
-        } else {
-            PassT(graph, args...).Run();
+            return res;
         }
+        return PassT(graph, args...).Run();
     }
 
     template <AnalysisFlag... Flags>
@@ -46,7 +46,7 @@ public:
     NO_MOVE_SEMANTIC(PassBase);
     virtual ~PassBase() noexcept = default;
 
-    virtual void Run() = 0;
+    virtual bool Run() = 0;
 
 protected:
     Graph *graph;

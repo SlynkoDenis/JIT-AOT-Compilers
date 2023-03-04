@@ -4,18 +4,17 @@
 
 
 namespace ir {
-void DomTreeBuilder::Run() {
-    if (graph->IsEmpty()) {
-        return;
+bool DomTreeBuilder::Run() {
+    if (!graph->IsEmpty()) {
+        auto sdomsHelper = resetStructs();
+
+        dfsTraverse(graph->GetFirstBasicBlock());
+        // check graph's connectivity
+        ASSERT(lastNumber == static_cast<int>(graph->GetBasicBlocksCount()) - 1);
+        computeSDoms(sdomsHelper);
+        computeIDoms();
     }
-
-    auto sdomsHelper = resetStructs();
-
-    dfsTraverse(graph->GetFirstBasicBlock());
-    // check graph's connectivity
-    ASSERT(lastNumber == static_cast<int>(graph->GetBasicBlocksCount()) - 1);
-    computeSDoms(sdomsHelper);
-    computeIDoms();
+    return true;
 }
 
 DSU DomTreeBuilder::resetStructs() {

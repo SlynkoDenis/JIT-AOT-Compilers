@@ -1,6 +1,7 @@
 set(SOURCES
     DomTree.cpp
     DSU.cpp
+    GraphChecker.cpp
     LoopAnalyzer.cpp
     Traversals.cpp
     )
@@ -10,6 +11,7 @@ add_library(analysis STATIC ${SOURCES})
 target_sources(analysis PUBLIC
     DomTree.h
     DSU.h
+    GraphChecker.h
     LoopAnalyzer.h
     Traversals.h
     )

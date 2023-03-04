@@ -18,7 +18,7 @@ public:
     NO_MOVE_SEMANTIC(LoopAnalyzer);
     ~LoopAnalyzer() noexcept override = default;
 
-    void Run() override;
+    bool Run() override;
 
 public:
     static constexpr AnalysisFlag SET_FLAG = AnalysisFlag::LOOP_ANALYSIS;

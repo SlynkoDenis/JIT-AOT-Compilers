@@ -16,7 +16,7 @@ public:
     {}
     ~DCEPass() noexcept override = default;
 
-    void Run() override;
+    bool Run() override;
 
     const char *GetName() const {
         return PASS_NAME;

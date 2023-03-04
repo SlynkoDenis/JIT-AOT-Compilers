@@ -1,20 +1,22 @@
 #include "CompilerBase.h"
 #include "DCE.h"
 #include "EmptyBlocksRemoval.h"
+#include "GraphChecker.h"
 #include "Inlining.h"
 #include "InstructionBuilder.h"
 #include "Traversals.h"
 
 
 namespace ir {
-void InliningPass::Run() {
+bool InliningPass::Run() {
     PassManager::Run<RPO>(graph);
     auto instructions_count = graph->CountInstructions();
     if (instructions_count >= maxInstrsAfterInlining) {
-        getLogger(log4cpp::Priority::INFO) << "Skip function due to too much instructions: " << instructions_count;
+        GetLogger(utils::LogPriority::INFO) << "Skip function due to too much instructions: " << instructions_count;
+        return false;
     }
 
-    bool doneInlining = false;
+    bool inlined = false;
     for (auto *bblock : graph->GetRPO()) {
         for (auto *instr : *bblock) {
             if (!instr->IsCall()) {
@@ -22,7 +24,7 @@ void InliningPass::Run() {
             }
 
             auto *call = static_cast<CallInstruction *>(instr);
-            const auto *calleeGraph = canInlineFunction(call, instructions_count);
+            auto *calleeGraph = canInlineFunction(call, instructions_count);
             if (!calleeGraph) {
                 continue;
             }
@@ -31,13 +33,14 @@ void InliningPass::Run() {
                 graph->GetInstructionBuilder());
 
             doInlining(call, copyGraph);
-            doneInlining = true;
+            postInlining();
+            // TODO: optimize instructions' counting
+            instructions_count = graph->CountInstructions();
+            inlined = true;
         }
     }
 
-    if (doneInlining) {
-        postInlining(graph);
-    }
+    return inlined;
 }
 
 const Graph *InliningPass::canInlineFunction(CallInstruction *call,
@@ -46,23 +49,23 @@ const Graph *InliningPass::canInlineFunction(CallInstruction *call,
     // already having a Graph for the callee function
     const auto *callee = graph->GetCompiler()->GetFunction(call->GetCallTarget());
     if (callee == nullptr) {
-        getLogger(log4cpp::Priority::INFO) << "No IR graph found, skipping. id = " << call->GetCallTarget();
-        return nullptr;
-    }
-    if (callee == graph) {
-        getLogger(log4cpp::Priority::INFO) << "Recursion call found, skipping";
+        GetLogger(utils::LogPriority::INFO) << "No IR graph found, skipping. id = " << call->GetCallTarget();
         return nullptr;
     }
 
-    auto instrsCount = callee->CountInstructions();
+    auto instrsCount = callerInstrsCount;
+    if (callee != graph) {
+        instrsCount = callee->CountInstructions();
+    }
+
     if (instrsCount >= maxCalleeInstrs) {
-        getLogger(log4cpp::Priority::INFO) << 
+        GetLogger(utils::LogPriority::INFO) << 
             "Too many instructions: " << instrsCount << " when limit is " << maxCalleeInstrs <<
             ". id = " << call->GetCallTarget();
         return nullptr;
     }
     if (callerInstrsCount + instrsCount >= maxInstrsAfterInlining) {
-        getLogger(log4cpp::Priority::INFO) << 
+        GetLogger(utils::LogPriority::INFO) << 
             "Too many instructions after inlining: " << callerInstrsCount + instrsCount <<
             " when limit is " << maxInstrsAfterInlining;
         return nullptr;
@@ -75,13 +78,16 @@ void InliningPass::doInlining(CallInstruction *call, Graph *callee) {
     ASSERT((call) && (callee));
     graph->SetMarkerIndex(callee->GetMarkerIndex());
 
-    auto blocks = call->GetBasicBlock()->SplitAfterInstruction(call, false);
+    auto *callBlock = call->GetBasicBlock();
+    auto *postCallBlock = callBlock->SplitAfterInstruction(call, false);
     propagateArguments(call, callee);
-    propagateReturnValue(call, callee, blocks.second);
-    call->GetBasicBlock()->UnlinkInstruction(call);
+    propagateReturnValue(call, callee, postCallBlock);
 
-    inlineReadyGraph(callee, blocks.first, blocks.second);
-    getLogger(log4cpp::Priority::INFO) << "Inlined function #" << callee->GetId();
+    call->RemoveUserFromInputs();
+    callBlock->UnlinkInstruction(call);
+
+    inlineReadyGraph(callee, callBlock, postCallBlock);
+    GetLogger(utils::LogPriority::INFO) << "Inlined function #" << callee->GetId();
 }
 
 void InliningPass::propagateArguments(CallInstruction *call, Graph *callee) {
@@ -121,7 +127,7 @@ void InliningPass::propagateReturnValue(CallInstruction *call,
             auto *retInstr = static_cast<RetInstruction *>(instr);
             auto phiInput = retInstr->GetInput(0);
             phiReturnValue->AddPhiInput(phiInput, phiInput->GetBasicBlock());
-            phiInput->ReplaceUser(retInstr, phiReturnValue);
+            phiInput->RemoveUser(retInstr);
             pred->UnlinkInstruction(retInstr);
         }
         postCallBlock->PushForwardInstruction(phiReturnValue);
@@ -131,9 +137,11 @@ void InliningPass::propagateReturnValue(CallInstruction *call,
         auto *pred = lastBlockPreds[0];
         auto *instr = pred->GetLastInstruction();
         ASSERT((instr) && instr->GetOpcode() == Opcode::RET);
+
         auto *retInstr = static_cast<RetInstruction *>(instr);
-        pred->UnlinkInstruction(retInstr);
         newInputForUsers = retInstr->GetInput(0).GetInstruction();
+        newInputForUsers->RemoveUser(retInstr);
+        pred->UnlinkInstruction(retInstr);
     }
     call->ReplaceInputInUsers(newInputForUsers);
 }
@@ -172,7 +180,9 @@ void InliningPass::relinkBasicBlocks(Graph *callerGraph, Graph *calleeGraph) {
     calleeGraph->ForEachBasicBlock(doRelink);
 }
 
-void InliningPass::postInlining(Graph *graph) {
+void InliningPass::postInlining() {
+    ASSERT(PassManager::Run<GraphChecker>(graph));
+
     PassManager::SetInvalid<
         AnalysisFlag::DOM_TREE,
         AnalysisFlag::LOOP_ANALYSIS,
@@ -181,5 +191,7 @@ void InliningPass::postInlining(Graph *graph) {
     // TODO: may move post-pass routine into PassBase by providing type traits
     PassManager::Run<EmptyBlocksRemoval>(graph);
     PassManager::Run<DCEPass>(graph);
+
+    ASSERT(PassManager::Run<GraphChecker>(graph));
 }
 }   // namespace ir

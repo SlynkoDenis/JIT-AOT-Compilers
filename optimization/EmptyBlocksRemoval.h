@@ -12,22 +12,28 @@ public:
         : PassBase(graph), utils::Logger(log4cpp::Category::getInstance(GetName())) {}
     ~EmptyBlocksRemoval() noexcept override = default;
 
-    void Run() override {
+    bool Run() override {
         bool wasRemoved = false;
-        auto removeCallback = [&wasRemoved](BasicBlock *bblock) {
-            RemoveIfEmpty(bblock, wasRemoved);
+        auto removeCallback = [&wasRemoved, this](BasicBlock *bblock) {
+            auto id = bblock->GetId();
+            auto removed = RemoveIfEmpty(bblock);
+            wasRemoved |= removed;
+            if (removed) {
+                this->GetLogger(utils::LogPriority::DEBUG) << "Removed empty basic block #" << id;
+            }
         };
         graph->ForEachBasicBlock(removeCallback);
         if (wasRemoved) {
             postRemoval();
         }
+        return wasRemoved;
     }
 
     const char *GetName() const {
         return PASS_NAME;
     }
 
-    static void RemoveIfEmpty(BasicBlock *bblock, bool &removed);
+    static bool RemoveIfEmpty(BasicBlock *bblock);
 
 private:
     void postRemoval();

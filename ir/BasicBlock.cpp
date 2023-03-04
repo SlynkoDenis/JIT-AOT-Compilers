@@ -50,6 +50,13 @@ void BasicBlock::ReplaceSuccessor(BasicBlock *prevSucc, BasicBlock *newSucc) {
     *it = newSucc;
 }
 
+void BasicBlock::ReplacePredecessor(BasicBlock *prevPred, BasicBlock *newPred) {
+    ASSERT((prevPred) && (newPred));
+    auto it = std::find(preds.begin(), preds.end(), prevPred);
+    ASSERT(it != preds.end());
+    *it = newPred;
+}
+
 template <bool PushBack>
 void BasicBlock::pushInstruction(InstructionBase *instr) {
     ASSERT((instr) && (instr->GetBasicBlock() == nullptr)

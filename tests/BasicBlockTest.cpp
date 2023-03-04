@@ -118,7 +118,7 @@ TEST_F(BasicBlockTest, TestSplitAfterInstruction) {
     instrBuilder->PushBackInstruction(falseBranch, ret2);
     ASSERT_EQ(graph->GetBasicBlocksCount(), 4);
 
-    auto splitted = call->GetBasicBlock()->SplitAfterInstruction(call, false);
+    auto *newBlock = call->GetBasicBlock()->SplitAfterInstruction(call, false);
 
     ASSERT_EQ(graph->GetBasicBlocksCount(), 5);
     ASSERT_EQ(call->GetNextInstruction(), nullptr);
@@ -126,7 +126,6 @@ TEST_F(BasicBlockTest, TestSplitAfterInstruction) {
     ASSERT_EQ(splittedBlock->GetSize(), 3);
     ASSERT_EQ(splittedBlock->GetFirstInstruction(), arg0);
     ASSERT_EQ(splittedBlock->GetLastInstruction(), call);
-    auto *newBlock = splitted.second;
     ASSERT_TRUE(newBlock->GetPredecessors().empty());
     ASSERT_EQ(newBlock->GetSize(), 4);
     ASSERT_EQ(newBlock->GetFirstInstruction(), divi);

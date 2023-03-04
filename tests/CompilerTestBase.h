@@ -3,7 +3,9 @@
 
 #include "Compiler.h"
 #include "InstructionBuilder.h"
+#include "GraphChecker.h"
 #include "gtest/gtest.h"
+#include "PassBase.h"
 
 
 namespace ir::tests {
@@ -36,8 +38,12 @@ public:
         }
     }
 
-    static void VerifyControlAndDataFlowGraphs(const Graph *graph);
-    static void VerifyControlAndDataFlowGraphs(const BasicBlock *bblock);
+    static void VerifyControlAndDataFlowGraphs(Graph *graph) {
+        PassManager::Run<GraphChecker>(graph);
+    }
+    static void VerifyControlAndDataFlowGraphs(const BasicBlock *bblock) {
+        GraphChecker::VerifyControlAndDataFlowGraphs(bblock);
+    }
 
 public:
     Compiler compiler;

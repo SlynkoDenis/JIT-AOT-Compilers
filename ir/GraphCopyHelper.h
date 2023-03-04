@@ -2,6 +2,7 @@
 #define JIT_AOT_COMPILERS_COURSE_GRAPH_COPY_HELPER_H_
 
 #include "Graph.h"
+#include "GraphTranslationHelper.h"
 #include "InstructionBuilder.h"
 
 
@@ -14,7 +15,7 @@ private:
     GraphCopyHelper(const Graph *source, Graph *copyTarget)
         : source(source),
           target(copyTarget),
-          instrsTranslation(copyTarget->GetMemoryResource()),
+          translationHelper(copyTarget->GetMemoryResource()),
           visited(copyTarget->GetMemoryResource())
     {}
     NO_COPY_SEMANTIC(GraphCopyHelper);
@@ -28,7 +29,7 @@ private:
     const Graph *source;
     Graph *target;
 
-    std::pmr::unordered_map<InstructionBase::IdType, InstructionBase *> instrsTranslation;
+    GraphTranslationHelper translationHelper;
     std::pmr::unordered_map<BasicBlock::IdType, BasicBlock *> visited;
 };
 }   // namespace ir

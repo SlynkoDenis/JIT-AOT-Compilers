@@ -18,6 +18,7 @@ target_sources(ir PUBLIC
     Concepts.h
     Graph.h
     GraphCopyHelper.h
+    GraphTranslationHelper.h
     InstructionBuilder.h
     Loop.h
     PassBase.h

@@ -100,6 +100,9 @@ TEST_F(GraphTest, TestGraphCopy) {
     // they can be compared using Instructions IDs
     PassManager::Run<RPO>(originalGraph);
     PassManager::Run<RPO>(copyGraph);
+
+    VerifyControlAndDataFlowGraphs(copyGraph);
+
     auto origRPO = originalGraph->GetRPO();
     auto copyRPO = copyGraph->GetRPO();
 

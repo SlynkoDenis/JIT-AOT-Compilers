@@ -54,6 +54,7 @@ private:
         ASSERT(bblock);
         visited.insert(bblock->GetId());
         for (auto *succ : bblock->GetSuccessors()) {
+            ASSERT(succ->HasPredecessor(bblock));
             if (!visited.contains(succ->GetId())) {
                 doTraverse(succ, callback);
             }
@@ -86,8 +87,9 @@ public:
     NO_MOVE_SEMANTIC(RPO);
     ~RPO() noexcept override = default;
 
-    void Run() override {
+    bool Run() override {
         graph->SetRPO(std::move(DoRPO(graph)));
+        return true;
     }
 
     template <GraphType GraphT>

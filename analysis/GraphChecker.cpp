@@ -1,32 +1,35 @@
-#include "CompilerTestBase.h"
-#include "Traversals.h"
+#include "GraphChecker.h"
 
 
-namespace ir::tests {
+namespace ir {
 /* static */
-void CompilerTestBase::VerifyControlAndDataFlowGraphs(const Graph *graph) {
-    graph->ForEachBasicBlock([](const BasicBlock *bblock) {
-        if (!bblock->IsLastInGraph()) {
-            VerifyControlAndDataFlowGraphs(bblock);
-        }
-    });
-}
-
-/* static */
-void CompilerTestBase::VerifyControlAndDataFlowGraphs(const BasicBlock *bblock) {
-    ASSERT_NE(bblock, nullptr);
+void GraphChecker::VerifyControlAndDataFlowGraphs(const BasicBlock *bblock) {
+    // TODO: implement more complete checks, e.g. on Loop & DomTree info
+    ASSERT(bblock != nullptr);
     const InstructionBase *instr = bblock->GetFirstPhiInstruction();
     instr = instr ? instr : bblock->GetFirstInstruction();
     if (!instr) {
+        ASSERT(bblock->GetLastPhiInstruction() == nullptr);
+        ASSERT(bblock->GetLastInstruction() == nullptr);
         return;
     }
     size_t counter = 0;
     while (instr) {
-        if (instr != bblock->GetFirstPhiInstruction() && instr != bblock->GetFirstInstruction()) {
-            ASSERT_NE(instr->GetPrevInstruction(), nullptr);
+        if (bblock->GetFirstPhiInstruction()) {
+            if (instr != bblock->GetFirstPhiInstruction()) {
+                ASSERT(instr->GetPrevInstruction() != nullptr);
+            }
+        } else if (instr != bblock->GetFirstInstruction()) {
+            ASSERT(instr->GetPrevInstruction() != nullptr);
         }
-        if (instr != bblock->GetLastInstruction()) {
-            ASSERT_NE(instr->GetNextInstruction(), nullptr);
+
+        if (instr == bblock->GetLastInstruction()
+            || (bblock->GetLastInstruction() == nullptr
+                && instr == bblock->GetLastPhiInstruction()))
+        {
+            ASSERT(instr->GetNextInstruction() == nullptr);
+        } else {
+            ASSERT(instr->GetNextInstruction() != nullptr);
         }
 
         if (instr->HasInputs()) {
@@ -40,12 +43,12 @@ void CompilerTestBase::VerifyControlAndDataFlowGraphs(const BasicBlock *bblock) 
                     break;
                 }
             }
-            ASSERT_TRUE(found);
+            ASSERT(found == true);
         }
 
         auto inputUsers = instr->GetUsers();
         for (auto &&user : inputUsers) {
-            ASSERT_TRUE(user->HasInputs());
+            ASSERT(user->HasInputs() == true);
             auto *typed = static_cast<const InputsInstruction *>(user);
             bool found = false;
             for (size_t i = 0, end_idx = typed->GetInputsCount(); i < end_idx; ++i) {
@@ -54,15 +57,12 @@ void CompilerTestBase::VerifyControlAndDataFlowGraphs(const BasicBlock *bblock) 
                     break;
                 }
             }
-            ASSERT_TRUE(found);
+            ASSERT(found == true);
         }
 
-        if (instr->GetNextInstruction() == nullptr) {
-            ASSERT_EQ(instr, bblock->GetLastInstruction());
-        }
         ++counter;
         instr = instr->GetNextInstruction();
     }
-    ASSERT_EQ(bblock->GetSize(), counter);
+    ASSERT(bblock->GetSize() == counter);
 }
-}   // namespace ir::tests
+}   // namespace ir

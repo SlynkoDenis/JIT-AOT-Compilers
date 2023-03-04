@@ -12,9 +12,9 @@ name *name::Copy(BasicBlock *targetBBlock) const {                              
     return instr;                                                                       \
 }
 
-OVERRIDE_GENERAL_CLASS_COPY(BinaryImmInstruction, GetOpcode(), GetType(), GetInput(0), GetValue())
-OVERRIDE_GENERAL_CLASS_COPY(BinaryRegInstruction, GetOpcode(), GetType(), GetInput(0), GetInput(1))
-OVERRIDE_GENERAL_CLASS_COPY(UnaryRegInstruction, GetOpcode(), GetType(), GetInput(0))
+OVERRIDE_GENERAL_CLASS_COPY(BinaryImmInstruction, GetOpcode(), GetType(), nullptr, GetValue())
+OVERRIDE_GENERAL_CLASS_COPY(BinaryRegInstruction, GetOpcode(), GetType(), nullptr, nullptr)
+OVERRIDE_GENERAL_CLASS_COPY(UnaryRegInstruction, GetOpcode(), GetType(), nullptr)
 
 #undef OVERRIDE_GENERAL_CLASS_COPY
 
@@ -32,16 +32,16 @@ name *name::Copy(BasicBlock *targetBBlock) const {                          \
 }
 
 OVERRIDE_COPY_METHOD(ConstantInstruction, CONST, GetType(), GetValue())
-OVERRIDE_COPY_METHOD(CastInstruction, CAST, GetType(), GetTargetType(), GetInput(0))
-OVERRIDE_COPY_METHOD(CompareInstruction, CMP, GetType(), GetCondCode(), GetInput(0), GetInput(1))
+OVERRIDE_COPY_METHOD(CastInstruction, CAST, GetType(), GetTargetType(), nullptr)
+OVERRIDE_COPY_METHOD(CompareInstruction, CMP, GetType(), GetCondCode(), nullptr, nullptr)
 OVERRIDE_COPY_METHOD_FIXED(CondJumpInstruction, JCMP)
 OVERRIDE_COPY_METHOD_FIXED(JumpInstruction, JMP)
-OVERRIDE_COPY_METHOD(RetInstruction, RET, GetType(), GetInput(0))
+OVERRIDE_COPY_METHOD(RetInstruction, RET, GetType(), nullptr)
 OVERRIDE_COPY_METHOD_FIXED(RetVoidInstruction, RETVOID)
-OVERRIDE_COPY_METHOD(CallInstruction, CALL, GetType(), GetCallTarget(), GetInputs())
+OVERRIDE_COPY_METHOD(CallInstruction, CALL, GetType(), GetCallTarget())
 OVERRIDE_COPY_METHOD(LoadInstruction, LOAD, GetType(), GetValue())
-OVERRIDE_COPY_METHOD(StoreInstruction, STORE, GetInput(0), GetValue())
-OVERRIDE_COPY_METHOD(PhiInstruction, PHI, GetType(), GetInputs(), GetSourceBasicBlocks())
+OVERRIDE_COPY_METHOD(StoreInstruction, STORE, nullptr, GetValue())
+OVERRIDE_COPY_METHOD(PhiInstruction, PHI, GetType())
 OVERRIDE_COPY_METHOD(InputArgumentInstruction, ARG, GetType())
 
 #undef OVERRIDE_COPY_METHOD_FIXED

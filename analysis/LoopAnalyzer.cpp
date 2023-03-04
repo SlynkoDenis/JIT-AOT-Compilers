@@ -4,20 +4,19 @@
 
 
 namespace ir {
-void LoopAnalyzer::Run() {
-    if (graph->IsEmpty()) {
-        return;
+bool LoopAnalyzer::Run() {
+    if (!graph->IsEmpty()) {
+        resetStructs();
+        PassManager::Run<DomTreeBuilder>(graph);
+
+        collectBackEdges();
+        graph->ReleaseMarker(greyMarker);
+        graph->ReleaseMarker(blackMarker);
+
+        populateLoops();
+        buildLoopTree();
     }
-
-    resetStructs();
-    PassManager::Run<DomTreeBuilder>(graph);
-
-    collectBackEdges();
-    graph->ReleaseMarker(greyMarker);
-    graph->ReleaseMarker(blackMarker);
-
-    populateLoops();
-    buildLoopTree();
+    return true;
 }
 
 void LoopAnalyzer::resetStructs() {

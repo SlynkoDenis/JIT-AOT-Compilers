@@ -25,7 +25,7 @@ public:
     NO_MOVE_SEMANTIC(DomTreeBuilder);
     ~DomTreeBuilder() noexcept override = default;
 
-    void Run();
+    bool Run();
 
     const VectorBBlocks &GetImmediateDominators() const {
         return idoms;

@@ -9,13 +9,16 @@ Graph *GraphCopyHelper::CreateCopy(const Graph *source, Graph *copyTarget) {
     helper.dfoCopy(source->GetFirstBasicBlock());
     ASSERT(helper.target->GetBasicBlocksCount() == helper.source->GetBasicBlocksCount());
     helper.fixDFG();
+    // TODO: run GraphChecker on this class
     return copyTarget;
 }
 
 void GraphCopyHelper::dfoCopy(const BasicBlock *currentBBlock) {
     ASSERT((currentBBlock) && !visited.contains(currentBBlock->GetId()));
 
-    auto *bblockCopy = currentBBlock->Copy(target, instrsTranslation);
+    auto *bblockCopy = currentBBlock->Copy(target, translationHelper);
+    translationHelper.blocksToCopy.insert({currentBBlock->GetId(), bblockCopy});
+
     if (currentBBlock == source->GetFirstBasicBlock()) {
         target->SetFirstBasicBlock(bblockCopy);
     }
@@ -38,28 +41,35 @@ void GraphCopyHelper::dfoCopy(const BasicBlock *currentBBlock) {
 }
 
 void GraphCopyHelper::fixDFG() {
-    ASSERT(target->CountInstructions() == instrsTranslation.size());
-    auto *translation = &instrsTranslation;
-
-    target->ForEachBasicBlock([translation](BasicBlock *bblock) {
+    ASSERT(translationHelper.Verify(target->CountInstructions()));
+    target->ForEachBasicBlock([&translation = std::as_const(translationHelper)](BasicBlock *bblock) {
         ASSERT(bblock);
-        std::for_each(bblock->begin(), bblock->end(), [translation](InstructionBase *instr) {
+        std::for_each(bblock->begin(), bblock->end(), [&translation](InstructionBase *instr) {
+            const auto *origInstr = translation.ToOrig(instr);
             // set correct inputs
-            if (instr->HasInputs()) {
-                auto *withInputs = static_cast<InputsInstruction *>(instr);
-                for (size_t i = 0, end = withInputs->GetInputsCount(); i < end; ++i) {
-                    auto &input = withInputs->GetInput(i);
-                    withInputs->SetInput(translation->at(input->GetId()), i);
+            if (origInstr->IsCall()) {
+                ASSERT(instr->IsCall());
+                auto *callCopy = static_cast<CallInstruction *>(instr);
+                const auto *callOrig = static_cast<const CallInstruction *>(origInstr);
+                for (size_t i = 0, end = callOrig->GetInputsCount(); i < end; ++i) {
+                    callCopy->AddInput(translation.ToCopy(callOrig->GetInput(i)));
+                }
+            } else if (origInstr->IsPhi()) {
+                ASSERT(instr->IsPhi());
+                auto *phiCopy = static_cast<PhiInstruction *>(instr);
+                const auto *phiOrig = static_cast<const PhiInstruction *>(origInstr);
+                for (size_t i = 0, end = phiOrig->GetInputsCount(); i < end; ++i) {
+                    phiCopy->AddPhiInput(translation.ToCopy(phiOrig->GetInput(i)),
+                                         translation.ToCopy(phiOrig->GetSourceBasicBlock(i)));
+                }
+            } else if (origInstr->HasInputs()) {
+                ASSERT(instr->HasInputs());
+                auto *inputsCopy = static_cast<InputsInstruction *>(instr);
+                const auto *inputsOrig = static_cast<const InputsInstruction *>(origInstr);
+                for (size_t i = 0, end = inputsOrig->GetInputsCount(); i < end; ++i) {
+                    inputsCopy->SetInput(translation.ToCopy(inputsOrig->GetInput(i)), i);
                 }
             }
-
-            // set correct users
-            std::pmr::vector<InstructionBase *> newUsers(translation->get_allocator());
-            newUsers.reserve(instr->UsersCount());
-            for (auto *user : instr->GetUsers()) {
-                newUsers.push_back(translation->at(user->GetId()));
-            }
-            instr->SetNewUsers(std::move(newUsers));
         });
     });
 }

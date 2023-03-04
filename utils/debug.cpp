@@ -4,14 +4,14 @@
 
 namespace utils {
 void AssertionFail(const char *expr, const char *file, unsigned line, const char *function) {
-    Logger::GetRoot() << log4cpp::Priority::CRIT << "ASSERTION FAILED: " << expr;
-    Logger::GetRoot() << log4cpp::Priority::CRIT << "IN " << file << ":" << std::dec << line << ":" << function;
+    Logger::GetRoot() << utils::LogPriority::CRIT << "ASSERTION FAILED: " << expr;
+    Logger::GetRoot() << utils::LogPriority::CRIT << "IN " << file << ":" << std::dec << line << ":" << function;
     std::terminate();
 }
 
 void PrintWarning(const char *mess, const char *file, unsigned line, const char *function) {
-    Logger::GetRoot() << log4cpp::Priority::WARN << "WARNING: " << mess;
-    Logger::GetRoot() << log4cpp::Priority::WARN << "IN " << file << ":" << std::dec << line << ":" << function;
+    Logger::GetRoot() << utils::LogPriority::WARN << "WARNING: " << mess;
+    Logger::GetRoot() << utils::LogPriority::WARN << "IN " << file << ":" << std::dec << line << ":" << function;
 }
 
 void AssertionFail(std::string expr, const char *file, unsigned line, const char *function) {

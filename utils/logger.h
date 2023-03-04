@@ -8,6 +8,8 @@
 
 
 namespace utils {
+using LogPriority = log4cpp::Priority;
+
 // simple wrapper to store reference to logger
 class Logger {
 public:
@@ -18,7 +20,7 @@ public:
     NO_MOVE_SEMANTIC(Logger);
     virtual ~Logger() noexcept = default;
 
-    log4cpp::CategoryStream getLogger(log4cpp::Priority::PriorityLevel p) const {
+    log4cpp::CategoryStream GetLogger(LogPriority::PriorityLevel p) const {
         return logger << p;
     }
 
@@ -41,7 +43,8 @@ protected:
     static log4cpp::Appender &GetStdOutAppender() {
         // TODO: properly init global appender
         if UNLIKELY(stdoutAppender == nullptr) {
-            stdoutAppender = std::make_unique<log4cpp::OstreamAppender>(STDOUT_APPENDER_NAME, &std::cout);
+            stdoutAppender = std::make_unique<log4cpp::OstreamAppender>(
+                STDOUT_APPENDER_NAME, &std::cout);
             stdoutAppender->setLayout(new log4cpp::BasicLayout());
         }
         return *stdoutAppender;

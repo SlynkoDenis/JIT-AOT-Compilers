@@ -18,7 +18,7 @@ public:
     }
     ~InliningPass() noexcept override = default;
 
-    void Run() override;
+    bool Run() override;
 
     const char *GetName() const {
         return PASS_NAME;
@@ -43,7 +43,7 @@ private:
     // Links all callee's basic blocks to the resulting caller graph.
     void relinkBasicBlocks(Graph *callerGraph, Graph *calleeGraph);
 
-    void postInlining(Graph *graph);
+    void postInlining();
 
 private:
     static constexpr const char *PASS_NAME = "inlining";
