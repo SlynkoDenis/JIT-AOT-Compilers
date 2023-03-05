@@ -210,19 +210,76 @@ public:
             arguments);
     }
 
-    LoadInstruction *CreateLOAD(OperandType type, uint64_t addr) {
-        CREATE_INST_WITH_PROP(
-            LoadInstruction,
-            utils::underlying_logic_or(InstrProp::MEM, InstrProp::SIDE_EFFECTS),
-            type,
-            addr);
+    LengthInstruction *CreateLEN(Input array) {
+        CREATE_INST_WITH_PROP(LengthInstruction, INPUT_MEM, array);
     }
-    StoreInstruction *CreateSTORE(Input storedValue, uint64_t addr) {
+
+    NewArrayInstruction *CreateNEW_ARRAY(uint64_t length, TypeId typeId) {
         CREATE_INST_WITH_PROP(
-            StoreInstruction,
+            NewArrayInstruction,
             utils::underlying_logic_or(InstrProp::MEM, InstrProp::SIDE_EFFECTS),
+            length,
+            typeId);
+    }
+    NewObjectInstruction *CreateNEW_OBJECT(TypeId typeId) {
+        CREATE_INST_WITH_PROP(
+            NewObjectInstruction,
+            utils::underlying_logic_or(InstrProp::MEM, InstrProp::SIDE_EFFECTS),
+            typeId);
+    }
+
+    LoadArrayInstruction *CreateLOAD_ARRAY(OperandType type, Input array, Input idx) {
+        CREATE_INST_WITH_PROP(
+            LoadArrayInstruction,
+            INPUT_MEM,
+            type,
+            array,
+            idx);
+    }
+    LoadImmInstruction *CreateLOAD_ARRAY_IMM(OperandType type, Input array, uint64_t idx) {
+        CREATE_INST_WITH_PROP(
+            LoadImmInstruction,
+            INPUT_MEM,
+            Opcode::LOAD_ARRAY_IMM,
+            type,
+            array,
+            idx);
+    }
+    LoadImmInstruction *CreateLOAD_OBJECT(OperandType type, Input obj, uint64_t offset) {
+        CREATE_INST_WITH_PROP(
+            LoadImmInstruction,
+            INPUT_MEM,
+            Opcode::LOAD_OBJECT,
+            type,
+            obj,
+            offset);
+    }
+
+    StoreArrayInstruction *CreateSTORE_ARRAY(Input array, Input storedValue, Input idx) {
+        CREATE_INST_WITH_PROP(
+            StoreArrayInstruction,
+            INPUT_MEM,
+            array,
             storedValue,
-            addr);
+            idx);
+    }
+    StoreImmInstruction *CreateSTORE_ARRAY_IMM(Input array, Input storedValue, uint64_t idx) {
+        CREATE_INST_WITH_PROP(
+            StoreImmInstruction,
+            INPUT_MEM,
+            Opcode::STORE_ARRAY_IMM,
+            array,
+            storedValue,
+            idx);
+    }
+    StoreImmInstruction *CreateSTORE_OBJECT(Input obj, Input storedValue, uint64_t offset) {
+        CREATE_INST_WITH_PROP(
+            StoreImmInstruction,
+            INPUT_MEM,
+            Opcode::STORE_OBJECT,
+            obj,
+            storedValue,
+            offset);
     }
 
     PhiInstruction *CreatePHI(OperandType type) {
@@ -262,6 +319,8 @@ private:
         utils::underlying_logic_or(InstrProp::ARITH, InstrProp::INPUT);
     static constexpr InstructionPropT SIDE_EFFECTS_ARITHM =
         utils::underlying_logic_or(InstrProp::ARITH, InstrProp::INPUT, InstrProp::SIDE_EFFECTS);
+    static constexpr InstructionPropT INPUT_MEM =
+        utils::underlying_logic_or(InstrProp::INPUT, InstrProp::MEM, InstrProp::SIDE_EFFECTS);
 
 private:
     std::pmr::polymorphic_allocator<> allocator;

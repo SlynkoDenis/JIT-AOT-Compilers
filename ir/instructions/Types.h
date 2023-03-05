@@ -9,19 +9,51 @@
 
 
 namespace ir {
+class TypeId {
+public:
+    using TypeIdType = uint64_t;
+
+    TypeId(TypeIdType id) : id(id) {}
+    DEFAULT_COPY_SEMANTIC(TypeId);
+    DEFAULT_MOVE_CTOR(TypeId);
+    virtual ~TypeId() noexcept = default;
+
+    operator TypeIdType() const {
+        return id;
+    }
+
+private:
+    TypeIdType id;
+};
+
+#define TYPE_LIST(DEF)  \
+    DEF(VOID)           \
+    DEF(I8)             \
+    DEF(I16)            \
+    DEF(I32)            \
+    DEF(I64)            \
+    DEF(U8)             \
+    DEF(U16)            \
+    DEF(U32)            \
+    DEF(U64)            \
+    DEF(REF)
+
 enum class OperandType {
-    VOID,
-    I8,
-    I16,
-    I32,
-    I64,
-    U8,
-    U16,
-    U32,
-    U64,
+#define TYPE_DEF(name, ...) name,
+    TYPE_LIST(TYPE_DEF)
+#undef TYPE_DEF
     INVALID,
     NUM_TYPES = INVALID
 };
+
+constexpr inline const char *getTypeName(OperandType type) {
+    std::array<const char *, static_cast<size_t>(OperandType::NUM_TYPES)> names{
+#define TYPE_NAME(name, ...) #name,
+    TYPE_LIST(TYPE_NAME)
+#undef TYPE_NAME
+    };
+    return names[static_cast<size_t>(type)];
+}
 
 constexpr std::array<uint64_t, static_cast<size_t>(OperandType::NUM_TYPES)> maxValues{
     0,

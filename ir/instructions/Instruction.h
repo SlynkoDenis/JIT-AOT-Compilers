@@ -266,7 +266,7 @@ private:
 
 class ConditionMixin {
 public:
-    ConditionMixin(CondCode ccode) : ccode(ccode) {}
+    explicit ConditionMixin(CondCode ccode) : ccode(ccode) {}
 
     auto GetCondCode() const {
         return ccode;
@@ -277,6 +277,21 @@ public:
 
 private:
     CondCode ccode;
+};
+
+class TypeIdMixin {
+public:
+    explicit TypeIdMixin(TypeId type) : typeId(type) {}
+
+    auto GetTypeId() const {
+        return typeId;
+    }
+    void SetTypeId(TypeId newType) {
+        typeId = newType;
+    }
+
+private:
+    TypeId typeId;
 };
 
 // Specific instructions classes
@@ -520,34 +535,106 @@ private:
     FunctionId callTarget;
 };
 
-class LoadInstruction : public InstructionBase, public ImmediateMixin<uint64_t> {
+class LengthInstruction : public UnaryRegInstruction {
 public:
-    LoadInstruction(OperandType type, uint64_t addr, std::pmr::memory_resource *memResource)
-        : InstructionBase(Opcode::LOAD, type, memResource),
-          ImmediateMixin<uint64_t>(addr) {}
+    LengthInstruction(Input array, std::pmr::memory_resource *memResource)
+        : UnaryRegInstruction(Opcode::LEN, OperandType::U64, array, memResource)
+    {
+        ASSERT(!array.GetInstruction() || array->GetType() == OperandType::REF);
+    }
 
-    LoadInstruction *Copy(BasicBlock *targetBBlock) const override;
+    LengthInstruction *Copy(BasicBlock *targetBBlock) const override;
+};
+
+class NewArrayInstruction : public InstructionBase, public ImmediateMixin<uint64_t>, public TypeIdMixin {
+public:
+    NewArrayInstruction(uint64_t length, TypeId typeId, std::pmr::memory_resource *memResource)
+        : InstructionBase(Opcode::NEW_ARRAY, OperandType::REF, memResource),
+          ImmediateMixin<uint64_t>(length),
+          TypeIdMixin(typeId)
+    {
+        ASSERT(length > 0);
+    }
+
+    NewArrayInstruction *Copy(BasicBlock *targetBBlock) const override;
 
 protected:
     void dumpImpl(log4cpp::CategoryStream &stream) const override {
         InstructionBase::dumpImpl(stream);
-        stream << ' ' << GetValue();
+        stream << ' ' << GetTypeId() << " len(" << GetValue() << ')';
     }
 };
 
-class StoreInstruction : public FixedInputsInstruction<1>, public ImmediateMixin<uint64_t> {
+class NewObjectInstruction : public InstructionBase, public TypeIdMixin {
 public:
-    StoreInstruction(Input storedValue, uint64_t addr, std::pmr::memory_resource *memResource)
-        : FixedInputsInstruction<1>(Opcode::STORE, storedValue->GetType(), storedValue, memResource),
-          ImmediateMixin<uint64_t>(addr) {}
+    NewObjectInstruction(TypeId typeId, std::pmr::memory_resource *memResource)
+        : InstructionBase(Opcode::NEW_OBJECT, OperandType::REF, memResource), TypeIdMixin(typeId) {}
 
-    StoreInstruction *Copy(BasicBlock *targetBBlock) const override;
+    NewObjectInstruction *Copy(BasicBlock *targetBBlock) const override;
 
 protected:
     void dumpImpl(log4cpp::CategoryStream &stream) const override {
-        InputsInstruction::dumpImpl(stream);
-        stream << ' ' << GetValue();
+        InstructionBase::dumpImpl(stream);
+        stream << ' ' << GetTypeId();
     }
+};
+
+class LoadArrayInstruction : public BinaryRegInstruction {
+public:
+    LoadArrayInstruction(OperandType type, Input array, Input idx, std::pmr::memory_resource *memResource)
+        : BinaryRegInstruction(Opcode::LOAD_ARRAY, type, array, idx, memResource)
+    {
+        // TODO: must somehow validate return type over underlying
+        ASSERT(!array.GetInstruction() || array->GetType() == OperandType::REF);
+        ASSERT(!idx.GetInstruction() || idx->GetType() == OperandType::U64);
+    }
+
+    LoadArrayInstruction *Copy(BasicBlock *targetBBlock) const override;
+};
+
+class LoadImmInstruction : public BinaryImmInstruction {
+public:
+    LoadImmInstruction(Opcode opcode,
+                       OperandType type,
+                       Input obj,
+                       uint64_t offset,
+                       std::pmr::memory_resource *memResource)
+        : BinaryImmInstruction(opcode, type, obj, offset, memResource)
+    {
+        ASSERT(opcode == Opcode::LOAD_ARRAY_IMM || opcode == Opcode::LOAD_OBJECT);
+        ASSERT(!obj.GetInstruction() || obj->GetType() == OperandType::REF);
+    }
+
+    LoadImmInstruction *Copy(BasicBlock *targetBBlock) const override;
+};
+
+class StoreArrayInstruction : public FixedInputsInstruction<3> {
+public:
+    StoreArrayInstruction(Input array, Input storedValue, Input idx, std::pmr::memory_resource *memResource)
+        : FixedInputsInstruction<3>(Opcode::STORE_ARRAY, OperandType::VOID, memResource, array, storedValue, idx)
+    {
+        ASSERT(!array.GetInstruction() || array->GetType() == OperandType::REF);
+        ASSERT(!idx.GetInstruction() || idx->GetType() == OperandType::U64);
+    }
+
+    StoreArrayInstruction *Copy(BasicBlock *targetBBlock) const override;
+};
+
+class StoreImmInstruction : public FixedInputsInstruction<2>, public ImmediateMixin<uint64_t> {
+public:
+    StoreImmInstruction(Opcode opcode,
+                        Input obj,
+                        Input storedValue,
+                        uint64_t offset,
+                        std::pmr::memory_resource *memResource)
+        : FixedInputsInstruction<2>(opcode, OperandType::VOID, memResource, obj, storedValue),
+          ImmediateMixin<uint64_t>(offset)
+    {
+        ASSERT(opcode == Opcode::STORE_ARRAY_IMM || opcode == Opcode::STORE_OBJECT);
+        ASSERT(!obj.GetInstruction() || obj->GetType() == OperandType::REF);
+    }
+
+    StoreImmInstruction *Copy(BasicBlock *targetBBlock) const override;
 };
 }   // namespace ir
 

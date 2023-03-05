@@ -160,33 +160,6 @@ TEST_F(InstructionsTest, TestCall) {
     ASSERT_EQ(call->GetInput(1), arg1);
 }
 
-TEST_F(InstructionsTest, TestLoad) {
-    auto opType = OperandType::U64;
-    uint64_t addr = 44;
-
-    auto *instr = GetInstructionBuilder()->CreateLOAD(opType, addr);
-
-    ASSERT_NE(instr, nullptr);
-    ASSERT_EQ(instr->GetOpcode(), Opcode::LOAD);
-    ASSERT_EQ(instr->GetType(), opType);
-    ASSERT_EQ(instr->GetValue(), addr);
-}
-
-TEST_F(InstructionsTest, TestStore) {
-    auto opType = OperandType::U32;
-    auto *storedValue = GetInstructionBuilder()->CreateARG(opType);
-    uint64_t addr = 34;
-
-    auto *instr = GetInstructionBuilder()->CreateSTORE(storedValue, addr);
-
-    ASSERT_NE(instr, nullptr);
-    ASSERT_EQ(instr->GetOpcode(), Opcode::STORE);
-    ASSERT_EQ(instr->GetType(), opType);
-    ASSERT_EQ(instr->GetValue(), addr);
-    ASSERT_EQ(instr->GetInputsCount(), 1);
-    ASSERT_EQ(instr->GetInput(0), storedValue);
-}
-
 TEST_F(InstructionsTest, TestPhi) {
     auto opType = OperandType::U16;
     size_t numArgs = 3;
@@ -211,5 +184,124 @@ TEST_F(InstructionsTest, TestPhi) {
     for (size_t i = 0; i < numArgs; ++i) {
         ASSERT_EQ(inputs[i], args[i]);
     }
+}
+
+TEST_F(InstructionsTest, TestNewArray) {
+    uint64_t len = 2;
+    TypeId::TypeIdType typeId = 1234;
+    auto *instr = GetInstructionBuilder()->CreateNEW_ARRAY(len, typeId);
+
+    ASSERT_NE(instr, nullptr);
+    ASSERT_EQ(instr->GetOpcode(), Opcode::NEW_ARRAY);
+    ASSERT_EQ(instr->GetType(), OperandType::REF);
+    ASSERT_EQ(instr->GetValue(), len);
+    ASSERT_EQ(instr->GetTypeId(), typeId);
+}
+
+TEST_F(InstructionsTest, TestLen) {
+    auto *array = GetInstructionBuilder()->CreateNEW_ARRAY(2, 1234);
+    auto *instr = GetInstructionBuilder()->CreateLEN(array);
+
+    ASSERT_NE(instr, nullptr);
+    ASSERT_EQ(instr->GetOpcode(), Opcode::LEN);
+    ASSERT_EQ(instr->GetType(), OperandType::U64);
+    ASSERT_EQ(instr->GetInput(0), array);
+}
+
+TEST_F(InstructionsTest, TestNewObject) {
+    TypeId::TypeIdType typeId = 1234;
+    auto *instr = GetInstructionBuilder()->CreateNEW_OBJECT(typeId);
+
+    ASSERT_NE(instr, nullptr);
+    ASSERT_EQ(instr->GetOpcode(), Opcode::NEW_OBJECT);
+    ASSERT_EQ(instr->GetType(), OperandType::REF);
+    ASSERT_EQ(instr->GetTypeId(), typeId);
+}
+
+TEST_F(InstructionsTest, TestLoadArray) {
+    auto opType = OperandType::U8;
+
+    auto *constOne = GetInstructionBuilder()->CreateCONST(OperandType::U64, 1);
+    auto *array = GetInstructionBuilder()->CreateNEW_ARRAY(2, 1234);
+    auto *instr = GetInstructionBuilder()->CreateLOAD_ARRAY(opType, array, constOne);
+
+    ASSERT_NE(instr, nullptr);
+    ASSERT_EQ(instr->GetOpcode(), Opcode::LOAD_ARRAY);
+    ASSERT_EQ(instr->GetType(), opType);
+    ASSERT_EQ(instr->GetInputsCount(), 2);
+    ASSERT_EQ(instr->GetInput(0), array);
+    ASSERT_EQ(instr->GetInput(1), constOne);
+}
+
+TEST_F(InstructionsTest, TestLoadArrayImm) {
+    auto opType = OperandType::U8;
+
+    uint64_t idx = 1;
+    auto *array = GetInstructionBuilder()->CreateNEW_ARRAY(2, 1234);
+    auto *instr = GetInstructionBuilder()->CreateLOAD_ARRAY_IMM(opType, array, idx);
+
+    ASSERT_NE(instr, nullptr);
+    ASSERT_EQ(instr->GetOpcode(), Opcode::LOAD_ARRAY_IMM);
+    ASSERT_EQ(instr->GetType(), opType);
+    ASSERT_EQ(instr->GetInputsCount(), 1);
+    ASSERT_EQ(instr->GetInput(0), array);
+    ASSERT_EQ(instr->GetValue(), idx);
+}
+
+TEST_F(InstructionsTest, TestLoadObject) {
+    auto opType = OperandType::U8;
+
+    uint64_t offset = 8;
+    auto *obj = GetInstructionBuilder()->CreateNEW_OBJECT(1234);
+    auto *instr = GetInstructionBuilder()->CreateLOAD_OBJECT(opType, obj, offset);
+
+    ASSERT_NE(instr, nullptr);
+    ASSERT_EQ(instr->GetOpcode(), Opcode::LOAD_OBJECT);
+    ASSERT_EQ(instr->GetType(), opType);
+    ASSERT_EQ(instr->GetInputsCount(), 1);
+    ASSERT_EQ(instr->GetInput(0), obj);
+    ASSERT_EQ(instr->GetValue(), offset);
+}
+
+TEST_F(InstructionsTest, TestStoreArray) {
+    auto *constOne = GetInstructionBuilder()->CreateCONST(OperandType::U64, 1);
+    auto *value = GetInstructionBuilder()->CreateCONST(OperandType::U64, -1);
+    auto *array = GetInstructionBuilder()->CreateNEW_ARRAY(2, 1234);
+    auto *instr = GetInstructionBuilder()->CreateSTORE_ARRAY(array, value, constOne);
+
+    ASSERT_NE(instr, nullptr);
+    ASSERT_EQ(instr->GetOpcode(), Opcode::STORE_ARRAY);
+    ASSERT_EQ(instr->GetInputsCount(), 3);
+    ASSERT_EQ(instr->GetInput(0), array);
+    ASSERT_EQ(instr->GetInput(1), value);
+    ASSERT_EQ(instr->GetInput(2), constOne);
+}
+
+TEST_F(InstructionsTest, TestStoreArrayImm) {
+    uint64_t idx = 1;
+    auto *value = GetInstructionBuilder()->CreateCONST(OperandType::U64, -1);
+    auto *array = GetInstructionBuilder()->CreateNEW_ARRAY(2, 1234);
+    auto *instr = GetInstructionBuilder()->CreateSTORE_ARRAY_IMM(array, value, idx);
+
+    ASSERT_NE(instr, nullptr);
+    ASSERT_EQ(instr->GetOpcode(), Opcode::STORE_ARRAY_IMM);
+    ASSERT_EQ(instr->GetInputsCount(), 2);
+    ASSERT_EQ(instr->GetInput(0), array);
+    ASSERT_EQ(instr->GetInput(1), value);
+    ASSERT_EQ(instr->GetValue(), idx);
+}
+
+TEST_F(InstructionsTest, TestStoreObject) {
+    uint64_t offset = 8;
+    auto *value = GetInstructionBuilder()->CreateCONST(OperandType::U64, -1);
+    auto *obj = GetInstructionBuilder()->CreateNEW_OBJECT(1234);
+    auto *instr = GetInstructionBuilder()->CreateSTORE_OBJECT(obj, value, offset);
+
+    ASSERT_NE(instr, nullptr);
+    ASSERT_EQ(instr->GetOpcode(), Opcode::STORE_OBJECT);
+    ASSERT_EQ(instr->GetInputsCount(), 2);
+    ASSERT_EQ(instr->GetInput(0), obj);
+    ASSERT_EQ(instr->GetInput(1), value);
+    ASSERT_EQ(instr->GetValue(), offset);
 }
 }   // namespace ir::tests

@@ -15,43 +15,50 @@ namespace ir {
 class BasicBlock;
 
 // Opcodes & Conditional Codes
-#define INSTS_LIST(DEF) \
-    DEF(DIV)            \
-    DEF(DIVI)           \
-    DEF(MOD)            \
-    DEF(MODI)           \
-    DEF(CALL)           \
-    DEF(LOAD)           \
-    DEF(STORE)          \
-    DEF(CMP)            \
-    DEF(JCMP)           \
-    DEF(JMP)            \
-    DEF(RET)            \
-    DEF(RETVOID)        \
-    DEF(CONST)          \
-    DEF(NOT)            \
-    DEF(AND)            \
-    DEF(OR)             \
-    DEF(XOR)            \
-    DEF(NEG)            \
-    DEF(ADD)            \
-    DEF(SUB)            \
-    DEF(MUL)            \
-    DEF(SRA)            \
-    DEF(SLA)            \
-    DEF(SLL)            \
-    DEF(ANDI)           \
-    DEF(ORI)            \
-    DEF(XORI)           \
-    DEF(ADDI)           \
-    DEF(SUBI)           \
-    DEF(MULI)           \
-    DEF(SRAI)           \
-    DEF(SLAI)           \
-    DEF(SLLI)           \
-    DEF(CAST)           \
-    DEF(PHI)            \
-    DEF(ARG)
+#define INSTS_LIST(DEF)     \
+    DEF(DIV)                \
+    DEF(DIVI)               \
+    DEF(MOD)                \
+    DEF(MODI)               \
+    DEF(CALL)               \
+    DEF(CMP)                \
+    DEF(JCMP)               \
+    DEF(JMP)                \
+    DEF(RET)                \
+    DEF(RETVOID)            \
+    DEF(CONST)              \
+    DEF(NOT)                \
+    DEF(AND)                \
+    DEF(OR)                 \
+    DEF(XOR)                \
+    DEF(NEG)                \
+    DEF(ADD)                \
+    DEF(SUB)                \
+    DEF(MUL)                \
+    DEF(SRA)                \
+    DEF(SLA)                \
+    DEF(SLL)                \
+    DEF(ANDI)               \
+    DEF(ORI)                \
+    DEF(XORI)               \
+    DEF(ADDI)               \
+    DEF(SUBI)               \
+    DEF(MULI)               \
+    DEF(SRAI)               \
+    DEF(SLAI)               \
+    DEF(SLLI)               \
+    DEF(CAST)               \
+    DEF(PHI)                \
+    DEF(ARG)                \
+    DEF(LEN)                \
+    DEF(NEW_ARRAY)          \
+    DEF(NEW_OBJECT)         \
+    DEF(LOAD_ARRAY)         \
+    DEF(LOAD_ARRAY_IMM)     \
+    DEF(LOAD_OBJECT)        \
+    DEF(STORE_ARRAY)        \
+    DEF(STORE_ARRAY_IMM)    \
+    DEF(STORE_OBJECT)
 
 enum class Opcode {
 #define OPCODE_DEF(name, ...) name,
@@ -225,7 +232,7 @@ public:
 
 protected:
     virtual void dumpImpl(log4cpp::CategoryStream &stream) const {
-        stream << '#' << GetId() << '\t' << GetOpcodeName() << '\t';
+        stream << '#' << GetId() << '.' << getTypeName(GetType()) << "\t\t" << GetOpcodeName() << "\t\t";
     }
 
 private:
