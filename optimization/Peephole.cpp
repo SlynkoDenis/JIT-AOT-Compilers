@@ -296,7 +296,7 @@ bool PeepholePass::trySUBAfterADD(BinaryRegInstruction *instr) {
         if (input1 == instrInput2) {
             auto *constInstr = graph->GetInstructionBuilder()->CreateCONST(instr->GetType(), typed->GetValue());
             typed->RemoveUser(instr);
-            instr->GetBasicBlock()->ReplaceInstruction(instr, constInstr);
+            ConstantFolding::ReplaceWithConst(instr, constInstr);
             GetLogger(utils::LogPriority::INFO) << "Applied ADDI -> SUB peephole";
             return true;
         }
@@ -334,7 +334,7 @@ bool PeepholePass::trySUBAfterADD(BinaryRegInstruction *instr) {
         if (input1 == instrInput1) {
             auto *constInstr = graph->GetInstructionBuilder()->CreateCONST(instr->GetType(), -(typed->GetValue()));
             typed->RemoveUser(instr);
-            instr->GetBasicBlock()->ReplaceInstruction(instr, constInstr);
+            ConstantFolding::ReplaceWithConst(instr, constInstr);
             GetLogger(utils::LogPriority::INFO) << "Applied ADDI -> SUB peephole";
             return true;
         }
@@ -371,7 +371,7 @@ bool PeepholePass::trySUBRepeatedArgs(BinaryRegInstruction *instr) {
     if (instr->GetInput(0) == instr->GetInput(1)) {
         // case: v1 = v0 - v0 -> v1 = 0
         auto *constZero = graph->GetInstructionBuilder()->CreateCONST(instr->GetType(), 0);
-        instr->GetBasicBlock()->ReplaceInstruction(instr, constZero);
+        ConstantFolding::ReplaceWithConst(instr, constZero);
         GetLogger(utils::LogPriority::INFO) << "Applied SUB: 'v1 = v0 - v0' -> 'v1 = 0' peephole";
         return true;
     }

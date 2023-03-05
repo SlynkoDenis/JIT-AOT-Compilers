@@ -3,6 +3,27 @@
 
 
 namespace ir {
+bool Graph::VerifyFirstBlock() const {
+#ifndef NDEBUG
+    if (!firstBlock) {
+        return true;
+    }
+    ASSERT(firstBlock->GetFirstPhiInstruction() == nullptr);
+    ASSERT(firstBlock->GetLastPhiInstruction() == nullptr);
+    bool foundConst = false;
+    for (auto *instr : *firstBlock) {
+        if (instr->IsConst()) {
+            foundConst = true;
+        } else if (instr->GetOpcode() == Opcode::ARG) {
+            ASSERT(!foundConst);
+        } else {
+            UNREACHABLE("First basic block must contain only sequence of ARG and CONST instructions");
+        }
+    }
+#endif  // NDEBUG
+    return true;
+}
+
 size_t Graph::CountInstructions() const {
     size_t counter = 0;
     ForEachBasicBlock([&counter](const BasicBlock *bblock) { counter += bblock->GetSize(); });

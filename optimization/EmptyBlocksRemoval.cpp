@@ -6,43 +6,35 @@ namespace ir {
 /* static */
 bool EmptyBlocksRemoval::RemoveIfEmpty(BasicBlock *bblock) {
     ASSERT(bblock);
-    if (!bblock->IsEmpty() || bblock->IsLastInGraph()) {
+    if (!bblock->IsEmpty() || bblock->IsFirstInGraph() || bblock->IsLastInGraph()) {
         return false;
     }
-    if (bblock->HasNoPredecessors() && !bblock->HasNoSuccessors()) {
-        ASSERT(bblock->IsFirstInGraph() && bblock->GetSuccessors().size() == 1);
-        auto *succ = bblock->GetSuccessors()[0];
-        ASSERT(succ->GetPredecessors().size() == 1 && succ->GetPredecessors()[0] == bblock);
-        succ->GetPredecessors().clear();
-        bblock->GetGraph()->SetFirstBasicBlock(succ);
-    } else {
-        BasicBlock *successorToSet = nullptr;
-        if (!bblock->HasNoSuccessors()) {
-            auto succs = bblock->GetSuccessors();
-            ASSERT(succs.size() == 1);
-            successorToSet = succs[0];
-            successorToSet->RemovePredecessor(bblock);
-        }
-        for (auto *pred : bblock->GetPredecessors()) {
-            ASSERT(pred);
-            auto succs = pred->GetSuccessors();
-            ASSERT(!succs.empty() && succs.size() <= 2);
+    BasicBlock *successorToSet = nullptr;
+    if (!bblock->HasNoSuccessors()) {
+        auto succs = bblock->GetSuccessors();
+        ASSERT(succs.size() == 1);
+        successorToSet = succs[0];
+        successorToSet->RemovePredecessor(bblock);
+    }
+    for (auto *pred : bblock->GetPredecessors()) {
+        ASSERT(pred);
+        auto succs = pred->GetSuccessors();
+        ASSERT(!succs.empty() && succs.size() <= 2);
 
-            if (successorToSet == nullptr) {
-                if (succs.size() == 2) {
-                    // branch can be removed, as it always taken / not taken
-                    auto *jcmp = pred->GetLastInstruction();
-                    ASSERT(jcmp && jcmp->IsBranch());
-                    auto *cmp = jcmp->GetPrevInstruction();
-                    ASSERT(cmp && cmp->GetOpcode() == Opcode::CMP);
-                    pred->UnlinkInstruction(jcmp);
-                    pred->UnlinkInstruction(cmp);
-                }
-                pred->RemoveSuccessor(bblock);
-            } else {
-                successorToSet->AddPredecessor(pred);
-                pred->ReplaceSuccessor(bblock, successorToSet);
+        if (successorToSet == nullptr) {
+            if (succs.size() == 2) {
+                // branch can be removed, as it always taken / not taken
+                auto *jcmp = pred->GetLastInstruction();
+                ASSERT(jcmp && jcmp->IsBranch());
+                auto *cmp = jcmp->GetPrevInstruction();
+                ASSERT(cmp && cmp->GetOpcode() == Opcode::CMP);
+                pred->UnlinkInstruction(jcmp);
+                pred->UnlinkInstruction(cmp);
             }
+            pred->RemoveSuccessor(bblock);
+        } else {
+            successorToSet->AddPredecessor(pred);
+            pred->ReplaceSuccessor(bblock, successorToSet);
         }
     }
     bblock->GetPredecessors().clear();

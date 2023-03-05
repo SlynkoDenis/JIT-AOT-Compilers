@@ -39,29 +39,32 @@ CallInstruction *InliningTest::BuildCallerGraph(bool voidReturn) {
     //     }
     // }
     auto *instrBuilder = GetInstructionBuilder();
+    auto *graph = GetGraph();
 
-    auto *firstBlock = GetGraph()->CreateEmptyBasicBlock();
-    GetGraph()->SetFirstBasicBlock(firstBlock);
     auto *curFibValue = instrBuilder->CreateARG(OPS_TYPE);
     auto *prevFibValue = instrBuilder->CreateARG(OPS_TYPE);
     auto *argFibNumber = instrBuilder->CreateARG(OPS_TYPE);
     auto *constZero = instrBuilder->CreateCONST(OPS_TYPE, 0);
+    auto *sourceBlock = FillFirstBlock(
+        graph,
+        curFibValue, prevFibValue, argFibNumber, constZero);
+
+    auto *firstBlock = graph->CreateEmptyBasicBlock();
+    graph->ConnectBasicBlocks(sourceBlock, firstBlock);
     auto *cmp = instrBuilder->CreateCMP(OPS_TYPE, CondCode::GE, argFibNumber, constZero);
     auto *jcmp = instrBuilder->CreateJCMP();
-    instrBuilder->PushBackInstruction(
-        firstBlock,
-        curFibValue, prevFibValue, argFibNumber, constZero, cmp, jcmp);
+    instrBuilder->PushBackInstruction(firstBlock, cmp, jcmp);
 
-    auto *trueBranch = GetGraph()->CreateEmptyBasicBlock(true);
-    GetGraph()->ConnectBasicBlocks(firstBlock, trueBranch);
+    auto *trueBranch = graph->CreateEmptyBasicBlock(true);
+    graph->ConnectBasicBlocks(firstBlock, trueBranch);
     auto *newFibValue = instrBuilder->CreateADD(OPS_TYPE, curFibValue, prevFibValue);
     auto *decrementedFibNumber = instrBuilder->CreateSUBI(OPS_TYPE, argFibNumber, 1);
-    std::pmr::vector<Input> args(GetGraph()->GetMemoryResource());
+    std::pmr::vector<Input> args(graph->GetMemoryResource());
     args.push_back(newFibValue);
     args.push_back(curFibValue);
     args.push_back(decrementedFibNumber);
     auto *recursiveCall = instrBuilder->CreateCALL(
-        voidReturn ? OperandType::VOID : OPS_TYPE, GetGraph()->GetId(), args);
+        voidReturn ? OperandType::VOID : OPS_TYPE, graph->GetId(), args);
     InstructionBase *recursiveRet = nullptr;
     if (voidReturn) {
         recursiveRet = instrBuilder->CreateRETVOID();
@@ -72,8 +75,8 @@ CallInstruction *InliningTest::BuildCallerGraph(bool voidReturn) {
         trueBranch,
         newFibValue, decrementedFibNumber, recursiveCall, recursiveRet);
 
-    auto *falseBranch = GetGraph()->CreateEmptyBasicBlock(true);
-    GetGraph()->ConnectBasicBlocks(firstBlock, falseBranch);
+    auto *falseBranch = graph->CreateEmptyBasicBlock(true);
+    graph->ConnectBasicBlocks(firstBlock, falseBranch);
     auto callType = voidReturn ? OperandType::VOID : OPS_TYPE;
     auto *finalCall = instrBuilder->CreateCALL(
         callType,
@@ -102,14 +105,16 @@ Graph *InliningTest::BuildSimpleCallee() {
     auto *calleeGraph = compiler.CreateNewGraph();
     auto *instrBuilder = GetInstructionBuilder(calleeGraph);
 
-    auto *bblock = calleeGraph->CreateEmptyBasicBlock(true);
-    calleeGraph->SetFirstBasicBlock(bblock);
     auto *arg0 = instrBuilder->CreateARG(OPS_TYPE);
     auto *arg1 = instrBuilder->CreateARG(OPS_TYPE);
+    auto *firstBlock = FillFirstBlock(calleeGraph, arg0, arg1);
+
+    auto *bblock = calleeGraph->CreateEmptyBasicBlock(true);
+    calleeGraph->ConnectBasicBlocks(firstBlock, bblock);
     auto *sub = instrBuilder->CreateSUB(OPS_TYPE, arg1, arg0);
     auto *mul = instrBuilder->CreateMULI(OPS_TYPE, sub, 3);
     auto *ret = instrBuilder->CreateRET(OPS_TYPE, mul);
-    instrBuilder->PushBackInstruction(bblock, arg0, arg1, sub, mul, ret);
+    instrBuilder->PushBackInstruction(bblock, sub, mul, ret);
 
     return calleeGraph;
 }
@@ -133,16 +138,18 @@ Graph *InliningTest::BuildMultipleReturnsCallee() {
     auto *calleeGraph = compiler.CreateNewGraph();
     auto *instrBuilder = GetInstructionBuilder(calleeGraph);
 
-    auto *firstBlock = calleeGraph->CreateEmptyBasicBlock();
-    calleeGraph->SetFirstBasicBlock(firstBlock);
     auto *arg0 = instrBuilder->CreateARG(OPS_TYPE);
     auto *arg1 = instrBuilder->CreateARG(OPS_TYPE);
     auto *constZero = instrBuilder->CreateCONST(OPS_TYPE, 0);
     auto *constThree = instrBuilder->CreateCONST(OPS_TYPE, 3);
+    auto *sourceBlock = FillFirstBlock(calleeGraph, arg0, arg1, constZero, constThree);
+
+    auto *firstBlock = calleeGraph->CreateEmptyBasicBlock();
+    calleeGraph->ConnectBasicBlocks(sourceBlock, firstBlock);
     auto *modiByTwo = instrBuilder->CreateMODI(OPS_TYPE, arg1, 2);
     auto *cmp = instrBuilder->CreateCMP(OPS_TYPE, CondCode::EQ, modiByTwo, constZero);
     auto *jcmp = instrBuilder->CreateJCMP();
-    instrBuilder->PushBackInstruction(firstBlock, arg0, arg1, constZero, constThree, modiByTwo, cmp, jcmp);
+    instrBuilder->PushBackInstruction(firstBlock, modiByTwo, cmp, jcmp);
 
     auto *trueBranch = calleeGraph->CreateEmptyBasicBlock(true);
     auto *diviByTwo = instrBuilder->CreateDIVI(OPS_TYPE, arg1, 2);
@@ -180,15 +187,17 @@ Graph *InliningTest::BuildVoidReturnCallee() {
     auto *calleeGraph = compiler.CreateNewGraph();
     auto *instrBuilder = GetInstructionBuilder(calleeGraph);
 
-    auto *bblock = calleeGraph->CreateEmptyBasicBlock(true);
-    calleeGraph->SetFirstBasicBlock(bblock);
     auto *arg0 = instrBuilder->CreateARG(OPS_TYPE);
     auto *arg1 = instrBuilder->CreateARG(OPS_TYPE);
+    auto *firstBlock = FillFirstBlock(calleeGraph, arg0, arg1);
+
+    auto *bblock = calleeGraph->CreateEmptyBasicBlock(true);
+    calleeGraph->ConnectBasicBlocks(firstBlock, bblock);
     auto *sub = instrBuilder->CreateSUB(OPS_TYPE, arg1, arg0);
     // div for side-effects
     auto *div = instrBuilder->CreateDIV(OPS_TYPE, sub, arg1);
     auto *retVoid = instrBuilder->CreateRETVOID();
-    instrBuilder->PushBackInstruction(bblock, arg0, arg1, sub, div, retVoid);
+    instrBuilder->PushBackInstruction(bblock, sub, div, retVoid);
 
     return calleeGraph;
 }
@@ -197,32 +206,28 @@ TEST_F(InliningTest, TestInlineSimple) {
     ASSERT_EQ(GetGraph()->GetBasicBlocksCount(), 0);
     auto *call = BuildCallerGraph(false);
     auto *callerGraph = GetGraph();
-    size_t callerBlocksCount = 4;
-    ASSERT_EQ(callerGraph->GetBasicBlocksCount(), callerBlocksCount);
+    size_t callerBlocksCount = callerGraph->GetBasicBlocksCount();
     ASSERT_EQ(callerGraph->CountInstructions(), 12);
 
     auto *calleeGraph = BuildSimpleCallee();
-    size_t calleeBlocksCount = 2;
-    ASSERT_EQ(calleeGraph->GetBasicBlocksCount(), calleeBlocksCount);
+    size_t calleeBlocksCount = calleeGraph->GetBasicBlocksCount();
     ASSERT_EQ(calleeGraph->CountInstructions(), 5);
     call->SetCallTarget(calleeGraph->GetId());
     ASSERT_EQ(compiler.GetFunction(call->GetCallTarget()), calleeGraph);
 
     RunPass();
 
-    ASSERT_EQ(callerGraph->GetBasicBlocksCount(), 2 * callerBlocksCount + calleeBlocksCount - 1);
+    ASSERT_EQ(callerGraph->GetBasicBlocksCount(), 2 * callerBlocksCount + calleeBlocksCount - 3);
 }
 
 TEST_F(InliningTest, TestInlineMultipleReturns) {
     auto *call = BuildCallerGraph(false);
     auto *callerGraph = GetGraph();
-    size_t callerBlocksCount = 4;
-    ASSERT_EQ(callerGraph->GetBasicBlocksCount(), callerBlocksCount);
+    size_t callerBlocksCount = callerGraph->GetBasicBlocksCount();
     ASSERT_EQ(callerGraph->CountInstructions(), 12);
 
     auto *calleeGraph = BuildMultipleReturnsCallee();
-    size_t calleeBlocksCount = 6;
-    ASSERT_EQ(calleeGraph->GetBasicBlocksCount(), calleeBlocksCount);
+    size_t calleeBlocksCount = calleeGraph->GetBasicBlocksCount();
     ASSERT_EQ(calleeGraph->CountInstructions(), 15);
     call->SetCallTarget(calleeGraph->GetId());
     ASSERT_EQ(compiler.GetFunction(call->GetCallTarget()), calleeGraph);
@@ -230,25 +235,23 @@ TEST_F(InliningTest, TestInlineMultipleReturns) {
     RunPass();
 
     ASSERT_EQ(callerGraph->GetBasicBlocksCount(),
-              2 * callerBlocksCount + calleeBlocksCount + 2);
+              2 * callerBlocksCount + calleeBlocksCount);
 }
 
 TEST_F(InliningTest, TestInlineVoidReturn) {
     auto *call = BuildCallerGraph(true);
     auto *callerGraph = GetGraph();
-    size_t callerBlocksCount = 4;
-    ASSERT_EQ(callerGraph->GetBasicBlocksCount(), callerBlocksCount);
+    size_t callerBlocksCount = callerGraph->GetBasicBlocksCount();
     ASSERT_EQ(callerGraph->CountInstructions(), 12);
 
     auto *calleeGraph = BuildVoidReturnCallee();
-    size_t calleeBlocksCount = 2;
-    ASSERT_EQ(calleeGraph->GetBasicBlocksCount(), calleeBlocksCount);
+    size_t calleeBlocksCount = calleeGraph->GetBasicBlocksCount();
     ASSERT_EQ(calleeGraph->CountInstructions(), 5);
     call->SetCallTarget(calleeGraph->GetId());
     ASSERT_EQ(compiler.GetFunction(call->GetCallTarget()), calleeGraph);
 
     RunPass();
 
-    ASSERT_EQ(callerGraph->GetBasicBlocksCount(), 2 * callerBlocksCount + calleeBlocksCount - 1);
+    ASSERT_EQ(callerGraph->GetBasicBlocksCount(), 2 * callerBlocksCount + calleeBlocksCount - 3);
 }
 }   // namespace ir::tests

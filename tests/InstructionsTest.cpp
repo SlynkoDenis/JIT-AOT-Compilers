@@ -80,13 +80,15 @@ TEST_F(InstructionsTest, TestJumpCMP) {
     auto *instrBuilder = GetInstructionBuilder();
     auto opType = OperandType::I16;
 
-    auto *bblockSource = graph->CreateEmptyBasicBlock();
-    graph->SetFirstBasicBlock(bblockSource);
     auto *lhs = instrBuilder->CreateARG(opType);
     auto *rhs = instrBuilder->CreateARG(opType);
+    auto *firstBlock = FillFirstBlock(graph, lhs, rhs);
+
+    auto *bblockSource = graph->CreateEmptyBasicBlock();
+    graph->ConnectBasicBlocks(firstBlock, bblockSource);
     auto *cmp = instrBuilder->CreateCMP(opType, CondCode::GE, lhs, rhs);
     auto *jcmp = instrBuilder->CreateJCMP();
-    instrBuilder->PushBackInstruction(bblockSource, lhs, rhs, cmp, jcmp);
+    instrBuilder->PushBackInstruction(bblockSource, cmp, jcmp);
 
     auto *bblockTrue = graph->CreateEmptyBasicBlock();
     graph->ConnectBasicBlocks(bblockSource, bblockTrue);
@@ -104,8 +106,11 @@ TEST_F(InstructionsTest, TestJmp) {
     auto *graph = GetGraph();
     auto *instrBuilder = GetInstructionBuilder();
 
+    auto *firstBlock = graph->CreateEmptyBasicBlock();
+    graph->SetFirstBasicBlock(firstBlock);
+
     auto *bblockSource = graph->CreateEmptyBasicBlock();
-    graph->SetFirstBasicBlock(bblockSource);
+    graph->ConnectBasicBlocks(firstBlock, bblockSource);
     auto *jmp = instrBuilder->CreateJMP();
     instrBuilder->PushBackInstruction(bblockSource, jmp);
 
@@ -121,7 +126,6 @@ TEST_F(InstructionsTest, TestJmp) {
 TEST_F(InstructionsTest, TestRet) {
     auto opType = OperandType::U8;
     auto *arg = GetInstructionBuilder()->CreateARG(opType);
-
     auto *instr = GetInstructionBuilder()->CreateRET(opType, arg);
 
     ASSERT_NE(instr, nullptr);

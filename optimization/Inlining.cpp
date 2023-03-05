@@ -80,13 +80,14 @@ void InliningPass::doInlining(CallInstruction *call, Graph *callee) {
 
     auto *callBlock = call->GetBasicBlock();
     auto *postCallBlock = callBlock->SplitAfterInstruction(call, false);
+
     propagateArguments(call, callee);
     propagateReturnValue(call, callee, postCallBlock);
-
     call->RemoveUserFromInputs();
     callBlock->UnlinkInstruction(call);
 
     inlineReadyGraph(callee, callBlock, postCallBlock);
+
     GetLogger(utils::LogPriority::INFO) << "Inlined function #" << callee->GetId();
 }
 
@@ -98,7 +99,9 @@ void InliningPass::propagateArguments(CallInstruction *call, Graph *callee) {
         ASSERT((argInstr) && argInstr->GetOpcode() == Opcode::ARG);
         auto *nextInstr = argInstr->GetNextInstruction();
         argInstr->ReplaceInputInUsers(arg.GetInstruction());
-        bblock->UnlinkInstruction(argInstr);
+        // unlinking argInstr is redundant because all instructions from the first block
+        // will be removed with the block itself
+        // bblock->UnlinkInstruction(argInstr);
         argInstr = nextInstr;
     }
 }
@@ -155,10 +158,36 @@ void InliningPass::removeVoidReturns(Graph *callee) {
     }
 }
 
+void InliningPass::moveConstants(Graph *callee) {
+    ASSERT(callee && callee->GetFirstBasicBlock());
+    auto *firstBlock = graph->GetFirstBasicBlock();
+    ASSERT(firstBlock);
+    auto *instr = callee->GetFirstBasicBlock()->GetLastInstruction();
+    while (instr != nullptr && instr->IsConst()) {
+        auto *prev = instr->GetPrevInstruction();
+        firstBlock->MoveConstantUnsafe(instr);
+        instr = prev;
+    }
+}
+
+void InliningPass::removeFirstBlock(Graph *callee) {
+    ASSERT(callee);
+    auto *calleeFirstBlock = callee->GetFirstBasicBlock();
+    ASSERT(calleeFirstBlock);
+    auto succs = calleeFirstBlock->GetSuccessors();
+    ASSERT(succs.size() == 1);
+
+    callee->UnlinkBasicBlock(calleeFirstBlock);
+    callee->SetFirstBasicBlock(succs[0]);
+    succs[0]->GetPredecessors().clear();
+}
+
 void InliningPass::inlineReadyGraph(Graph *callee,
                                     BasicBlock *callBlock,
                                     BasicBlock *postCallBlock) {
     ASSERT((callee) && (callBlock) && (postCallBlock));
+    moveConstants(callee);
+    removeFirstBlock(callee);
     relinkBasicBlocks(callBlock->GetGraph(), callee);
     graph->ConnectBasicBlocks(callBlock, callee->GetFirstBasicBlock());
 

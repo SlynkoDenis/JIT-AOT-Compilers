@@ -22,6 +22,7 @@ public:
         DFO::Traverse(graph, []([[maybe_unused]] const BasicBlock *bblock) {
             /* DFO dry run to check graph is properly connected */
         });
+        ASSERT(graph->VerifyFirstBlock());
         return true;
     }
 
