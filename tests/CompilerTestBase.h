@@ -30,6 +30,29 @@ public:
         return targetGraph->GetInstructionBuilder();
     }
 
+    template <typename InstructionsT>
+    static inline BasicBlock *FillFirstBlock(Graph *g, InstructionsT &&instrs)
+    requires std::is_same_v<typename InstructionsT::value_type, InstructionBase *>
+    {
+        ASSERT(g != nullptr);
+        auto *firstBlock = g->CreateEmptyBasicBlock();
+        g->GetInstructionBuilder()->PushBackInstruction(firstBlock, std::move(instrs));
+        g->SetFirstBasicBlock(firstBlock);
+        return firstBlock;
+    }
+    template <typename... ArgsT>
+    static inline BasicBlock *FillFirstBlock(Graph *g, ArgsT... instrs)
+    requires ((std::is_same_v<ArgsT, InputArgumentInstruction *>
+               || std::is_same_v<ArgsT, ConstantInstruction *>) && ...)
+    {
+        ASSERT(g != nullptr);
+        auto *firstBlock = g->CreateEmptyBasicBlock();
+        g->GetInstructionBuilder()->PushBackInstruction(firstBlock, instrs...);
+        g->SetFirstBasicBlock(firstBlock);
+        ASSERT(firstBlock->GetSize() == sizeof...(ArgsT));
+        return firstBlock;
+    }
+
     static void compareInstructions(std::vector<InstructionBase *> expected, BasicBlock *bblock) {
         ASSERT_EQ(bblock->GetSize(), expected.size());
         size_t i = 0;

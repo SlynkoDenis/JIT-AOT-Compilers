@@ -86,25 +86,35 @@ TEST_F(BasicBlockTest, TestBasicBlock3) {
 }
 
 TEST_F(BasicBlockTest, TestSplitAfterInstruction) {
+    // callValue = foo(arg0, arg1)
+    // divi = callValue / 3
+    // if (divi >= 10) {
+    //     muli = callValue * 2
+    //     return muli
+    // } else {
+    //     return divi
+    // }
     auto *instrBuilder = GetInstructionBuilder();
     auto type = OperandType::I16;
     auto *graph = GetGraph();
 
-    auto *splittedBlock = graph->CreateEmptyBasicBlock();
-    graph->SetFirstBasicBlock(splittedBlock);
+    auto *firstBlock = graph->CreateEmptyBasicBlock();
+    graph->SetFirstBasicBlock(firstBlock);
     auto *arg0 = instrBuilder->CreateARG(type);
     auto *arg1 = instrBuilder->CreateARG(type);
+    auto *constTen = instrBuilder->CreateCONST(type, 10);
+    instrBuilder->PushBackInstruction(firstBlock, arg0, arg1, constTen);
+
+    auto *splittedBlock = graph->CreateEmptyBasicBlock();
+    graph->ConnectBasicBlocks(firstBlock, splittedBlock);
     std::pmr::vector<Input> args(GetGraph()->GetMemoryResource());
     args.push_back(arg0);
     args.push_back(arg1);
     auto *call = instrBuilder->CreateCALL(type, INVALID_FUNCTION_ID, args);
     auto *divi = instrBuilder->CreateDIVI(type, call, 3);
-    auto *constTen = instrBuilder->CreateCONST(type, 10);
     auto *cmp = instrBuilder->CreateCMP(type, CondCode::GE, divi, constTen);
     auto *jcmp = instrBuilder->CreateJCMP();
-    instrBuilder->PushBackInstruction(
-        splittedBlock,
-        arg0, arg1, call, divi, constTen, cmp, jcmp);
+    instrBuilder->PushBackInstruction(splittedBlock, call, divi, cmp, jcmp);
 
     auto *trueBranch = graph->CreateEmptyBasicBlock(true);
     graph->ConnectBasicBlocks(splittedBlock, trueBranch);
@@ -116,20 +126,23 @@ TEST_F(BasicBlockTest, TestSplitAfterInstruction) {
     graph->ConnectBasicBlocks(splittedBlock, falseBranch);
     auto *ret2 = instrBuilder->CreateRET(type, divi);
     instrBuilder->PushBackInstruction(falseBranch, ret2);
-    ASSERT_EQ(graph->GetBasicBlocksCount(), 4);
+    auto bblocksCount = graph->GetBasicBlocksCount();
 
     auto *newBlock = call->GetBasicBlock()->SplitAfterInstruction(call, false);
 
-    ASSERT_EQ(graph->GetBasicBlocksCount(), 5);
+    ASSERT_EQ(graph->GetBasicBlocksCount(), bblocksCount + 1);
     ASSERT_EQ(call->GetNextInstruction(), nullptr);
     ASSERT_TRUE(splittedBlock->GetSuccessors().empty());
-    ASSERT_EQ(splittedBlock->GetSize(), 3);
-    ASSERT_EQ(splittedBlock->GetFirstInstruction(), arg0);
+    ASSERT_EQ(splittedBlock->GetSize(), 1);
+    ASSERT_EQ(splittedBlock->GetFirstInstruction(), call);
     ASSERT_EQ(splittedBlock->GetLastInstruction(), call);
     ASSERT_TRUE(newBlock->GetPredecessors().empty());
-    ASSERT_EQ(newBlock->GetSize(), 4);
+    ASSERT_EQ(newBlock->GetSize(), 3);
     ASSERT_EQ(newBlock->GetFirstInstruction(), divi);
-    ASSERT_EQ(newBlock->GetFirstInstruction()->GetPrevInstruction(), nullptr);
+    ASSERT_EQ(divi->GetPrevInstruction(), nullptr);
+    ASSERT_EQ(divi->GetNextInstruction(), cmp);
     ASSERT_EQ(newBlock->GetLastInstruction(), jcmp);
+    ASSERT_EQ(jcmp->GetPrevInstruction(), cmp);
+    ASSERT_EQ(jcmp->GetNextInstruction(), nullptr);
 }
 }   // namespace ir::tests

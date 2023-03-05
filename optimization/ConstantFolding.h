@@ -19,6 +19,8 @@ public:
     virtual bool ProcessSRA(BinaryRegInstruction *instr);
     virtual bool ProcessSUB(BinaryRegInstruction *instr);
 
+    static void ReplaceWithConst(InstructionBase *instr, ConstantInstruction *targetConst);
+
 private:
     static ConstantInstruction *asConst(InstructionBase *instr);
     static InstructionBuilder *getInstructionBuilder(InstructionBase *instr);

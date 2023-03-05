@@ -13,22 +13,25 @@ TEST_F(DCETest, TestDCE1) {
     // return v2
     //
     // v1 must be cleared by DCE
-    auto *bblock = GetGraph()->CreateEmptyBasicBlock(true);
-    GetGraph()->SetFirstBasicBlock(bblock);
-
     auto type = OperandType::I32;
     auto *instrBuilder = GetInstructionBuilder();
+
     auto *arg = instrBuilder->CreateARG(type);
+    auto *firstBlock = FillFirstBlock(GetGraph(), arg);
+
+    auto *bblock = GetGraph()->CreateEmptyBasicBlock(true);
+    GetGraph()->ConnectBasicBlocks(firstBlock, bblock);
     auto *v0 = instrBuilder->CreateMULI(type, arg, 2);
     auto *v1 = instrBuilder->CreateMULI(type, arg, 3);
     auto *v2 = instrBuilder->CreateSUBI(type, v0, 1);
     auto *ret = instrBuilder->CreateRET(type, v2);
-    instrBuilder->PushBackInstruction(bblock, arg, v0, v1, v2, ret);
-    ASSERT_EQ(bblock->GetSize(), 5);
+    instrBuilder->PushBackInstruction(bblock, v0, v1, v2, ret);
+
+    ASSERT_EQ(bblock->GetSize(), 4);
 
     PassManager::Run<DCEPass>(GetGraph());
 
-    CompilerTestBase::compareInstructions({arg, v0, v2, ret}, bblock);
+    CompilerTestBase::compareInstructions({v0, v2, ret}, bblock);
     ASSERT_EQ(v1->GetBasicBlock(), nullptr);
     ASSERT_EQ(v0->GetNextInstruction(), v2);
 }
@@ -48,17 +51,18 @@ TEST_F(DCETest, TestDCE2) {
     auto *instrBuilder = GetInstructionBuilder();
     auto type = OperandType::I32;
 
-    auto *bblockSource = graph->CreateEmptyBasicBlock();
-    graph->SetFirstBasicBlock(bblockSource);
-
     auto *arg0 = instrBuilder->CreateARG(type);
     auto *arg1 = instrBuilder->CreateARG(type);
     auto *constZero = instrBuilder->CreateCONST(type, 0);
+    auto *firstBlock = FillFirstBlock(graph, arg0, arg1, constZero);
+
+    auto *bblockSource = graph->CreateEmptyBasicBlock();
+    graph->ConnectBasicBlocks(firstBlock, bblockSource);
     auto *v0 = instrBuilder->CreateMULI(type, arg0, 2);
     auto *cmp = instrBuilder->CreateCMP(type, CondCode::EQ, arg1, constZero);
     auto *jcmp = instrBuilder->CreateJCMP();
-    instrBuilder->PushBackInstruction(bblockSource, arg0, arg1, constZero, v0, cmp, jcmp);
-    ASSERT_EQ(bblockSource->GetSize(), 6);
+    instrBuilder->PushBackInstruction(bblockSource, v0, cmp, jcmp);
+    ASSERT_EQ(bblockSource->GetSize(), 3);
 
     auto *bblockTrue = graph->CreateEmptyBasicBlock();
     auto *v1 = instrBuilder->CreateSUBI(type, v0, 1);
@@ -81,12 +85,13 @@ TEST_F(DCETest, TestDCE2) {
     graph->ConnectBasicBlocks(bblockSource, bblockFalse);
     graph->ConnectBasicBlocks(bblockTrue, bblockDest);
     graph->ConnectBasicBlocks(bblockFalse, bblockDest);
-    ASSERT_EQ(graph->GetBasicBlocksCount(), 5);
+    auto bblocksCount = graph->GetBasicBlocksCount();
 
-    PassManager::Run<DCEPass>(GetGraph());
+    PassManager::Run<DCEPass>(graph);
 
-    ASSERT_EQ(graph->GetBasicBlocksCount(), 5);
-    CompilerTestBase::compareInstructions({arg0, arg1, constZero, v0, cmp, jcmp}, bblockSource);
+    ASSERT_EQ(graph->GetBasicBlocksCount(), bblocksCount);
+    CompilerTestBase::compareInstructions({arg0, arg1, constZero}, firstBlock);
+    CompilerTestBase::compareInstructions({v0, cmp, jcmp}, bblockSource);
     CompilerTestBase::compareInstructions({}, bblockTrue);
     CompilerTestBase::compareInstructions({v3}, bblockFalse);
     CompilerTestBase::compareInstructions({v4, ret}, bblockDest);
@@ -99,22 +104,27 @@ TEST_F(DCETest, TestNoDCE) {
     // return v2
     //
     // v1 must NOT be cleared by DCE, as long as division may produce an exception
-    auto *bblock = graph->CreateEmptyBasicBlock(true);
-    GetGraph()->SetFirstBasicBlock(bblock);
-
     auto type = OperandType::I32;
+    auto *graph = GetGraph();
     auto *instrBuilder = GetInstructionBuilder();
+
     auto *arg0 = instrBuilder->CreateARG(type);
     auto *arg1 = instrBuilder->CreateARG(type);
+    auto *firstBlock = FillFirstBlock(graph, arg0, arg1);
+
+    auto *bblock = graph->CreateEmptyBasicBlock(true);
+    graph->ConnectBasicBlocks(firstBlock, bblock);
     auto *v0 = instrBuilder->CreateMULI(type, arg0, 2);
     auto *v1 = instrBuilder->CreateDIV(type, arg0, arg1);
     auto *v2 = instrBuilder->CreateSUBI(type, v0, 1);
     auto *ret = instrBuilder->CreateRET(type, v2);
-    instrBuilder->PushBackInstruction(bblock, arg0, arg1, v0, v1, v2, ret);
-    ASSERT_EQ(bblock->GetSize(), 6);
+    instrBuilder->PushBackInstruction(bblock, v0, v1, v2, ret);
+    ASSERT_EQ(bblock->GetSize(), 4);
+    auto bblocksCount = graph->GetBasicBlocksCount();
 
-    PassManager::Run<DCEPass>(GetGraph());
+    PassManager::Run<DCEPass>(graph);
 
-    CompilerTestBase::compareInstructions({arg0, arg1, v0, v1, v2, ret}, bblock);
+    ASSERT_EQ(graph->GetBasicBlocksCount(), bblocksCount);
+    CompilerTestBase::compareInstructions({v0, v1, v2, ret}, bblock);
 }
 }   // namespace ir::tests

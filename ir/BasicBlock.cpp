@@ -57,10 +57,28 @@ void BasicBlock::ReplacePredecessor(BasicBlock *prevPred, BasicBlock *newPred) {
     *it = newPred;
 }
 
+void BasicBlock::MoveConstantUnsafe(InstructionBase *instr) {
+    ASSERT(IsFirstInGraph());
+    ASSERT((instr) && instr->IsConst());
+    instr->SetNextInstruction(nullptr);
+    if (lastInst == nullptr) {
+        ASSERT(firstInst == nullptr);
+        instr->SetPrevInstruction(nullptr);
+        firstInst = instr;
+        lastInst = instr;
+    } else {
+        lastInst->SetNextInstruction(instr);
+        instr->SetPrevInstruction(lastInst);
+        lastInst = instr;
+    }
+    ++instrsCount;
+}
+
 template <bool PushBack>
 void BasicBlock::pushInstruction(InstructionBase *instr) {
-    ASSERT((instr) && (instr->GetBasicBlock() == nullptr)
-        && (instr->GetPrevInstruction() == nullptr));
+    ASSERT(instr);
+    ASSERT(instr->GetBasicBlock() == nullptr);
+    ASSERT(instr->GetPrevInstruction() == nullptr);
     instr->SetBasicBlock(this);
 
     if (instr->IsPhi()) {
@@ -83,7 +101,7 @@ void BasicBlock::pushInstruction(InstructionBase *instr) {
             firstInst = instr;
         }
     }
-    instrsCount += 1;
+    ++instrsCount;
 }
 
 void BasicBlock::pushPhi(InstructionBase *instr) {
@@ -120,12 +138,14 @@ void BasicBlock::InsertBefore(InstructionBase *before, InstructionBase *target) 
     before->SetPrevInstruction(target);
     target->SetPrevInstruction(prev);
     target->SetNextInstruction(before);
-    prev->SetNextInstruction(target);
 
-    if (!prev) {
+    if (prev) {
+        prev->SetNextInstruction(target);
+    } else {
+        ASSERT(before == firstInst && firstPhi == nullptr && lastPhi == nullptr);
         firstInst = target;
     }
-    instrsCount += 1;
+    ++instrsCount;
 }
 
 void BasicBlock::InsertAfter(InstructionBase *after, InstructionBase *target) {
@@ -136,12 +156,14 @@ void BasicBlock::InsertAfter(InstructionBase *after, InstructionBase *target) {
     after->SetNextInstruction(target);
     target->SetPrevInstruction(after);
     target->SetNextInstruction(next);
-    next->SetPrevInstruction(target);
 
-    if (!next) {
+    if (next) {
+        next->SetPrevInstruction(target);
+    } else {
+        ASSERT(lastInst == after);
         lastInst = target;
     }
-    instrsCount += 1;
+    ++instrsCount;
 }
 
 // TODO: write unit test for this method

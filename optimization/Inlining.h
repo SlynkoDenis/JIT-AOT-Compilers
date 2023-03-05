@@ -38,6 +38,8 @@ private:
     void propagateReturnValue(CallInstruction *call, Graph *callee, BasicBlock *postCallBlock);
 
     void removeVoidReturns(Graph *callee);
+    void moveConstants(Graph *callee);
+    void removeFirstBlock(Graph *callee);
     void inlineReadyGraph(Graph *callee, BasicBlock *callBlock, BasicBlock *postCallBlock);
 
     // Links all callee's basic blocks to the resulting caller graph.

@@ -134,6 +134,8 @@ public:
     void UnlinkBasicBlock(BasicBlock *bblock);
     void RemoveUnlinkedBlocks();
 
+    bool VerifyFirstBlock() const;
+
 public:
     static constexpr IdType INVALID_ID = static_cast<IdType>(-1);
 
@@ -147,6 +149,7 @@ private:
 
     CompilerBase *compiler;
 
+    // first basic block contains ONLY all arguments and all constants for the graph
     BasicBlock *firstBlock;
     // last basic block collects all control flow exits from the graph
     BasicBlock *lastBlock;

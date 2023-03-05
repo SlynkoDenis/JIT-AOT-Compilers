@@ -13,8 +13,14 @@ void GraphChecker::VerifyControlAndDataFlowGraphs(const BasicBlock *bblock) {
         ASSERT(bblock->GetLastInstruction() == nullptr);
         return;
     }
+
+    bool blockNotFirst = !bblock->IsFirstInGraph();
     size_t counter = 0;
     while (instr) {
+        if (blockNotFirst) {
+            ASSERT(!instr->IsConst() && instr->GetOpcode() != Opcode::ARG);
+        }
+
         if (bblock->GetFirstPhiInstruction()) {
             if (instr != bblock->GetFirstPhiInstruction()) {
                 ASSERT(instr->GetPrevInstruction() != nullptr);

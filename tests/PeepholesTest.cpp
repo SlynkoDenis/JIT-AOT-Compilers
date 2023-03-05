@@ -15,21 +15,25 @@ TEST_F(PeepholesTest, TestAND1) {
     // expected:
     // v2 is replaced with v0
     auto opType = OperandType::I32;
-    auto *arg = GetInstructionBuilder()->CreateARG(opType);
-    auto *constZero = GetInstructionBuilder()->CreateCONST(opType, 0);
-    auto *andInstr = GetInstructionBuilder()->CreateAND(opType, arg, constZero);
-    auto *userInstr = GetInstructionBuilder()->CreateADDI(opType, andInstr, 123);
+    auto *instrBuilder = GetInstructionBuilder();
+    auto *graph = GetGraph();
 
-    auto *bblock = GetGraph()->CreateEmptyBasicBlock();
-    GetGraph()->SetFirstBasicBlock(bblock);
-    GetInstructionBuilder()->PushBackInstruction(bblock, constZero, arg, andInstr, userInstr);
+    auto *arg = instrBuilder->CreateARG(opType);
+    auto *constZero = instrBuilder->CreateCONST(opType, 0);
+    auto *firstBlock = FillFirstBlock(graph, arg, constZero);
+
+    auto *bblock = graph->CreateEmptyBasicBlock();
+    graph->ConnectBasicBlocks(firstBlock, bblock);
+    auto *andInstr = instrBuilder->CreateAND(opType, arg, constZero);
+    auto *userInstr = instrBuilder->CreateADDI(opType, andInstr, 123);
+    instrBuilder->PushBackInstruction(bblock, andInstr, userInstr);
     auto prevSize = bblock->GetSize();
 
-    PassManager::Run<PeepholePass>(GetGraph());
+    PassManager::Run<PeepholePass>(graph);
 
     CompilerTestBase::VerifyControlAndDataFlowGraphs(bblock);
     ASSERT_EQ(bblock->GetSize(), prevSize - 1);
-    compareInstructions({constZero, arg, userInstr}, bblock);
+    compareInstructions({userInstr}, bblock);
     ASSERT_EQ(bblock->GetLastInstruction(), userInstr);
     ASSERT_EQ(userInstr->GetInput(0), constZero);
 }
@@ -41,19 +45,23 @@ TEST_F(PeepholesTest, TestAND2) {
     // expected:
     // v2 is replaced with v1
     auto opType = OperandType::I32;
-    auto *arg = GetInstructionBuilder()->CreateARG(opType);
-    auto *constMax = GetInstructionBuilder()->CreateCONST(opType, std::numeric_limits<int32_t>::max());
-    auto *andInstr = GetInstructionBuilder()->CreateAND(opType, arg, constMax);
-    auto *userInstr = GetInstructionBuilder()->CreateADDI(opType, andInstr, 123);
+    auto *instrBuilder = GetInstructionBuilder();
+
+    auto *arg = instrBuilder->CreateARG(opType);
+    auto *constMax = instrBuilder->CreateCONST(opType, std::numeric_limits<int32_t>::max());
+    auto *firstBlock = FillFirstBlock(GetGraph(), arg, constMax);
+
+    auto *andInstr = instrBuilder->CreateAND(opType, arg, constMax);
+    auto *userInstr = instrBuilder->CreateADDI(opType, andInstr, 123);
 
     auto *bblock = GetGraph()->CreateEmptyBasicBlock();
-    GetGraph()->SetFirstBasicBlock(bblock);
-    GetInstructionBuilder()->PushBackInstruction(bblock, constMax, arg, andInstr, userInstr);
+    GetGraph()->ConnectBasicBlocks(firstBlock, bblock);
+    instrBuilder->PushBackInstruction(bblock, andInstr, userInstr);
 
     PassManager::Run<PeepholePass>(GetGraph());
 
     CompilerTestBase::VerifyControlAndDataFlowGraphs(bblock);
-    compareInstructions({constMax, arg, userInstr}, bblock);
+    compareInstructions({userInstr}, bblock);
 }
 
 TEST_F(PeepholesTest, TestANDWithNEGArgs) {
@@ -63,16 +71,20 @@ TEST_F(PeepholesTest, TestANDWithNEGArgs) {
     // v3 = v0 | v1
     // v2 = ~v3
     auto opType = OperandType::I32;
-    auto *arg1 = GetInstructionBuilder()->CreateARG(opType);
-    auto *arg2 = GetInstructionBuilder()->CreateARG(opType);
-    auto *not1 = GetInstructionBuilder()->CreateNOT(opType, arg1);
-    auto *not2 = GetInstructionBuilder()->CreateNOT(opType, arg2);
-    auto *andInstr = GetInstructionBuilder()->CreateAND(opType, not1, not2);
-    auto *userInstr = GetInstructionBuilder()->CreateADDI(opType, andInstr, 123);
+    auto *instrBuilder = GetInstructionBuilder();
+
+    auto *arg1 = instrBuilder->CreateARG(opType);
+    auto *arg2 = instrBuilder->CreateARG(opType);
+    auto *firstBlock = FillFirstBlock(GetGraph(), arg1, arg2);
+
+    auto *not1 = instrBuilder->CreateNOT(opType, arg1);
+    auto *not2 = instrBuilder->CreateNOT(opType, arg2);
+    auto *andInstr = instrBuilder->CreateAND(opType, not1, not2);
+    auto *userInstr = instrBuilder->CreateADDI(opType, andInstr, 123);
 
     auto *bblock = GetGraph()->CreateEmptyBasicBlock();
-    GetGraph()->SetFirstBasicBlock(bblock);
-    GetInstructionBuilder()->PushBackInstruction(bblock, arg1, arg2, not1, not2, andInstr, userInstr);
+    GetGraph()->ConnectBasicBlocks(firstBlock, bblock);
+    instrBuilder->PushBackInstruction(bblock, not1, not2, andInstr, userInstr);
     auto prevSize = bblock->GetSize();
 
     PassManager::Run<PeepholePass>(GetGraph());
@@ -100,18 +112,44 @@ TEST_F(PeepholesTest, TestANDRepeatedArgs) {
     // expected:
     // v1 is replaced with v0
     auto opType = OperandType::I32;
-    auto *arg = GetInstructionBuilder()->CreateARG(opType);
-    auto *andInstr = GetInstructionBuilder()->CreateAND(opType, arg, arg);
-    auto *userInstr = GetInstructionBuilder()->CreateADDI(opType, andInstr, 123);
+    auto *instrBuilder = GetInstructionBuilder();
+
+    auto *arg = instrBuilder->CreateARG(opType);
+    auto *firstBlock = FillFirstBlock(GetGraph(), arg);
 
     auto *bblock = GetGraph()->CreateEmptyBasicBlock();
-    GetGraph()->SetFirstBasicBlock(bblock);
-    GetInstructionBuilder()->PushBackInstruction(bblock, arg, andInstr, userInstr);
+    GetGraph()->ConnectBasicBlocks(firstBlock, bblock);
+    auto *andInstr = instrBuilder->CreateAND(opType, arg, arg);
+    auto *userInstr = instrBuilder->CreateADDI(opType, andInstr, 123);
+    instrBuilder->PushBackInstruction(bblock, andInstr, userInstr);
 
     PassManager::Run<PeepholePass>(GetGraph());
 
     CompilerTestBase::VerifyControlAndDataFlowGraphs(bblock);
-    compareInstructions({arg, userInstr}, bblock);
+    compareInstructions({userInstr}, bblock);
+}
+
+static void CheckReplacementWithConstant(
+    size_t firstBlockPrevSize,
+    BasicBlock *bblock,
+    size_t bblockPrevSize,
+    BinaryImmInstruction *userInstr,
+    BinaryImmInstruction::Type expectedValue)
+{
+    auto *firstBlock = bblock->GetGraph()->GetFirstBasicBlock();
+    ASSERT(firstBlock);
+    ASSERT_EQ(firstBlock->GetSize(), firstBlockPrevSize + 1);
+    ASSERT_EQ(bblock->GetSize(), bblockPrevSize - 1);
+
+    if (bblockPrevSize == 2) {
+        ASSERT_EQ(bblock->GetFirstInstruction(), userInstr);
+    }
+    ASSERT_EQ(bblock->GetLastInstruction(), userInstr);
+    auto *newInstr = firstBlock->GetLastInstruction();
+    ASSERT_NE(newInstr, nullptr);
+    ASSERT_TRUE(newInstr->IsConst());
+    ASSERT_EQ(userInstr->GetInput(0), newInstr);
+    ASSERT_EQ(static_cast<ConstantInstruction *>(newInstr)->GetValue(), expectedValue);
 }
 
 TEST_F(PeepholesTest, TestANDFolding) {
@@ -124,37 +162,40 @@ TEST_F(PeepholesTest, TestANDFolding) {
     auto opType = OperandType::I32;
     int imm1 = 12;
     int imm2 = 34;
-    auto *const1 = GetInstructionBuilder()->CreateCONST(opType, imm1);
-    auto *const2 = GetInstructionBuilder()->CreateCONST(opType, imm2);
-    auto *andInstr = GetInstructionBuilder()->CreateAND(opType, const1, const2);
+    auto *instrBuilder = GetInstructionBuilder();
+
+    auto *const1 = instrBuilder->CreateCONST(opType, imm1);
+    auto *const2 = instrBuilder->CreateCONST(opType, imm2);
+    auto *firstBlock = FillFirstBlock(GetGraph(), const1, const2);
+    auto firstBlockSize = firstBlock->GetSize();
 
     auto *bblock = GetGraph()->CreateEmptyBasicBlock();
-    GetGraph()->SetFirstBasicBlock(bblock);
-    GetInstructionBuilder()->PushBackInstruction(bblock, const1, const2, andInstr);
+    GetGraph()->ConnectBasicBlocks(firstBlock, bblock);
+    auto *andInstr = instrBuilder->CreateAND(opType, const1, const2);
+    auto *userInstr = instrBuilder->CreateDIVI(opType, andInstr, 3);
+    instrBuilder->PushBackInstruction(bblock, andInstr, userInstr);
     auto prevSize = bblock->GetSize();
 
     PassManager::Run<PeepholePass>(GetGraph());
 
     CompilerTestBase::VerifyControlAndDataFlowGraphs(bblock);
-    ASSERT_EQ(bblock->GetSize(), prevSize);
-    auto *newInstr = bblock->GetLastInstruction();
-    ASSERT_NE(newInstr, nullptr);
-    ASSERT_TRUE(newInstr->IsConst());
-    ASSERT_EQ(static_cast<ConstantInstruction *>(newInstr)->GetValue(), imm1 & imm2);
+    CheckReplacementWithConstant(firstBlockSize, bblock, prevSize, userInstr, imm1 & imm2);
 }
 
-#define TEST_CONST_ARG_NO_OPTIMIZATIONS(name, imm_val)                                  \
-TEST_F(PeepholesTest, TestNoOptimization##name) {                                       \
-    auto opType = OperandType::I32;                                                     \
-    auto *arg = GetInstructionBuilder()->CreateARG(opType);                              \
-    auto *constInstr = GetInstructionBuilder()->CreateCONST(opType, imm_val);            \
-    auto *targetInstr = GetInstructionBuilder()->Create##name(opType, arg, constInstr);  \
-    auto *bblock = GetGraph()->CreateEmptyBasicBlock();                              \
-    GetGraph()->SetFirstBasicBlock(bblock);                              \
-    GetInstructionBuilder()->PushBackInstruction(bblock, constInstr, arg, targetInstr);  \
-    PassManager::Run<PeepholePass>(GetGraph());                                                                        \
-    CompilerTestBase::VerifyControlAndDataFlowGraphs(bblock);                                             \
-    compareInstructions({constInstr, arg, targetInstr}, bblock);                        \
+#define TEST_CONST_ARG_NO_OPTIMIZATIONS(name, imm_val)                          \
+TEST_F(PeepholesTest, TestNoOptimization##name) {                               \
+    auto opType = OperandType::I32;                                             \
+    auto *instrBuilder = GetInstructionBuilder();                               \
+    auto *arg = instrBuilder->CreateARG(opType);                                \
+    auto *constInstr = instrBuilder->CreateCONST(opType, imm_val);              \
+    auto *firstBlock = FillFirstBlock(GetGraph(), arg, constInstr);             \
+    auto *bblock = GetGraph()->CreateEmptyBasicBlock();                         \
+    GetGraph()->ConnectBasicBlocks(firstBlock, bblock);                         \
+    auto *targetInstr = instrBuilder->Create##name(opType, arg, constInstr);    \
+    instrBuilder->PushBackInstruction(bblock, targetInstr);                     \
+    PassManager::Run<PeepholePass>(GetGraph());                                 \
+    CompilerTestBase::VerifyControlAndDataFlowGraphs(bblock);                   \
+    compareInstructions({targetInstr}, bblock);                                 \
 }
 
 TEST_CONST_ARG_NO_OPTIMIZATIONS(AND, 44);
@@ -168,21 +209,24 @@ TEST_F(PeepholesTest, TestZeroSRA) {
     // expected:
     // v2 is replaced with v0
     auto opType = OperandType::I32;
-    auto *arg = GetInstructionBuilder()->CreateARG(opType);
-    auto *constZero = GetInstructionBuilder()->CreateCONST(opType, 0);
-    auto *sraInstr = GetInstructionBuilder()->CreateSRA(opType, constZero, arg);
-    auto *userInstr = GetInstructionBuilder()->CreateADDI(opType, sraInstr, 123);
+    auto *instrBuilder = GetInstructionBuilder();
+
+    auto *arg = instrBuilder->CreateARG(opType);
+    auto *constZero = instrBuilder->CreateCONST(opType, 0);
+    auto *firstBlock = FillFirstBlock(GetGraph(), arg, constZero);
 
     auto *bblock = GetGraph()->CreateEmptyBasicBlock();
-    GetGraph()->SetFirstBasicBlock(bblock);
-    GetInstructionBuilder()->PushBackInstruction(bblock, arg, constZero, sraInstr, userInstr);
+    GetGraph()->ConnectBasicBlocks(firstBlock, bblock);
+    auto *sraInstr = instrBuilder->CreateSRA(opType, constZero, arg);
+    auto *userInstr = instrBuilder->CreateADDI(opType, sraInstr, 123);
+    instrBuilder->PushBackInstruction(bblock, sraInstr, userInstr);
     auto prevSize = bblock->GetSize();
 
     PassManager::Run<PeepholePass>(GetGraph());
 
     CompilerTestBase::VerifyControlAndDataFlowGraphs(bblock);
     ASSERT_EQ(bblock->GetSize(), prevSize - 1);
-    compareInstructions({arg, constZero, userInstr}, bblock);
+    compareInstructions({userInstr}, bblock);
     ASSERT_EQ(userInstr->GetInput(0), constZero);
 }
 
@@ -193,26 +237,33 @@ TEST_F(PeepholesTest, TestSRAZero) {
     // expected:
     // v2 is replaced with v1
     auto opType = OperandType::I32;
-    auto *arg = GetInstructionBuilder()->CreateARG(opType);
-    auto *constZero = GetInstructionBuilder()->CreateCONST(opType, 0);
-    auto *sraInstr = GetInstructionBuilder()->CreateSRA(opType, arg, constZero);
-    auto *userInstr = GetInstructionBuilder()->CreateADDI(opType, sraInstr, 123);
+    auto *instrBuilder = GetInstructionBuilder();
+
+    auto *arg = instrBuilder->CreateARG(opType);
+    auto *constZero = instrBuilder->CreateCONST(opType, 0);
+    auto *firstBlock = FillFirstBlock(GetGraph(), arg, constZero);
 
     auto *bblock = GetGraph()->CreateEmptyBasicBlock();
-    GetGraph()->SetFirstBasicBlock(bblock);
-    GetInstructionBuilder()->PushBackInstruction(bblock, arg, constZero, sraInstr, userInstr);
+    GetGraph()->ConnectBasicBlocks(firstBlock, bblock);
+    auto *sraInstr = instrBuilder->CreateSRA(opType, arg, constZero);
+    auto *userInstr = instrBuilder->CreateADDI(opType, sraInstr, 123);
+    instrBuilder->PushBackInstruction(bblock, sraInstr, userInstr);
     auto prevSize = bblock->GetSize();
 
     PassManager::Run<PeepholePass>(GetGraph());
 
     CompilerTestBase::VerifyControlAndDataFlowGraphs(bblock);
     ASSERT_EQ(bblock->GetSize(), prevSize - 1);
-    compareInstructions({arg, constZero, userInstr}, bblock);
+    compareInstructions({userInstr}, bblock);
     ASSERT_EQ(userInstr->GetInput(0), arg);
 }
 
-static void testSRAFolding(InstructionBuilder *instrBuilder, Graph *graph,
-                           int imm1, int imm2) {
+static void testSRAFolding(
+    InstructionBuilder *instrBuilder,
+    Graph *graph,
+    int imm1,
+    int imm2)
+{
     // case:
     // v1 = imm1
     // v2 = imm2
@@ -220,23 +271,23 @@ static void testSRAFolding(InstructionBuilder *instrBuilder, Graph *graph,
     // expected:
     // v3 is replaced with CONST instruction with the corresponding value
     auto opType = OperandType::I32;
+
     auto *const1 = instrBuilder->CreateCONST(opType, imm1);
     auto *const2 = instrBuilder->CreateCONST(opType, imm2);
-    auto *sraInstr = instrBuilder->CreateSRA(opType, const1, const2);
+    auto *firstBlock = CompilerTestBase::FillFirstBlock(graph, const1, const2);
+    auto firstBlockSize = firstBlock->GetSize();
 
     auto *bblock = graph->CreateEmptyBasicBlock();
-    graph->SetFirstBasicBlock(bblock);
-    instrBuilder->PushBackInstruction(bblock, const1, const2, sraInstr);
+    graph->ConnectBasicBlocks(firstBlock, bblock);
+    auto *sraInstr = instrBuilder->CreateSRA(opType, const1, const2);
+    auto *userInstr = instrBuilder->CreateMULI(opType, sraInstr, 3);
+    instrBuilder->PushBackInstruction(bblock, sraInstr, userInstr);
     auto prevSize = bblock->GetSize();
 
     PassManager::Run<PeepholePass>(graph);
 
     CompilerTestBase::VerifyControlAndDataFlowGraphs(bblock);
-    ASSERT_EQ(bblock->GetSize(), prevSize);
-    auto *newInstr = bblock->GetLastInstruction();
-    ASSERT_NE(newInstr, nullptr);
-    ASSERT_TRUE(newInstr->IsConst());
-    ASSERT_EQ(static_cast<ConstantInstruction *>(newInstr)->GetValue(), imm1 >> imm2);
+    CheckReplacementWithConstant(firstBlockSize, bblock, prevSize, userInstr, imm1 >> imm2);
 }
 
 TEST_F(PeepholesTest, TestSRAFolding1) {
@@ -254,18 +305,21 @@ TEST_F(PeepholesTest, TestSRAFolding4) {
 
 TEST_F(PeepholesTest, TestSRANoOptimization) {
     auto opType = OperandType::I32;
-    auto *arg = GetInstructionBuilder()->CreateARG(opType);
-    auto *constInstr = GetInstructionBuilder()->CreateCONST(opType, 43);
-    auto *andInstr = GetInstructionBuilder()->CreateSRA(opType, arg, constInstr);
+    auto *instrBuilder = GetInstructionBuilder();
+
+    auto *arg = instrBuilder->CreateARG(opType);
+    auto *constInstr = instrBuilder->CreateCONST(opType, 43);
+    auto *firstBlock = FillFirstBlock(GetGraph(), arg, constInstr);
 
     auto *bblock = GetGraph()->CreateEmptyBasicBlock();
-    GetGraph()->SetFirstBasicBlock(bblock);
-    GetInstructionBuilder()->PushBackInstruction(bblock, constInstr, arg, andInstr);
+    GetGraph()->ConnectBasicBlocks(firstBlock, bblock);
+    auto *andInstr = instrBuilder->CreateSRA(opType, arg, constInstr);
+    instrBuilder->PushBackInstruction(bblock, andInstr);
 
     PassManager::Run<PeepholePass>(GetGraph());
 
     CompilerTestBase::VerifyControlAndDataFlowGraphs(bblock);
-    compareInstructions({constInstr, arg, andInstr}, bblock);
+    compareInstructions({andInstr}, bblock);
 }
 
 TEST_CONST_ARG_NO_OPTIMIZATIONS(SRA, 3);
@@ -280,14 +334,17 @@ TEST_F(PeepholesTest, TestSUB1) {
     // v2 = -v1
     // v3 = v0 + v1
     auto opType = OperandType::I32;
-    auto *arg1 = GetInstructionBuilder()->CreateARG(opType);
-    auto *arg2 = GetInstructionBuilder()->CreateARG(opType);
-    auto *negInstr = GetInstructionBuilder()->CreateNEG(opType, arg2);
-    auto *subInstr = GetInstructionBuilder()->CreateSUB(opType, arg1, negInstr);
+    auto *instrBuilder = GetInstructionBuilder();
+
+    auto *arg1 = instrBuilder->CreateARG(opType);
+    auto *arg2 = instrBuilder->CreateARG(opType);
+    auto *firstBlock = FillFirstBlock(GetGraph(), arg1, arg2);
 
     auto *bblock = GetGraph()->CreateEmptyBasicBlock();
-    GetGraph()->SetFirstBasicBlock(bblock);
-    GetInstructionBuilder()->PushBackInstruction(bblock, arg1, arg2, negInstr, subInstr);
+    GetGraph()->ConnectBasicBlocks(firstBlock, bblock);
+    auto *negInstr = instrBuilder->CreateNEG(opType, arg2);
+    auto *subInstr = instrBuilder->CreateSUB(opType, arg1, negInstr);
+    instrBuilder->PushBackInstruction(bblock, negInstr, subInstr);
     auto prevSize = bblock->GetSize();
 
     PassManager::Run<PeepholePass>(GetGraph());
@@ -309,8 +366,11 @@ TEST_F(PeepholesTest, TestSUB1) {
 static void testAddSubCombination(InstructionBuilder *instrBuilder, Graph *graph,
                                   bool firstAdd, bool firstFromAdd) {
     auto opType = OperandType::I32;
+
     auto *arg1 = instrBuilder->CreateARG(opType);
     auto *arg2 = instrBuilder->CreateARG(opType);
+    auto *firstBlock = CompilerTestBase::FillFirstBlock(graph, arg1, arg2);
+
     auto *addInstr = instrBuilder->CreateADD(opType, arg1, arg2);
 
     InstructionBase *fromAdd = firstFromAdd ? arg1 : arg2;
@@ -324,8 +384,8 @@ static void testAddSubCombination(InstructionBuilder *instrBuilder, Graph *graph
     auto *userInstr = instrBuilder->CreateADDI(opType, subInstr, 123);
 
     auto *bblock = graph->CreateEmptyBasicBlock();
-    graph->SetFirstBasicBlock(bblock);
-    instrBuilder->PushBackInstruction(bblock, arg1, arg2, addInstr, subInstr, userInstr);
+    graph->ConnectBasicBlocks(firstBlock, bblock);
+    instrBuilder->PushBackInstruction(bblock, addInstr, subInstr, userInstr);
 
     PassManager::Run<PeepholePass>(graph);
 
@@ -333,11 +393,11 @@ static void testAddSubCombination(InstructionBuilder *instrBuilder, Graph *graph
     ASSERT_EQ(userInstr, bblock->GetLastInstruction());
     auto *remainedInstr = firstFromAdd ? arg2 : arg1;
     if (firstAdd) {
-        CompilerTestBase::compareInstructions({arg1, arg2, addInstr, userInstr}, bblock);
+        CompilerTestBase::compareInstructions({addInstr, userInstr}, bblock);
         ASSERT_EQ(userInstr->GetInput(0), remainedInstr);
     } else {
         auto *newInstr = userInstr->GetPrevInstruction();
-        CompilerTestBase::compareInstructions({arg1, arg2, addInstr, newInstr, userInstr}, bblock);
+        CompilerTestBase::compareInstructions({addInstr, newInstr, userInstr}, bblock);
         ASSERT_NE(newInstr, nullptr);
         ASSERT_EQ(newInstr->GetOpcode(), Opcode::NEG);
         auto newInstrArg = static_cast<UnaryRegInstruction *>(newInstr)->GetInput(0);
@@ -366,14 +426,17 @@ TEST_F(PeepholesTest, TestZeroSUB) {
     // v1 = 0
     // v2 = -v0
     auto opType = OperandType::I32;
-    auto *arg = GetInstructionBuilder()->CreateARG(opType);
-    auto *constZero = GetInstructionBuilder()->CreateCONST(opType, 0);
-    auto *subInstr = GetInstructionBuilder()->CreateSUB(opType, constZero, arg);
-    auto *userInstr = GetInstructionBuilder()->CreateADDI(opType, subInstr, 123);
+    auto *instrBuilder = GetInstructionBuilder();
+
+    auto *arg = instrBuilder->CreateARG(opType);
+    auto *constZero = instrBuilder->CreateCONST(opType, 0);
+    auto *firstBlock = FillFirstBlock(GetGraph(), arg, constZero);
 
     auto *bblock = GetGraph()->CreateEmptyBasicBlock();
-    GetGraph()->SetFirstBasicBlock(bblock);
-    GetInstructionBuilder()->PushBackInstruction(bblock, arg, constZero, subInstr, userInstr);
+    GetGraph()->ConnectBasicBlocks(firstBlock, bblock);
+    auto *subInstr = instrBuilder->CreateSUB(opType, constZero, arg);
+    auto *userInstr = instrBuilder->CreateADDI(opType, subInstr, 123);
+    instrBuilder->PushBackInstruction(bblock, subInstr, userInstr);
     auto prevSize = bblock->GetSize();
 
     PassManager::Run<PeepholePass>(GetGraph());
@@ -394,21 +457,24 @@ TEST_F(PeepholesTest, TestSUBZero) {
     // expected:
     // v2 is replaced with v0
     auto opType = OperandType::I32;
-    auto *arg = GetInstructionBuilder()->CreateARG(opType);
-    auto *constZero = GetInstructionBuilder()->CreateCONST(opType, 0);
-    auto *subInstr = GetInstructionBuilder()->CreateSUB(opType, arg, constZero);
-    auto *userInstr = GetInstructionBuilder()->CreateADDI(opType, subInstr, 123);
+    auto *instrBuilder = GetInstructionBuilder();
+
+    auto *arg = instrBuilder->CreateARG(opType);
+    auto *constZero = instrBuilder->CreateCONST(opType, 0);
+    auto *firstBlock = FillFirstBlock(GetGraph(), arg, constZero);
 
     auto *bblock = GetGraph()->CreateEmptyBasicBlock();
-    GetGraph()->SetFirstBasicBlock(bblock);
-    GetInstructionBuilder()->PushBackInstruction(bblock, arg, constZero, subInstr, userInstr);
+    GetGraph()->ConnectBasicBlocks(firstBlock, bblock);
+    auto *subInstr = instrBuilder->CreateSUB(opType, arg, constZero);
+    auto *userInstr = instrBuilder->CreateADDI(opType, subInstr, 123);
+    instrBuilder->PushBackInstruction(bblock, subInstr, userInstr);
     auto prevSize = bblock->GetSize();
 
     PassManager::Run<PeepholePass>(GetGraph());
 
     CompilerTestBase::VerifyControlAndDataFlowGraphs(bblock);
     ASSERT_EQ(bblock->GetSize(), prevSize - 1);
-    compareInstructions({arg, constZero, userInstr}, bblock);
+    compareInstructions({userInstr}, bblock);
     ASSERT_EQ(userInstr->GetInput(0), arg);
 }
 
@@ -418,25 +484,23 @@ TEST_F(PeepholesTest, TestSUBRepeatedArgs) {
     // expected:
     // v1 is replaced with CONST instruction with the zero value
     auto opType = OperandType::I32;
-    auto *arg = GetInstructionBuilder()->CreateARG(opType);
-    auto *subInstr = GetInstructionBuilder()->CreateSUB(opType, arg, arg);
-    auto *userInstr = GetInstructionBuilder()->CreateADDI(opType, subInstr, 123);
+    auto *instrBuilder = GetInstructionBuilder();
+
+    auto *arg = instrBuilder->CreateARG(opType);
+    auto *firstBlock = FillFirstBlock(GetGraph(), arg);
+    auto firstBlockSize = firstBlock->GetSize();
 
     auto *bblock = GetGraph()->CreateEmptyBasicBlock();
-    GetGraph()->SetFirstBasicBlock(bblock);
-    GetInstructionBuilder()->PushBackInstruction(bblock, arg, subInstr, userInstr);
+    GetGraph()->ConnectBasicBlocks(firstBlock, bblock);
+    auto *subInstr = instrBuilder->CreateSUB(opType, arg, arg);
+    auto *userInstr = instrBuilder->CreateADDI(opType, subInstr, 123);
+    instrBuilder->PushBackInstruction(bblock, subInstr, userInstr);
     auto prevSize = bblock->GetSize();
 
     PassManager::Run<PeepholePass>(GetGraph());
 
     CompilerTestBase::VerifyControlAndDataFlowGraphs(bblock);
-    ASSERT_EQ(bblock->GetSize(), prevSize);
-    ASSERT_EQ(bblock->GetLastInstruction(), userInstr);
-    auto *newInstr = userInstr->GetInput(0).GetInstruction();
-    ASSERT_NE(newInstr, nullptr);
-    ASSERT_TRUE(newInstr->IsConst());
-    auto *typed = static_cast<ConstantInstruction *>(newInstr);
-    ASSERT_EQ(typed->GetValue(), 0);
+    CheckReplacementWithConstant(firstBlockSize, bblock, prevSize, userInstr, 0);
 }
 
 TEST_F(PeepholesTest, TestSUBFolding) {
@@ -449,42 +513,45 @@ TEST_F(PeepholesTest, TestSUBFolding) {
     auto opType = OperandType::I32;
     int imm1 = 12;
     int imm2 = 15;
-    auto *const1 = GetInstructionBuilder()->CreateCONST(opType, imm1);
-    auto *const2 = GetInstructionBuilder()->CreateCONST(opType, imm2);
-    auto *subInstr = GetInstructionBuilder()->CreateSUB(opType, const1, const2);
+    auto *instrBuilder = GetInstructionBuilder();
+
+    auto *const1 = instrBuilder->CreateCONST(opType, imm1);
+    auto *const2 = instrBuilder->CreateCONST(opType, imm2);
+    auto *firstBlock = FillFirstBlock(GetGraph(), const1, const2);
+    auto firstBlockSize = firstBlock->GetSize();
 
     auto *bblock = GetGraph()->CreateEmptyBasicBlock();
-    GetGraph()->SetFirstBasicBlock(bblock);
-    GetInstructionBuilder()->PushBackInstruction(bblock, const1, const2, subInstr);
+    GetGraph()->ConnectBasicBlocks(firstBlock, bblock);
+    auto *subInstr = instrBuilder->CreateSUB(opType, const1, const2);
+    auto *userInstr = instrBuilder->CreateMODI(opType, subInstr, 2);
+    instrBuilder->PushBackInstruction(bblock, subInstr, userInstr);
     auto prevSize = bblock->GetSize();
 
     PassManager::Run<PeepholePass>(GetGraph());
 
     CompilerTestBase::VerifyControlAndDataFlowGraphs(bblock);
-    ASSERT_EQ(bblock->GetSize(), prevSize);
-    auto *newInstr = bblock->GetLastInstruction();
-    ASSERT_NE(newInstr, nullptr);
-    ASSERT_TRUE(newInstr->IsConst());
-    auto *typed = static_cast<ConstantInstruction *>(newInstr);
-    ASSERT_EQ(typed->GetValue(), imm1 - imm2);
+    CheckReplacementWithConstant(firstBlockSize, bblock, prevSize, userInstr, imm1 - imm2);
 }
 
 TEST_F(PeepholesTest, TestAddSubNoOptimizations) {
     auto opType = OperandType::I32;
-    auto *arg1 = GetInstructionBuilder()->CreateARG(opType);
-    auto *arg2 = GetInstructionBuilder()->CreateARG(opType);
-    auto *arg3 = GetInstructionBuilder()->CreateARG(opType);
-    auto *addInstr = GetInstructionBuilder()->CreateADD(opType, arg1, arg2);
-    auto *subInstr = GetInstructionBuilder()->CreateSUB(opType, addInstr, arg3);
+    auto *instrBuilder = GetInstructionBuilder();
+
+    auto *arg1 = instrBuilder->CreateARG(opType);
+    auto *arg2 = instrBuilder->CreateARG(opType);
+    auto *arg3 = instrBuilder->CreateARG(opType);
+    auto *firstBlock = FillFirstBlock(GetGraph(), arg1, arg2, arg3);
 
     auto *bblock = GetGraph()->CreateEmptyBasicBlock();
-    GetGraph()->SetFirstBasicBlock(bblock);
-    GetInstructionBuilder()->PushBackInstruction(bblock, arg1, arg2, arg3, addInstr, subInstr);
+    GetGraph()->ConnectBasicBlocks(firstBlock, bblock);
+    auto *addInstr = instrBuilder->CreateADD(opType, arg1, arg2);
+    auto *subInstr = instrBuilder->CreateSUB(opType, addInstr, arg3);
+    instrBuilder->PushBackInstruction(bblock, addInstr, subInstr);
 
     PassManager::Run<PeepholePass>(GetGraph());
 
     CompilerTestBase::VerifyControlAndDataFlowGraphs(bblock);
-    compareInstructions({arg1, arg2, arg3, addInstr, subInstr}, bblock);
+    compareInstructions({addInstr, subInstr}, bblock);
 }
 
 TEST_CONST_ARG_NO_OPTIMIZATIONS(SUB, 33);

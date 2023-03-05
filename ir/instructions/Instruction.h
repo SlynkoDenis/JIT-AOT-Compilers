@@ -315,10 +315,12 @@ protected:
 
 class BinaryImmInstruction : public FixedInputsInstruction<1>, public ImmediateMixin<uint64_t> {
 public:
-    BinaryImmInstruction(Opcode opcode, OperandType type, Input input, uint64_t imm,
+    using ImmediateMixin<uint64_t>::Type;
+
+    BinaryImmInstruction(Opcode opcode, OperandType type, Input input, Type imm,
                          std::pmr::memory_resource *memResource)
         : FixedInputsInstruction<1>(opcode, type, input, memResource),
-          ImmediateMixin<uint64_t>(imm)
+          ImmediateMixin<Type>(imm)
     {}
 
     BinaryImmInstruction *Copy(BasicBlock *targetBBlock) const override;

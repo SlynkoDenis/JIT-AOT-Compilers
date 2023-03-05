@@ -131,6 +131,11 @@ public:
         graph = g;
     }
 
+    // Moves instruction into the end of this block
+    // (which must be the first in its graph)
+    // while ignoring the initial block, assuming it will be deleted anyway.
+    void MoveConstantUnsafe(InstructionBase *instr);
+
     void PushForwardInstruction(InstructionBase *instr);
     void PushBackInstruction(InstructionBase *instr);
     void InsertBefore(InstructionBase *before, InstructionBase *target);

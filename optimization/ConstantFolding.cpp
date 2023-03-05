@@ -14,7 +14,7 @@ bool ConstantFolding::ProcessAND(BinaryRegInstruction *instr) {
 
         input1->RemoveUser(instr);
         input2->RemoveUser(instr);
-        instr->GetBasicBlock()->ReplaceInstruction(instr, newInstr);
+        ReplaceWithConst(instr, newInstr);
 
         return true;
     }
@@ -32,7 +32,7 @@ bool ConstantFolding::ProcessSRA(BinaryRegInstruction *instr) {
 
         input1->RemoveUser(instr);
         input2->RemoveUser(instr);
-        instr->GetBasicBlock()->ReplaceInstruction(instr, newInstr);
+        ReplaceWithConst(instr, newInstr);
 
         return true;
     }
@@ -50,11 +50,21 @@ bool ConstantFolding::ProcessSUB(BinaryRegInstruction *instr) {
 
         input1->RemoveUser(instr);
         input2->RemoveUser(instr);
-        instr->GetBasicBlock()->ReplaceInstruction(instr, newInstr);
+        ReplaceWithConst(instr, newInstr);
 
         return true;
     }
     return false;
+}
+
+/* static */
+void ConstantFolding::ReplaceWithConst(InstructionBase *instr, ConstantInstruction *targetConst) {
+    ASSERT((instr) && (targetConst));
+    instr->ReplaceInputInUsers(targetConst);
+    auto *bblock = instr->GetBasicBlock();
+    bblock->UnlinkInstruction(instr);
+    ASSERT(bblock->GetGraph()->GetFirstBasicBlock());
+    bblock->GetGraph()->GetFirstBasicBlock()->PushBackInstruction(targetConst);
 }
 
 /* static */
