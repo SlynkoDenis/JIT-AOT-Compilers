@@ -22,8 +22,36 @@ enum class CondCode {
     EQ,
     NE,
     LT,
-    GE
+    GE,
+    NUM_CODES
 };
+
+constexpr inline const char *getCondCodeName(CondCode cc) {
+    std::array<const char *, static_cast<size_t>(CondCode::NUM_CODES)> names{
+        "EQ",
+        "NE",
+        "LT",
+        "GE"
+    };
+    return names[static_cast<size_t>(cc)];
+}
+
+template <typename T, typename V>
+constexpr inline bool compare(CondCode cc, T &&lhs, V &&rhs) {
+    switch (cc) {
+    case CondCode::EQ:
+        return lhs == rhs;
+    case CondCode::NE:
+        return lhs != rhs;
+    case CondCode::LT:
+        return lhs < rhs;
+    case CondCode::GE:
+        return lhs >= rhs;
+    default:
+        UNREACHABLE("");
+        return false;
+    }
+}
 
 class InputsInstruction: public InstructionBase {
 public:
@@ -31,7 +59,6 @@ public:
         : InstructionBase(opcode, type, memResource) {}
     virtual DEFAULT_DTOR(InputsInstruction);
 
-    // TODO: add `GetInputs` method
     virtual size_t GetInputsCount() const = 0;
     virtual Input &GetInput(size_t idx) = 0;
     virtual const Input &GetInput(size_t idx) const = 0;
@@ -356,6 +383,15 @@ public:
     {}
 
     CompareInstruction *Copy(BasicBlock *targetBBlock) const override;
+
+protected:
+    void dumpImpl(log4cpp::CategoryStream &stream) const override {
+        stream << '#' << GetId() << '.' << getTypeName(GetType()) << "\t\t" << GetOpcodeName() << '.';
+        stream << getCondCodeName(GetCondCode()) << '\t';
+        for (size_t i = 0, end = GetInputsCount(); i < end; ++i) {
+            stream << " #" << GetInput(i)->GetId();
+        }
+    }
 };
 
 class CastInstruction : public FixedInputsInstruction<1> {
@@ -406,8 +442,10 @@ public:
             utils::underlying_logic_or(InstrProp::CF, InstrProp::SIDE_EFFECTS))
     {}
 
+    BasicBlock *GetDestination(bool cmpRes) {
+        return cmpRes ? GetTrueDestination() : GetFalseDestination();
+    }
     BasicBlock *GetTrueDestination();
-
     BasicBlock *GetFalseDestination();
 
     CondJumpInstruction *Copy(BasicBlock *targetBBlock) const override;
@@ -473,20 +511,36 @@ public:
         return sourceBBlocks;
     }
     BasicBlock *GetSourceBasicBlock(size_t idx) {
-        return sourceBBlocks.at(idx);
+        ASSERT(idx < sourceBBlocks.size());
+        return sourceBBlocks[idx];
     }
     const BasicBlock *GetSourceBasicBlock(size_t idx) const {
-        return sourceBBlocks.at(idx);
+        ASSERT(idx < sourceBBlocks.size());
+        return sourceBBlocks[idx];
     }
     void SetSourceBasicBlock(BasicBlock *bblock, size_t idx) {
+        ASSERT((bblock) && idx < sourceBBlocks.size());
+        sourceBBlocks[idx] = bblock;
+    }
+    size_t IndexOf(const BasicBlock *bblock) const {
         ASSERT(bblock);
-        sourceBBlocks.at(idx) = bblock;
+        return std::find(sourceBBlocks.begin(), sourceBBlocks.end(), bblock) - sourceBBlocks.begin();
     }
 
     void AddPhiInput(Input newInput, BasicBlock *inputSource) {
         ASSERT(inputSource);
         AddInput(newInput);
         sourceBBlocks.push_back(inputSource);
+    }
+    void RemovePhiInput(BasicBlock *bblock) {
+        ASSERT(bblock);
+        auto idx = IndexOf(bblock);
+        ASSERT(idx < sourceBBlocks.size());
+
+        sourceBBlocks[idx] = sourceBBlocks.back();
+        sourceBBlocks.pop_back();
+        inputs[idx] = inputs.back();
+        inputs.pop_back();
     }
 
     PhiInstruction *Copy(BasicBlock *targetBBlock) const override;

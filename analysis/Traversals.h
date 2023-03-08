@@ -29,7 +29,7 @@ concept GraphType = std::is_same_v<std::remove_cv_t<GraphT>, Graph>;
 
 class DFO final {
 public:
-    template <GraphType GraphT, ValidCallback CallbackT>
+    template <GraphType GraphT, ValidCallback CallbackT, bool DoSafe = true>
     static void Traverse(GraphT *graph, CallbackT callback) {
         ASSERT(graph);
         if (graph->IsEmpty()) {
@@ -38,7 +38,9 @@ public:
 
         DFO helper(graph->GetMemoryResource());
         helper.doTraverse(graph->GetFirstBasicBlock(), callback);
-        ASSERT(helper.visited.size() == graph->GetBasicBlocksCount());
+        if constexpr (DoSafe) {
+            ASSERT(helper.visited.size() == graph->GetBasicBlocksCount());
+        }
     }
 
 private:
@@ -78,7 +80,7 @@ struct BasicBlockTypeHelper<Graph> {
 };
 
 template <GraphType GraphT>
-using BasickBlockType = typename BasicBlockTypeHelper<GraphT>::type;
+using BasicBlockType = typename BasicBlockTypeHelper<GraphT>::type;
 
 class RPO : public PassBase {
 public:
@@ -93,15 +95,15 @@ public:
     }
 
     template <GraphType GraphT>
-    static std::pmr::vector<BasickBlockType<GraphT> *> DoRPO(GraphT *graph) {
+    static std::pmr::vector<BasicBlockType<GraphT> *> DoRPO(GraphT *graph) {
         ASSERT(graph);
-        std::pmr::vector<BasickBlockType<GraphT> *> result(graph->GetMemoryResource());
+        std::pmr::vector<BasicBlockType<GraphT> *> result(graph->GetMemoryResource());
         if (graph->IsEmpty()) {
             return result;
         }
 
         result.reserve(graph->GetBasicBlocksCount());
-        DFO::Traverse(graph, [&result](BasickBlockType<GraphT> *bblock){ result.push_back(bblock); });
+        DFO::Traverse(graph, [&result](BasicBlockType<GraphT> *bblock){ result.push_back(bblock); });
         ASSERT(result.size() == graph->GetBasicBlocksCount());
         std::reverse(result.begin(), result.end());
         return result;

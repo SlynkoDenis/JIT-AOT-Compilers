@@ -44,7 +44,6 @@ public:
         id = newId;
     }
 
-    // TODO: may rework to get rid of `CompilerBase*` field as a bad design desition
     CompilerBase *GetCompiler() {
         return compiler;
     }
@@ -72,6 +71,9 @@ public:
     size_t GetBasicBlocksCount() const {
         return bblocks.size() - unlinkedInstructionsCounter;
     }
+    BasicBlock::IdType GetMaximumBlockId() const {
+        return bblocks.size() - 1;
+    }
     bool IsEmpty() const {
         return GetBasicBlocksCount() == 0;
     }
@@ -97,16 +99,18 @@ public:
 
     void SetFirstBasicBlock(BasicBlock *bblock) {
         firstBlock = bblock;
+        invalidateAfterChangedCFG();
     }
-    // Use this method carefully due to special meaning of last basic block
+    // Use this method carefully due to special meaning of last basic block.
     void SetLastBasicBlock(BasicBlock *bblock) {
         lastBlock = bblock;
+        invalidateAfterChangedCFG();
     }
     void SetLoopTree(Loop *loop) {
         loopTreeRoot = loop;
     }
 
-    // assume either no side-effects are applied on basic blocks or user knows what he does
+    // Assume either no side-effects are applied on basic blocks or user knows what he does.
     template <typename FunctionType>
     requires UnaryFunctionType<FunctionType, BasicBlock *, void>
     void ForEachBasicBlock(FunctionType function) {
@@ -129,9 +133,16 @@ public:
 
     BasicBlock *CreateEmptyBasicBlock(bool isTerminal = false);
     void ConnectBasicBlocks(BasicBlock *lhs, BasicBlock *rhs);
+    void DisconnectBasicBlocks(BasicBlock *lhs, BasicBlock *rhs);
+    void FixPHIAfterDisconnect(BasicBlock *phiSource, BasicBlock *phiTarget);
     void AddBasicBlock(BasicBlock *bblock);
     void AddBasicBlockBefore(BasicBlock *before, BasicBlock *bblock);
+
     void UnlinkBasicBlock(BasicBlock *bblock);
+    // Unlinks basic block without removing its edges.
+    // Use this method only if all adjacent blocks will be deleted immediately after.
+    void UnlinkBasicBlockRaw(BasicBlock *bblock);
+
     void RemoveUnlinkedBlocks();
 
     bool VerifyFirstBlock() const;
@@ -139,10 +150,10 @@ public:
 public:
     static constexpr IdType INVALID_ID = static_cast<IdType>(-1);
 
-protected:
+private:
     void removePredecessors(BasicBlock *bblock);
     void removeSuccessors(BasicBlock *bblock);
-    void unlinkBasicBlockImpl(BasicBlock *bblock);
+    void invalidateAfterChangedCFG();
 
 private:
     IdType id = INVALID_ID;

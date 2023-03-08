@@ -1,7 +1,67 @@
 #include "BasicBlock.h"
+#include "Graph.h"
+#include "GraphTranslationHelper.h"
+#include "Loop.h"
 
 
 namespace ir {
+BasicBlock::BasicBlock(Graph *graph)
+    : id(INVALID_ID),
+      preds(graph->GetMemoryResource()),
+      succs(graph->GetMemoryResource()),
+      dominated(graph->GetMemoryResource()),
+      graph(graph)
+{}
+
+bool BasicBlock::IsFirstInGraph() const {
+    return GetGraph()->GetFirstBasicBlock() == this;
+}
+
+bool BasicBlock::IsLastInGraph() const {
+    return GetGraph()->GetLastBasicBlock() == this;
+}
+
+// concepts and type helpers
+template <typename T>
+concept BasicBlockType = std::is_same_v<std::remove_cv_t<T>, BasicBlock>;
+
+template <BasicBlockType BasicBlockT, typename T>
+struct BasicBlockConstHelper {
+    using type = const T *;
+};
+
+template <typename T>
+struct BasicBlockConstHelper<BasicBlock, T> {
+    using type = T *;
+};
+
+template <BasicBlockType BasicBlockT>
+using CmpType = BasicBlockConstHelper<BasicBlockT, CompareInstruction>::type;
+
+template <BasicBlockType BasicBlockT>
+static CmpType<BasicBlockT> endsWithConditionalJump(BasicBlockT *bblock) {
+    auto *instr = bblock->GetLastInstruction();
+    if (instr == nullptr || instr->GetOpcode() != Opcode::JCMP) {
+        return nullptr;
+    }
+    ASSERT(bblock->GetSuccessorsCount() == 2);
+    instr = instr->GetPrevInstruction();
+    ASSERT((instr) && instr->GetOpcode() == Opcode::CMP);
+    return static_cast<CmpType<BasicBlockT>>(instr);
+}
+
+CompareInstruction *BasicBlock::EndsWithConditionalJump() {
+    return endsWithConditionalJump(this);
+}
+
+const CompareInstruction *BasicBlock::EndsWithConditionalJump() const {
+    return endsWithConditionalJump(this);
+}
+
+bool BasicBlock::IsLoopHeader() const {
+    return (loop != nullptr) && loop->GetHeader() == this;
+}
+
 bool BasicBlock::Dominates(const BasicBlock *bblock) const {
     ASSERT(bblock);
     auto *dom = bblock->GetDominator();
@@ -12,6 +72,15 @@ bool BasicBlock::Dominates(const BasicBlock *bblock) const {
         dom = dom->GetDominator();
     }
     return false;
+}
+
+void BasicBlock::RemoveDominatedBlock(BasicBlock *bblock) {
+    ASSERT(bblock);
+    auto it = std::find(dominated.begin(), dominated.end(), bblock);
+    ASSERT(it != dominated.end());
+
+    *it = dominated.back();
+    dominated.pop_back();
 }
 
 void BasicBlock::AddPredecessor(BasicBlock *bblock) {
@@ -108,7 +177,7 @@ void BasicBlock::pushPhi(InstructionBase *instr) {
     ASSERT((instr) && instr->IsPhi());
 
     if (firstPhi == nullptr) {
-        firstPhi = static_cast<PhiInstruction *>(instr);
+        firstPhi = instr->AsPhi();
         lastPhi = firstPhi;
         lastPhi->SetNextInstruction(firstInst);
         if (firstInst) {
@@ -117,7 +186,7 @@ void BasicBlock::pushPhi(InstructionBase *instr) {
     } else {
         instr->SetNextInstruction(firstPhi);
         firstPhi->SetPrevInstruction(instr);
-        firstPhi = static_cast<PhiInstruction *>(instr);
+        firstPhi = instr->AsPhi();
     }
 }
 
@@ -191,11 +260,11 @@ void BasicBlock::UnlinkInstruction(InstructionBase *target) {
                 lastPhi = nullptr;
             } else {
                 ASSERT((next) && next->IsPhi());
-                firstPhi = static_cast<PhiInstruction *>(next);
+                firstPhi = next->AsPhi();
             }
         } else if (target == lastPhi) {
             ASSERT((prev) && prev->IsPhi());
-            lastPhi = static_cast<PhiInstruction *>(prev);
+            lastPhi = prev->AsPhi();
         }
     } else {
         if (target == firstInst) {
@@ -227,29 +296,87 @@ void BasicBlock::replaceInControlFlow(InstructionBase *prevInstr, InstructionBas
     UnlinkInstruction(prevInstr);
 }
 
-// defined here after full declaration of BasicBlock's methods
-BasicBlock *JumpInstruction::GetDestination() {
-    auto *bblock = GetBasicBlock();
-    ASSERT(bblock);
-    auto successors = bblock->GetSuccessors();
-    ASSERT(!successors.empty());
-    return successors[0];
+void copyInstruction(
+    BasicBlock *targetBlock,
+    const InstructionBase *orig,
+    GraphTranslationHelper &translationHelper)
+{
+    ASSERT((targetBlock) && (orig));
+    auto *copy = orig->Copy(targetBlock);
+    targetBlock->PushBackInstruction(copy);
+    translationHelper.InsertInstructionsPair(orig, copy);
 }
 
-BasicBlock *CondJumpInstruction::GetTrueDestination() {
-    return getBranchDestinationImpl<0>();
+BasicBlock *BasicBlock::Copy(Graph *targetGraph, GraphTranslationHelper &translationHelper) const
+{
+    ASSERT(targetGraph);
+    auto *result = targetGraph->CreateEmptyBasicBlock();
+
+    const InstructionBase *instr = GetFirstPhiInstruction();
+    if (!instr) {
+        instr = GetFirstInstruction();
+        if (!instr) {
+            return result;
+        }
+    }
+    for (auto *end = GetLastInstruction(); instr != end; instr = instr->GetNextInstruction()) {
+        copyInstruction(result, instr, translationHelper);
+    }
+    // copy the last instruction
+    copyInstruction(result, instr, translationHelper);
+
+    ASSERT(result->GetFirstInstruction());
+    ASSERT(result->GetLastInstruction());
+    return result;
 }
 
-BasicBlock *CondJumpInstruction::GetFalseDestination() {
-    return getBranchDestinationImpl<1>();
-}
+BasicBlock *BasicBlock::SplitAfterInstruction(InstructionBase *instr, bool connectAfterSplit) {
+    ASSERT((instr) && instr->GetBasicBlock() == this);
+    auto *nextInstr = instr->GetNextInstruction();
+    ASSERT(nextInstr);
 
-template <int CmpRes>
-BasicBlock *CondJumpInstruction::getBranchDestinationImpl() {
-    auto *bblock = GetBasicBlock();
-    ASSERT(bblock);
-    auto successors = bblock->GetSuccessors();
-    ASSERT(successors.size() == 2);
-    return successors[CmpRes];
+    auto *graph = GetGraph();
+    auto *newBBlock = graph->CreateEmptyBasicBlock();
+
+    // might leave unconnected, e.g. for further usage in inlining
+    if (connectAfterSplit) {
+        graph->ConnectBasicBlocks(this, newBBlock);
+    }
+
+    if (GetLoop()) {
+        GetLoop()->AddBasicBlock(newBBlock);
+        newBBlock->SetLoop(GetLoop());
+    }
+    for (auto *succ : GetSuccessors()) {
+        succ->RemovePredecessor(this);
+        graph->ConnectBasicBlocks(newBBlock, succ);
+    }
+    succs.clear();
+
+    instr->SetNextInstruction(nullptr);
+    nextInstr->SetPrevInstruction(nullptr);
+    for (auto *iter = nextInstr; iter != nullptr; iter = iter->GetNextInstruction()) {
+        iter->SetBasicBlock(newBBlock);
+        newBBlock->instrsCount += 1;
+    }
+    instrsCount -= newBBlock->instrsCount;
+
+    if (nextInstr->IsPhi()) {
+        ASSERT(instr->IsPhi());
+        newBBlock->firstPhi = nextInstr->AsPhi();
+        newBBlock->lastPhi = lastPhi;
+        lastPhi = instr->AsPhi();
+        // can be done unconditionally
+        newBBlock->firstInst = firstInst;
+        newBBlock->lastInst = lastInst;
+        firstInst = nullptr;
+        lastInst = nullptr;
+    } else {
+        newBBlock->firstInst = nextInstr;
+        newBBlock->lastInst = lastInst;
+        lastInst = instr;
+    }
+
+    return newBBlock;
 }
 }   // namespace ir

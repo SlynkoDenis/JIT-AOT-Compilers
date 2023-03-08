@@ -7,13 +7,6 @@
 
 
 namespace ir {
-enum class DFSColors : uint32_t {
-    WHITE = 0,
-    GREY,
-    BLACK,
-    COLORS_SIZE = BLACK
-};
-
 class Loop final {
 public:
     Loop(size_t id,
@@ -53,6 +46,9 @@ public:
     }
     const std::pmr::vector<BasicBlock *> &GetBackEdges() const {
         return backEdges;
+    }
+    size_t GetBackEdgesCount() const {
+        return backEdges.size();
     }
 
     std::pmr::vector<BasicBlock *> GetBasicBlocks() {

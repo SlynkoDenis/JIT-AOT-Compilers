@@ -13,6 +13,9 @@
 
 namespace ir {
 class BasicBlock;
+class ConstantInstruction;
+class Input;
+class PhiInstruction;
 
 // Opcodes & Conditional Codes
 #define INSTS_LIST(DEF)     \
@@ -154,7 +157,7 @@ public:
     const char *GetOpcodeName() const {
         return getOpcodeName(GetOpcode());
     }
-    void Dump(log4cpp::Category &logger) const {
+    log4cpp::CategoryStream Dump(log4cpp::Category &logger) const {
         auto stream = logger << utils::LogPriority::INFO;
         dumpImpl(stream);
         // dump users
@@ -166,6 +169,7 @@ public:
             }
             stream << users.back()->GetId() << ")";
         }
+        return stream;
     }
     size_t GetId() const {
         return id;
@@ -198,6 +202,12 @@ public:
     bool HasSideEffects() const {
         return SatisfiesProperty(InstrProp::SIDE_EFFECTS);
     }
+
+    Input ToInput();
+    ConstantInstruction *AsConst();
+    const ConstantInstruction *AsConst() const;
+    PhiInstruction *AsPhi();
+    const PhiInstruction *AsPhi() const;
 
     void SetPrevInstruction(InstructionBase *inst) {
         prev = inst;
@@ -232,7 +242,8 @@ public:
 
 protected:
     virtual void dumpImpl(log4cpp::CategoryStream &stream) const {
-        stream << '#' << GetId() << '.' << getTypeName(GetType()) << "\t\t" << GetOpcodeName() << "\t\t";
+        stream << '#' << GetId() << '.' << getTypeName(GetType())
+               << "\t\t" << GetOpcodeName() << "\t\t";
     }
 
 private:
@@ -248,6 +259,10 @@ private:
 
     InstructionPropT properties = 0;
 };
+
+template <typename T>
+concept InstructionPointerType =
+    std::is_base_of_v<InstructionBase, std::remove_pointer_t<std::remove_cv_t<T>>>;
 }   // namespace ir
 
 #endif  // JIT_AOT_COMPILERS_COURSE_INSTRUCTION_BASE_H_

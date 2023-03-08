@@ -1,5 +1,4 @@
 #include "CompilerBase.h"
-#include "DCE.h"
 #include "EmptyBlocksRemoval.h"
 #include "GraphChecker.h"
 #include "Inlining.h"
@@ -219,7 +218,6 @@ void InliningPass::postInlining() {
 
     // TODO: may move post-pass routine into PassBase by providing type traits
     PassManager::Run<EmptyBlocksRemoval>(graph);
-    PassManager::Run<DCEPass>(graph);
 
     ASSERT(PassManager::Run<GraphChecker>(graph));
 }

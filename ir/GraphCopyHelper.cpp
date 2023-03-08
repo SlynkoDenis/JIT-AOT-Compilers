@@ -56,8 +56,8 @@ void GraphCopyHelper::fixDFG() {
                 }
             } else if (origInstr->IsPhi()) {
                 ASSERT(instr->IsPhi());
-                auto *phiCopy = static_cast<PhiInstruction *>(instr);
-                const auto *phiOrig = static_cast<const PhiInstruction *>(origInstr);
+                auto *phiCopy = instr->AsPhi();
+                const auto *phiOrig = origInstr->AsPhi();
                 for (size_t i = 0, end = phiOrig->GetInputsCount(); i < end; ++i) {
                     phiCopy->AddPhiInput(translation.ToCopy(phiOrig->GetInput(i)),
                                          translation.ToCopy(phiOrig->GetSourceBasicBlock(i)));

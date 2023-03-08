@@ -14,19 +14,14 @@ public:
     NO_MOVE_SEMANTIC(GraphChecker);
     ~GraphChecker() noexcept override = default;
 
-    bool Run() override {
-        auto *g = graph;
-        graph->ForEachBasicBlock([g](const BasicBlock *bblock) {
-            VerifyControlAndDataFlowGraphs(bblock);
-        });
-        DFO::Traverse(graph, []([[maybe_unused]] const BasicBlock *bblock) {
-            /* DFO dry run to check graph is properly connected */
-        });
-        ASSERT(graph->VerifyFirstBlock());
-        return true;
-    }
+    bool Run() override;
 
+    static void VerifyDomTree(Graph *graph);
     static void VerifyControlAndDataFlowGraphs(const BasicBlock *bblock);
+
+private:
+    static bool sameBasicBlocks(const std::pmr::vector<BasicBlock *> &lhs,
+                                const std::pmr::vector<BasicBlock *> &rhs);
 };
 }   // namespace ir
 

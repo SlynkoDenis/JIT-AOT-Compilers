@@ -30,8 +30,19 @@ public:
     bool IsEmpty() const {
         return GetSize() == 0;
     }
+
     bool IsFirstInGraph() const;
     bool IsLastInGraph() const;
+
+    CompareInstruction *EndsWithConditionalJump();
+    const CompareInstruction *EndsWithConditionalJump() const;
+
+    size_t GetPredecessorsCount() const {
+        return preds.size();
+    }
+    size_t GetSuccessorsCount() const {
+        return succs.size();
+    }
     bool HasNoPredecessors() const {
         return preds.empty();
     }
@@ -41,6 +52,7 @@ public:
     bool HasPredecessor(const BasicBlock *bblock) const {
         return std::find(preds.begin(), preds.end(), bblock) != preds.end();
     }
+
     std::pmr::vector<BasicBlock *> &GetPredecessors() {
         return preds;
     }
@@ -98,6 +110,7 @@ public:
     const Loop *GetLoop() const {
         return loop;
     }
+    bool IsLoopHeader() const;
 
     Graph *GetGraph() {
         return graph;
@@ -120,7 +133,12 @@ public:
         dominator = newIDom;
     }
     void AddDominatedBlock(BasicBlock *bblock) {
+        ASSERT(bblock);
         dominated.push_back(bblock);
+    }
+    void RemoveDominatedBlock(BasicBlock *bblock);
+    void ClearDominatedBlocks() {
+        dominated.clear();
     }
 
     void SetLoop(Loop *newLoop) {
@@ -146,14 +164,13 @@ public:
     // implemented as BasicBlock's method to be able to directly access internal fields
     BasicBlock *SplitAfterInstruction(InstructionBase *instr, bool connectAfterSplit);
 
-    // TODO: might make this method protected & friend with Graph
     BasicBlock *Copy(Graph *targetGraph, GraphTranslationHelper &translationHelper) const;
 
     NO_NEW_DELETE;
 
 public:
     // STL compatible iterator
-    template <typename T>
+    template <InstructionPointerType T, bool OnlyPhi = false>
     class Iterator {
     public:
         // iterator traits
@@ -166,7 +183,16 @@ public:
         Iterator() : curr(nullptr) {}
         explicit Iterator(T instr) : curr(instr) {}
         Iterator &operator++() {
-            curr = curr->GetNextInstruction();
+            if constexpr (OnlyPhi) {
+                auto *tmp = curr->GetNextInstruction();
+                if (tmp == nullptr || !tmp->IsPhi()) {
+                    curr = nullptr;
+                } else {
+                    curr = tmp->AsPhi();
+                }
+            } else {
+                curr = curr->GetNextInstruction();
+            }
             return *this;
         }
         Iterator operator++(int) {
@@ -175,7 +201,11 @@ public:
             return retval;
         }
         Iterator &operator--() {
-            curr = curr->GetPrevInstruction();
+            if constexpr (OnlyPhi) {
+                curr = curr->GetPrevInstruction()->AsPhi();
+            } else {
+                curr = curr->GetPrevInstruction();
+            }
             return *this;
         }
         Iterator operator--(int) {
@@ -210,6 +240,37 @@ public:
     }
     auto size() const {
         return GetSize();
+    }
+
+    template <typename T>
+    requires std::is_same_v<std::remove_cv_t<T>, BasicBlock>
+    class PhiIterationFacade {
+    public:
+        PhiIterationFacade(T &bblock) : bblock(bblock) {}
+
+        auto begin() {
+            return Iterator<decltype(bblock.GetFirstPhiInstruction()), true>{
+                bblock.GetFirstPhiInstruction()};
+        }
+        auto begin() const {
+            return Iterator<decltype(bblock.GetFirstPhiInstruction()), true>{
+                bblock.GetFirstPhiInstruction()};
+        }
+        auto end() {
+            return Iterator<decltype(bblock.GetLastPhiInstruction()), true>{nullptr};
+        }
+        auto end() const {
+            return Iterator<decltype(bblock.GetLastPhiInstruction()), true>{nullptr};
+        }
+    private:
+        T &bblock;
+    };
+
+    auto IteratePhi() {
+        return PhiIterationFacade(*this);
+    }
+    auto IteratePhi() const {
+        return PhiIterationFacade(*this);
     }
 
 public:

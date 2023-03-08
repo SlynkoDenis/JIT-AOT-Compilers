@@ -127,4 +127,56 @@ TEST_F(DCETest, TestNoDCE) {
     ASSERT_EQ(graph->GetBasicBlocksCount(), bblocksCount);
     CompilerTestBase::compareInstructions({v0, v1, v2, ret}, bblock);
 }
+
+TEST_F(DCETest, TestLoop) {
+    // v0 = arg + 1
+    // v1 = arg * 2
+    // while (v0 < 4) {
+    //     v1 = v1 * 2
+    //     v0 = v0 + 1
+    // }
+    // return v0
+    //
+    // v1 must be cleared by DCE
+    auto type = OperandType::I32;
+    auto *graph = GetGraph();
+    auto *instrBuilder = GetInstructionBuilder();
+
+    auto *arg = instrBuilder->CreateARG(type);
+    auto *constFour = instrBuilder->CreateCONST(type, 4);
+    auto *firstBlock = FillFirstBlock(graph, arg, constFour);
+
+    auto *varsBlock = graph->CreateEmptyBasicBlock();
+    graph->ConnectBasicBlocks(firstBlock, varsBlock);
+    auto *v0 = instrBuilder->CreateADDI(type, arg, 1);
+    auto *v1 = instrBuilder->CreateMULI(type, arg, 2);
+    instrBuilder->PushBackInstruction(varsBlock, v0, v1);
+
+    auto *preLoop = graph->CreateEmptyBasicBlock();
+    graph->ConnectBasicBlocks(varsBlock, preLoop);
+    auto *phiV0 = instrBuilder->CreatePHI(type, {v0}, {varsBlock});
+    auto *cmp = instrBuilder->CreateCMP(type, CondCode::LT, phiV0, constFour);
+    auto *jcmp = instrBuilder->CreateJCMP();
+    instrBuilder->PushBackInstruction(preLoop, phiV0, cmp, jcmp);
+
+    auto *loopBody = graph->CreateEmptyBasicBlock();
+    graph->ConnectBasicBlocks(preLoop, loopBody);
+    graph->ConnectBasicBlocks(loopBody, preLoop);
+    auto *phiV1 = instrBuilder->CreatePHI(type, {v1}, {varsBlock});
+    auto *muliV1 = instrBuilder->CreateMULI(type, phiV1, 2);
+    auto *addiV0 = instrBuilder->CreateADDI(type, phiV0, 1);
+    instrBuilder->PushBackInstruction(loopBody, phiV1, muliV1, addiV0);
+    phiV0->AddPhiInput(addiV0, loopBody);
+
+    auto *postLoop = graph->CreateEmptyBasicBlock(true);
+    graph->ConnectBasicBlocks(preLoop, postLoop);
+    auto *ret = instrBuilder->CreateRET(type, phiV0);
+    instrBuilder->PushBackInstruction(postLoop, ret);
+
+    PassManager::Run<DCEPass>(graph);
+
+    VerifyControlAndDataFlowGraphs(graph);
+    CompilerTestBase::compareInstructions({v0}, varsBlock);
+    CompilerTestBase::compareInstructions({addiV0}, loopBody);
+}
 }   // namespace ir::tests

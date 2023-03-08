@@ -25,8 +25,9 @@ public:
     bool IsAnalysisValid(AnalysisFlag a) const {
         return mask[utils::to_underlying(a)];
     }
-    void SetAnalysisValid(AnalysisFlag a, bool isValid) {
-        mask[utils::to_underlying(a)] = isValid;
+    template <AnalysisFlag AFlag>
+    void SetAnalysisValid(bool isValid) {
+        mask[utils::to_underlying(AFlag)] = isValid;
     }
 
 private:

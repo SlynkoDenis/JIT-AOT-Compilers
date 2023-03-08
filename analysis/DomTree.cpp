@@ -4,23 +4,15 @@
 
 
 namespace ir {
-bool DomTreeBuilder::Run() {
-    if (!graph->IsEmpty()) {
-        auto sdomsHelper = resetStructs();
-
-        dfsTraverse(graph->GetFirstBasicBlock());
-        // check graph's connectivity
-        ASSERT(lastNumber == static_cast<int>(graph->GetBasicBlocksCount()) - 1);
-        computeSDoms(sdomsHelper);
-        computeIDoms();
-    }
-    return true;
-}
-
 DSU DomTreeBuilder::resetStructs() {
+    graph->ForEachBasicBlock([](BasicBlock *bblock) {
+        bblock->ClearDominatedBlocks();
+        bblock->SetDominator(nullptr);
+    });
+
     lastNumber = -1;
 
-    auto bblocksCount = graph->GetBasicBlocksCount();
+    auto bblocksCount = graph->GetMaximumBlockId() + 1;
     sdoms.resize(bblocksCount, BasicBlock::INVALID_ID);
     sdomsSet.resize(bblocksCount);
     idoms.resize(bblocksCount, nullptr);
@@ -74,21 +66,6 @@ void DomTreeBuilder::computeSDoms(DSU &sdomsHelper) {
                 setImmDominator(dominateeId, minSDom);
             }
         }
-    }
-}
-
-void DomTreeBuilder::computeIDoms() {
-    for (size_t i = 1; i < getSize(); ++i) {
-        auto *currentBlock = getOrderedBlock(i);
-        auto currentBlockId = currentBlock->GetId();
-        if (getImmDominator(currentBlockId) != getOrderedBlock(getSemiDomNumber(currentBlock))) {
-            setImmDominator(currentBlockId,
-                            getImmDominator(getImmDominator(currentBlockId)->GetId()));
-        }
-
-        auto *immDom = getImmDominator(currentBlockId);
-        currentBlock->SetDominator(immDom);
-        immDom->AddDominatedBlock(currentBlock);
     }
 }
 }   // namespace ir
