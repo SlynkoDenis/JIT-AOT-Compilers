@@ -158,7 +158,7 @@ public:
     CompareInstruction *CreateCMP(OperandType type, CondCode ccode, Input in1, Input in2) {
         CREATE_INST_WITH_PROP(
             CompareInstruction,
-            utils::underlying_logic_or(InstrProp::INPUT, InstrProp::SIDE_EFFECTS),
+            INPUT_SIDE_EFFECTS,
             Opcode::CMP,
             type,
             ccode,
@@ -183,40 +183,33 @@ public:
     }
 
     CallInstruction *CreateCALL(OperandType type, FunctionId target) {
-        CREATE_INST_WITH_PROP(
-            CallInstruction,
-            utils::underlying_logic_or(InstrProp::INPUT, InstrProp::SIDE_EFFECTS),
-            type,
-            target);
+        CREATE_INST_WITH_PROP(CallInstruction, INPUT_SIDE_EFFECTS, type, target);
     }
     template <AllowedInputType Ins>
     CallInstruction *CreateCALL(OperandType type, FunctionId target,
                                 std::initializer_list<Ins> arguments) {
-        CREATE_INST_WITH_PROP(
-            CallInstruction,
-            utils::underlying_logic_or(InstrProp::INPUT, InstrProp::SIDE_EFFECTS),
-            type,
-            target,
-            arguments);
+        CREATE_INST_WITH_PROP(CallInstruction, INPUT_SIDE_EFFECTS, type, target, arguments);
     }
     template <AllowedInputType Ins, typename AllocatorT>
     CallInstruction *CreateCALL(OperandType type, FunctionId target,
                                 std::vector<Ins, AllocatorT> arguments) {
-        CREATE_INST_WITH_PROP(
-            CallInstruction,
-            utils::underlying_logic_or(InstrProp::INPUT, InstrProp::SIDE_EFFECTS),
-            type,
-            target,
-            arguments);
+        CREATE_INST_WITH_PROP(CallInstruction, INPUT_SIDE_EFFECTS, type, target, arguments);
     }
 
     LengthInstruction *CreateLEN(Input array) {
         CREATE_INST_WITH_PROP(LengthInstruction, INPUT_MEM, array);
     }
 
-    NewArrayInstruction *CreateNEW_ARRAY(uint64_t length, TypeId typeId) {
+    NewArrayInstruction *CreateNEW_ARRAY(Input length, TypeId typeId) {
         CREATE_INST_WITH_PROP(
             NewArrayInstruction,
+            INPUT_MEM,
+            length,
+            typeId);
+    }
+    NewArrayImmInstruction *CreateNEW_ARRAY_IMM(uint64_t length, TypeId typeId) {
+        CREATE_INST_WITH_PROP(
+            NewArrayImmInstruction,
             utils::underlying_logic_or(InstrProp::MEM, InstrProp::SIDE_EFFECTS),
             length,
             typeId);
@@ -306,6 +299,34 @@ public:
         CREATE_INST(InputArgumentInstruction, type);
     }
 
+    UnaryRegInstruction *CreateNULL_CHECK(Input input) {
+        CREATE_INST_WITH_PROP(
+            UnaryRegInstruction,
+            INPUT_SIDE_EFFECTS,
+            Opcode::NULL_CHECK,
+            OperandType::INVALID,
+            input);
+    }
+    UnaryRegInstruction *CreateZERO_CHECK(Input input) {
+        CREATE_INST_WITH_PROP(
+            UnaryRegInstruction,
+            INPUT_SIDE_EFFECTS,
+            Opcode::ZERO_CHECK,
+            OperandType::INVALID,
+            input);
+    }
+    UnaryRegInstruction *CreateNEGATIVE_CHECK(Input input) {
+        CREATE_INST_WITH_PROP(
+            UnaryRegInstruction,
+            INPUT_SIDE_EFFECTS,
+            Opcode::NEGATIVE_CHECK,
+            OperandType::INVALID,
+            input);
+    }
+    BoundsCheckInstruction *CreateBOUNDS_CHECK(Input arr, Input idx) {
+        CREATE_INST_WITH_PROP(BoundsCheckInstruction, INPUT_SIDE_EFFECTS, arr, idx);
+    }
+
 #undef CREATE_FIXED_INST
 #undef CREATE_INST
 #undef CREATE_INST_WITH_PROP
@@ -319,6 +340,8 @@ private:
         utils::underlying_logic_or(InstrProp::ARITH, InstrProp::INPUT);
     static constexpr InstructionPropT SIDE_EFFECTS_ARITHM =
         utils::underlying_logic_or(InstrProp::ARITH, InstrProp::INPUT, InstrProp::SIDE_EFFECTS);
+    static constexpr InstructionPropT INPUT_SIDE_EFFECTS =
+        utils::underlying_logic_or(InstrProp::INPUT, InstrProp::SIDE_EFFECTS);
     static constexpr InstructionPropT INPUT_MEM =
         utils::underlying_logic_or(InstrProp::INPUT, InstrProp::MEM, InstrProp::SIDE_EFFECTS);
 

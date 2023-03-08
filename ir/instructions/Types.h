@@ -3,6 +3,7 @@
 
 #include <array>
 #include <cstdint>
+#include "helpers.h"
 #include <limits>
 #include "macros.h"
 #include <type_traits>
@@ -65,6 +66,7 @@ constexpr std::array<uint64_t, static_cast<size_t>(OperandType::NUM_TYPES)> maxV
     std::numeric_limits<uint16_t>::max(),
     std::numeric_limits<uint32_t>::max(),
     std::numeric_limits<uint64_t>::max(),
+    0
 };
 
 template <typename T, typename... U>
@@ -111,6 +113,11 @@ constexpr inline int64_t ToSigned(uint64_t value, OperandType type) {
 constexpr inline uint64_t GetMaxValue(OperandType type) {
     ASSERT(type != OperandType::INVALID);
     return maxValues[static_cast<size_t>(type)];
+}
+
+constexpr inline bool IsIntegerType(OperandType type) {
+    auto t = utils::to_underlying(type);
+    return utils::to_underlying(OperandType::I8) <= t && t <= utils::to_underlying(OperandType::U64);
 }
 }   // namespace ir
 

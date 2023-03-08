@@ -2,9 +2,9 @@
 #define JIT_AOT_COMPILERS_COURSE_COMPILER_TEST_BASE_H_
 
 #include "Compiler.h"
-#include "InstructionBuilder.h"
 #include "GraphChecker.h"
 #include "gtest/gtest.h"
+#include "InstructionBuilder.h"
 #include "PassBase.h"
 
 
@@ -53,7 +53,10 @@ public:
         return firstBlock;
     }
 
-    static void compareInstructions(std::vector<InstructionBase *> expected, BasicBlock *bblock) {
+    template <typename AllocatorT = std::allocator<InstructionBase *>>
+    static void compareInstructions(std::vector<InstructionBase *, AllocatorT> expected,
+                                    BasicBlock *bblock)
+    {
         ASSERT_EQ(bblock->GetSize(), expected.size());
         size_t i = 0;
         for (auto *instr : *bblock) {
@@ -69,6 +72,8 @@ public:
     }
 
 public:
+    static constexpr TypeId::TypeIdType MAGIC_TYPE_ID = 42;
+
     Compiler compiler;
 
 protected:

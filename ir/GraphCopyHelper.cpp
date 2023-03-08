@@ -64,7 +64,7 @@ void GraphCopyHelper::fixDFG() {
                 }
             } else if (origInstr->HasInputs()) {
                 ASSERT(instr->HasInputs());
-                auto *inputsCopy = static_cast<InputsInstruction *>(instr);
+                auto *inputsCopy = instr->AsInputsInstruction();
                 const auto *inputsOrig = static_cast<const InputsInstruction *>(origInstr);
                 for (size_t i = 0, end = inputsOrig->GetInputsCount(); i < end; ++i) {
                     inputsCopy->SetInput(translation.ToCopy(inputsOrig->GetInput(i)), i);

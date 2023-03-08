@@ -145,6 +145,7 @@ TEST_F(InstructionsTest, TestCall) {
     ASSERT_TRUE(call->IsCall());
     ASSERT_EQ(call->GetType(), opType);
     ASSERT_EQ(call->GetCallTarget(), callTarget);
+    ASSERT_TRUE(call->HasInputs());
     ASSERT_EQ(call->GetInputsCount(), 0);
 
     auto *arg0 = instrBuilder->CreateARG(OperandType::U16);
@@ -155,6 +156,7 @@ TEST_F(InstructionsTest, TestCall) {
     ASSERT_TRUE(call->IsCall());
     ASSERT_EQ(call->GetType(), opType);
     ASSERT_EQ(call->GetCallTarget(), callTarget);
+    ASSERT_TRUE(call->HasInputs());
     ASSERT_EQ(call->GetInputsCount(), 2);
     ASSERT_EQ(call->GetInput(0), arg0);
     ASSERT_EQ(call->GetInput(1), arg1);
@@ -187,19 +189,32 @@ TEST_F(InstructionsTest, TestPhi) {
 }
 
 TEST_F(InstructionsTest, TestNewArray) {
-    uint64_t len = 2;
-    TypeId::TypeIdType typeId = 1234;
-    auto *instr = GetInstructionBuilder()->CreateNEW_ARRAY(len, typeId);
+    auto *len = GetInstructionBuilder()->CreateCONST(OperandType::U64, 2);
+    auto *instr = GetInstructionBuilder()->CreateNEW_ARRAY(len, MAGIC_TYPE_ID);
 
     ASSERT_NE(instr, nullptr);
     ASSERT_EQ(instr->GetOpcode(), Opcode::NEW_ARRAY);
     ASSERT_EQ(instr->GetType(), OperandType::REF);
+    ASSERT_TRUE(instr->HasInputs());
+    ASSERT_TRUE(instr->HasInputs());
+    ASSERT_EQ(instr->GetInputsCount(), 1);
+    ASSERT_EQ(instr->GetInput(0), len);
+    ASSERT_EQ(instr->GetTypeId(), MAGIC_TYPE_ID);
+}
+
+TEST_F(InstructionsTest, TestNewArrayImm) {
+    uint64_t len = 2;
+    auto *instr = GetInstructionBuilder()->CreateNEW_ARRAY_IMM(len, MAGIC_TYPE_ID);
+
+    ASSERT_NE(instr, nullptr);
+    ASSERT_EQ(instr->GetOpcode(), Opcode::NEW_ARRAY_IMM);
+    ASSERT_EQ(instr->GetType(), OperandType::REF);
     ASSERT_EQ(instr->GetValue(), len);
-    ASSERT_EQ(instr->GetTypeId(), typeId);
+    ASSERT_EQ(instr->GetTypeId(), MAGIC_TYPE_ID);
 }
 
 TEST_F(InstructionsTest, TestLen) {
-    auto *array = GetInstructionBuilder()->CreateNEW_ARRAY(2, 1234);
+    auto *array = GetInstructionBuilder()->CreateNEW_ARRAY_IMM(2, 1234);
     auto *instr = GetInstructionBuilder()->CreateLEN(array);
 
     ASSERT_NE(instr, nullptr);
@@ -209,25 +224,25 @@ TEST_F(InstructionsTest, TestLen) {
 }
 
 TEST_F(InstructionsTest, TestNewObject) {
-    TypeId::TypeIdType typeId = 1234;
-    auto *instr = GetInstructionBuilder()->CreateNEW_OBJECT(typeId);
+    auto *instr = GetInstructionBuilder()->CreateNEW_OBJECT(MAGIC_TYPE_ID);
 
     ASSERT_NE(instr, nullptr);
     ASSERT_EQ(instr->GetOpcode(), Opcode::NEW_OBJECT);
     ASSERT_EQ(instr->GetType(), OperandType::REF);
-    ASSERT_EQ(instr->GetTypeId(), typeId);
+    ASSERT_EQ(instr->GetTypeId(), MAGIC_TYPE_ID);
 }
 
 TEST_F(InstructionsTest, TestLoadArray) {
     auto opType = OperandType::U8;
 
     auto *constOne = GetInstructionBuilder()->CreateCONST(OperandType::U64, 1);
-    auto *array = GetInstructionBuilder()->CreateNEW_ARRAY(2, 1234);
+    auto *array = GetInstructionBuilder()->CreateNEW_ARRAY_IMM(2, 1234);
     auto *instr = GetInstructionBuilder()->CreateLOAD_ARRAY(opType, array, constOne);
 
     ASSERT_NE(instr, nullptr);
     ASSERT_EQ(instr->GetOpcode(), Opcode::LOAD_ARRAY);
     ASSERT_EQ(instr->GetType(), opType);
+    ASSERT_TRUE(instr->HasInputs());
     ASSERT_EQ(instr->GetInputsCount(), 2);
     ASSERT_EQ(instr->GetInput(0), array);
     ASSERT_EQ(instr->GetInput(1), constOne);
@@ -237,12 +252,13 @@ TEST_F(InstructionsTest, TestLoadArrayImm) {
     auto opType = OperandType::U8;
 
     uint64_t idx = 1;
-    auto *array = GetInstructionBuilder()->CreateNEW_ARRAY(2, 1234);
+    auto *array = GetInstructionBuilder()->CreateNEW_ARRAY_IMM(2, 1234);
     auto *instr = GetInstructionBuilder()->CreateLOAD_ARRAY_IMM(opType, array, idx);
 
     ASSERT_NE(instr, nullptr);
     ASSERT_EQ(instr->GetOpcode(), Opcode::LOAD_ARRAY_IMM);
     ASSERT_EQ(instr->GetType(), opType);
+    ASSERT_TRUE(instr->HasInputs());
     ASSERT_EQ(instr->GetInputsCount(), 1);
     ASSERT_EQ(instr->GetInput(0), array);
     ASSERT_EQ(instr->GetValue(), idx);
@@ -258,6 +274,7 @@ TEST_F(InstructionsTest, TestLoadObject) {
     ASSERT_NE(instr, nullptr);
     ASSERT_EQ(instr->GetOpcode(), Opcode::LOAD_OBJECT);
     ASSERT_EQ(instr->GetType(), opType);
+    ASSERT_TRUE(instr->HasInputs());
     ASSERT_EQ(instr->GetInputsCount(), 1);
     ASSERT_EQ(instr->GetInput(0), obj);
     ASSERT_EQ(instr->GetValue(), offset);
@@ -266,11 +283,12 @@ TEST_F(InstructionsTest, TestLoadObject) {
 TEST_F(InstructionsTest, TestStoreArray) {
     auto *constOne = GetInstructionBuilder()->CreateCONST(OperandType::U64, 1);
     auto *value = GetInstructionBuilder()->CreateCONST(OperandType::U64, -1);
-    auto *array = GetInstructionBuilder()->CreateNEW_ARRAY(2, 1234);
+    auto *array = GetInstructionBuilder()->CreateNEW_ARRAY_IMM(2, 1234);
     auto *instr = GetInstructionBuilder()->CreateSTORE_ARRAY(array, value, constOne);
 
     ASSERT_NE(instr, nullptr);
     ASSERT_EQ(instr->GetOpcode(), Opcode::STORE_ARRAY);
+    ASSERT_TRUE(instr->HasInputs());
     ASSERT_EQ(instr->GetInputsCount(), 3);
     ASSERT_EQ(instr->GetInput(0), array);
     ASSERT_EQ(instr->GetInput(1), value);
@@ -280,11 +298,12 @@ TEST_F(InstructionsTest, TestStoreArray) {
 TEST_F(InstructionsTest, TestStoreArrayImm) {
     uint64_t idx = 1;
     auto *value = GetInstructionBuilder()->CreateCONST(OperandType::U64, -1);
-    auto *array = GetInstructionBuilder()->CreateNEW_ARRAY(2, 1234);
+    auto *array = GetInstructionBuilder()->CreateNEW_ARRAY_IMM(2, 1234);
     auto *instr = GetInstructionBuilder()->CreateSTORE_ARRAY_IMM(array, value, idx);
 
     ASSERT_NE(instr, nullptr);
     ASSERT_EQ(instr->GetOpcode(), Opcode::STORE_ARRAY_IMM);
+    ASSERT_TRUE(instr->HasInputs());
     ASSERT_EQ(instr->GetInputsCount(), 2);
     ASSERT_EQ(instr->GetInput(0), array);
     ASSERT_EQ(instr->GetInput(1), value);
@@ -299,9 +318,60 @@ TEST_F(InstructionsTest, TestStoreObject) {
 
     ASSERT_NE(instr, nullptr);
     ASSERT_EQ(instr->GetOpcode(), Opcode::STORE_OBJECT);
+    ASSERT_TRUE(instr->HasInputs());
     ASSERT_EQ(instr->GetInputsCount(), 2);
     ASSERT_EQ(instr->GetInput(0), obj);
     ASSERT_EQ(instr->GetInput(1), value);
     ASSERT_EQ(instr->GetValue(), offset);
+}
+
+TEST_F(InstructionsTest, TestNullCheck) {
+    auto *obj = GetInstructionBuilder()->CreateNEW_OBJECT(MAGIC_TYPE_ID);
+    auto *instr = GetInstructionBuilder()->CreateNULL_CHECK(obj);
+
+    ASSERT_NE(instr, nullptr);
+    ASSERT_EQ(instr->GetOpcode(), Opcode::NULL_CHECK);
+    ASSERT_TRUE(instr->HasInputs());
+    ASSERT_TRUE(instr->HasSideEffects());
+    ASSERT_EQ(instr->GetInputsCount(), 1);
+    ASSERT_EQ(instr->GetInput(0), obj);
+}
+
+TEST_F(InstructionsTest, TestZeroCheck) {
+    auto *constZero = GetInstructionBuilder()->CreateCONST(OperandType::I16, 0);
+    auto *instr = GetInstructionBuilder()->CreateZERO_CHECK(constZero);
+
+    ASSERT_NE(instr, nullptr);
+    ASSERT_EQ(instr->GetOpcode(), Opcode::ZERO_CHECK);
+    ASSERT_TRUE(instr->HasInputs());
+    ASSERT_TRUE(instr->HasSideEffects());
+    ASSERT_EQ(instr->GetInputsCount(), 1);
+    ASSERT_EQ(instr->GetInput(0), constZero);
+}
+
+TEST_F(InstructionsTest, TestNegativeCheck) {
+    auto *constZero = GetInstructionBuilder()->CreateCONST(OperandType::I16, 0);
+    auto *instr = GetInstructionBuilder()->CreateNEGATIVE_CHECK(constZero);
+
+    ASSERT_NE(instr, nullptr);
+    ASSERT_EQ(instr->GetOpcode(), Opcode::NEGATIVE_CHECK);
+    ASSERT_TRUE(instr->HasInputs());
+    ASSERT_TRUE(instr->HasSideEffects());
+    ASSERT_EQ(instr->GetInputsCount(), 1);
+    ASSERT_EQ(instr->GetInput(0), constZero);
+}
+
+TEST_F(InstructionsTest, TestBoundsCheck) {
+    auto *arr = GetInstructionBuilder()->CreateNEW_ARRAY_IMM(MAGIC_TYPE_ID, MAGIC_TYPE_ID);
+    auto *idx = GetInstructionBuilder()->CreateCONST(OperandType::I16, 1);
+    auto *instr = GetInstructionBuilder()->CreateBOUNDS_CHECK(arr, idx);
+
+    ASSERT_NE(instr, nullptr);
+    ASSERT_EQ(instr->GetOpcode(), Opcode::BOUNDS_CHECK);
+    ASSERT_TRUE(instr->HasInputs());
+    ASSERT_TRUE(instr->HasSideEffects());
+    ASSERT_EQ(instr->GetInputsCount(), 2);
+    ASSERT_EQ(instr->GetInput(0), arr);
+    ASSERT_EQ(instr->GetInput(1), idx);
 }
 }   // namespace ir::tests

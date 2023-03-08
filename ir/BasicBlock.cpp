@@ -62,9 +62,13 @@ bool BasicBlock::IsLoopHeader() const {
     return (loop != nullptr) && loop->GetHeader() == this;
 }
 
-bool BasicBlock::Dominates(const BasicBlock *bblock) const {
-    ASSERT(bblock);
-    auto *dom = bblock->GetDominator();
+bool BasicBlock::Dominates(const BasicBlock *other) const {
+    ASSERT(other);
+    if (other == this) {
+        // basic block always dominated itself
+        return true;
+    }
+    auto *dom = other->GetDominator();
     while (dom != nullptr) {
         if (dom == this) {
             return true;
@@ -311,22 +315,13 @@ BasicBlock *BasicBlock::Copy(Graph *targetGraph, GraphTranslationHelper &transla
 {
     ASSERT(targetGraph);
     auto *result = targetGraph->CreateEmptyBasicBlock();
-
-    const InstructionBase *instr = GetFirstPhiInstruction();
-    if (!instr) {
-        instr = GetFirstInstruction();
-        if (!instr) {
-            return result;
+    if (!IsEmpty()) {
+        for (const auto *instr : *this) {
+            copyInstruction(result, instr, translationHelper);
         }
+        ASSERT(result->GetFirstInstruction());
+        ASSERT(result->GetLastInstruction());
     }
-    for (auto *end = GetLastInstruction(); instr != end; instr = instr->GetNextInstruction()) {
-        copyInstruction(result, instr, translationHelper);
-    }
-    // copy the last instruction
-    copyInstruction(result, instr, translationHelper);
-
-    ASSERT(result->GetFirstInstruction());
-    ASSERT(result->GetLastInstruction());
     return result;
 }
 
