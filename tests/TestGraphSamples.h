@@ -7,6 +7,7 @@
 namespace ir::tests {
 class TestGraphSamples : public CompilerTestBase {
 public:
+    std::pair<Graph *, std::vector<BasicBlock *>> BuildCase0();
     std::pair<Graph *, std::vector<BasicBlock *>> BuildCase1();
     std::pair<Graph *, std::vector<BasicBlock *>> BuildCase2();
     std::pair<Graph *, std::vector<BasicBlock *>> BuildCase3();

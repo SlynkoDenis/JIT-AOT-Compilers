@@ -14,7 +14,6 @@ public:
     NO_MOVE_SEMANTIC(CompilerBase);
     virtual DEFAULT_DTOR(CompilerBase);
 
-    // TODO: specify a meaningful interface & fix after a full-functioning IRBuilder is implemented
     virtual Graph *CreateNewGraph() = 0;
     virtual Graph *CopyGraph(const Graph *source, InstructionBuilder *instrBuilder) = 0;
     virtual Graph *Optimize(Graph *graph) = 0;

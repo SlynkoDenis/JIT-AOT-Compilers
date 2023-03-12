@@ -3,6 +3,7 @@ set(SOURCES
     Compiler.cpp
     Graph.cpp
     GraphCopyHelper.cpp
+    Instruction.cpp
     InstructionBase.cpp
     InstructionsCopy.cpp
     )

@@ -3,6 +3,30 @@
 
 
 namespace ir {
+Input InstructionBase::ToInput() {
+    return {this};
+}
+
+ConstantInstruction *InstructionBase::AsConst() {
+    ASSERT(IsConst());
+    return static_cast<ConstantInstruction *>(this);
+}
+
+const ConstantInstruction *InstructionBase::AsConst() const {
+    ASSERT(IsConst());
+    return static_cast<const ConstantInstruction *>(this);
+}
+
+PhiInstruction *InstructionBase::AsPhi() {
+    ASSERT(IsPhi());
+    return static_cast<PhiInstruction *>(this);
+}
+
+const PhiInstruction *InstructionBase::AsPhi() const {
+    ASSERT(IsPhi());
+    return static_cast<const PhiInstruction *>(this);
+}
+
 void InstructionBase::UnlinkFromParent() {
     ASSERT(parent);
     parent->UnlinkInstruction(this);

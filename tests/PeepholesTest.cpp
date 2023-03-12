@@ -149,7 +149,7 @@ static void CheckReplacementWithConstant(
     ASSERT_NE(newInstr, nullptr);
     ASSERT_TRUE(newInstr->IsConst());
     ASSERT_EQ(userInstr->GetInput(0), newInstr);
-    ASSERT_EQ(static_cast<ConstantInstruction *>(newInstr)->GetValue(), expectedValue);
+    ASSERT_EQ(newInstr->AsConst()->GetValue(), expectedValue);
 }
 
 TEST_F(PeepholesTest, TestANDFolding) {

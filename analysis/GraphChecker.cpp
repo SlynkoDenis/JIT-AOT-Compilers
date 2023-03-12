@@ -1,10 +1,38 @@
+#include "DomTree.h"
 #include "GraphChecker.h"
 
 
 namespace ir {
+bool GraphChecker::Run() {
+    auto *g = graph;
+    graph->ForEachBasicBlock([g](const BasicBlock *bblock) {
+        VerifyControlAndDataFlowGraphs(bblock);
+    });
+    DFO::Traverse(graph, []([[maybe_unused]] const BasicBlock *bblock) {
+        /* DFO dry run to check graph is properly connected */
+    });
+    ASSERT(graph->VerifyFirstBlock());
+    return true;
+}
+
+/* static */
+void GraphChecker::VerifyDomTree(Graph *graph) {
+    ASSERT(graph);
+    if (!graph->IsAnalysisValid(AnalysisFlag::DOM_TREE)) {
+        return;
+    }
+    DomTreeBuilder builder(graph);
+    auto domsTreeInfo = builder.Build();
+    graph->ForEachBasicBlock([&doms = std::as_const(domsTreeInfo)](const BasicBlock *bblock) {
+        auto info = doms[bblock->GetId()];
+        ASSERT(info.GetDominator() == bblock->GetDominator());
+        ASSERT(sameBasicBlocks(info.GetDominatedBlocks(), bblock->GetDominatedBlocks()));
+    });
+}
+
 /* static */
 void GraphChecker::VerifyControlAndDataFlowGraphs(const BasicBlock *bblock) {
-    // TODO: implement more complete checks, e.g. on Loop & DomTree info
+    // TODO: verify Loop Analysis
     ASSERT(bblock != nullptr);
     const InstructionBase *instr = bblock->GetFirstPhiInstruction();
     instr = instr ? instr : bblock->GetFirstInstruction();
@@ -39,10 +67,14 @@ void GraphChecker::VerifyControlAndDataFlowGraphs(const BasicBlock *bblock) {
         }
 
         if (instr->HasInputs()) {
-            auto *typed = static_cast<const InputsInstruction *>(instr);
-            bool found = false;
+            const auto *typed = static_cast<const InputsInstruction *>(instr);
+            auto found = false;
             for (size_t i = 0, end_idx = typed->GetInputsCount(); i < end_idx; ++i) {
-                auto currUsers = typed->GetInput(i)->GetUsers();
+                const auto &input = typed->GetInput(i);
+                ASSERT((input.GetInstruction()) && (input->GetBasicBlock()));
+                ASSERT(input->GetBasicBlock()->GetGraph() == bblock->GetGraph());
+
+                auto currUsers = input->GetUsers();
                 auto iter = std::find(currUsers.begin(), currUsers.end(), instr);
                 if (iter != currUsers.end()) {
                     found = true;
@@ -70,5 +102,22 @@ void GraphChecker::VerifyControlAndDataFlowGraphs(const BasicBlock *bblock) {
         instr = instr->GetNextInstruction();
     }
     ASSERT(bblock->GetSize() == counter);
+}
+
+/* static */
+bool GraphChecker::sameBasicBlocks(const std::pmr::vector<BasicBlock *> &lhs,
+                                   const std::pmr::vector<BasicBlock *> &rhs) {
+    ASSERT(lhs.size() == rhs.size());
+    auto sortedLhs = lhs;
+    auto sortedRhs = rhs;
+    auto comparator = [](const BasicBlock *l, const BasicBlock *r) {
+        return l->GetId() < r->GetId();
+    };
+    std::sort(sortedLhs.begin(), sortedLhs.end(), comparator);
+    std::sort(sortedRhs.begin(), sortedRhs.end(), comparator);
+    for (size_t i = 0, end = sortedLhs.size(); i < end; ++i) {
+        ASSERT(sortedLhs[i] == sortedRhs[i]);
+    }
+    return true;
 }
 }   // namespace ir

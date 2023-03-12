@@ -8,6 +8,36 @@
 
 
 namespace ir {
+class DominatorInfo final {
+public:
+    explicit DominatorInfo(std::pmr::memory_resource *mem) : dominated(mem) {}
+
+    void SetDominator(BasicBlock *newIDom) {
+        dominator = newIDom;
+    }
+    BasicBlock *GetDominator() {
+        return dominator;
+    }
+    const BasicBlock *GetDominator() const {
+        return dominator;
+    }
+    std::pmr::vector<BasicBlock *> &GetDominatedBlocks() {
+        return dominated;
+    }
+    const std::pmr::vector<BasicBlock *> &GetDominatedBlocks() const {
+        return dominated;
+    }
+    void AddDominatedBlock(BasicBlock *bblock) {
+        ASSERT(bblock);
+        dominated.push_back(bblock);
+    }
+
+private:
+    BasicBlock *dominator = nullptr;
+    std::pmr::vector<BasicBlock *> dominated;
+};
+
+// This pass implements Tarjan's algorithm for building Dominators Tree for the inputs graph
 class DomTreeBuilder : public PassBase {
 public:
     using VectorBBlocks = std::pmr::vector<BasicBlock *>;
@@ -25,7 +55,14 @@ public:
     NO_MOVE_SEMANTIC(DomTreeBuilder);
     ~DomTreeBuilder() noexcept override = default;
 
-    bool Run();
+    bool Run() override {
+        return build<true>(nullptr);
+    }
+    auto Build() {
+        std::pmr::vector<DominatorInfo> doms(graph->GetMemoryResource());
+        build<false>(&doms);
+        return doms;
+    }
 
     const VectorBBlocks &GetImmediateDominators() const {
         return idoms;
@@ -35,10 +72,15 @@ public:
     static constexpr AnalysisFlag SET_FLAG = AnalysisFlag::DOM_TREE;
 
 private:
+    template <bool InPlace>
+    bool build(std::pmr::vector<DominatorInfo> *doms);
+
+    template <bool InPlace>
+    void computeIDoms(std::pmr::vector<DominatorInfo> *doms);
+
     DSU resetStructs();
     void dfsTraverse(BasicBlock *bblock);
     void computeSDoms(DSU &sdomsHelper);
-    void computeIDoms();
 
     size_t getSize() const {
         return idoms.size();
@@ -112,6 +154,42 @@ private:
     // basic blocks' parents in DFO tree
     VectorBBlocks bblocksParents;
 };
+
+template <bool InPlace>
+bool DomTreeBuilder::build(std::pmr::vector<DominatorInfo> *doms) {
+    if (!graph->IsEmpty()) {
+        auto sdomsHelper = resetStructs();
+
+        dfsTraverse(graph->GetFirstBasicBlock());
+        // check graph's connectivity
+        ASSERT(lastNumber == static_cast<int>(graph->GetBasicBlocksCount()) - 1);
+        computeSDoms(sdomsHelper);
+        computeIDoms<InPlace>(doms);
+    }
+    return true;
+}
+
+template <bool InPlace>
+void DomTreeBuilder::computeIDoms(std::pmr::vector<DominatorInfo> *doms) {
+    for (size_t i = 1; i < getSize(); ++i) {
+        auto *currentBlock = getOrderedBlock(i);
+        auto currentBlockId = currentBlock->GetId();
+        if (getImmDominator(currentBlockId) != getOrderedBlock(getSemiDomNumber(currentBlock))) {
+            setImmDominator(currentBlockId,
+                            getImmDominator(getImmDominator(currentBlockId)->GetId()));
+        }
+
+        auto *immDom = getImmDominator(currentBlockId);
+        if constexpr (InPlace) {
+            currentBlock->SetDominator(immDom);
+            immDom->AddDominatedBlock(currentBlock);
+        } else {
+            ASSERT((doms) && currentBlock->GetId() < doms->size() && immDom->GetId() < doms->size());
+            doms->at(currentBlock->GetId()).SetDominator(immDom);
+            doms->at(immDom->GetId()).AddDominatedBlock(currentBlock);
+        }
+    }
+}
 }   // namespace ir
 
 #endif  // JIT_AOT_COMPILERS_COURSE_DOM_TREE_H_

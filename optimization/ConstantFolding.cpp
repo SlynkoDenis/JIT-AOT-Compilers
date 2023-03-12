@@ -8,8 +8,7 @@ bool ConstantFolding::ProcessAND(BinaryRegInstruction *instr) {
     auto input1 = instr->GetInput(0);
     auto input2 = instr->GetInput(1);
     if (input1->IsConst() && input2->IsConst()) {
-        auto value = asConst(input1.GetInstruction())->GetValue() &\
-            asConst(input2.GetInstruction())->GetValue();
+        auto value = input1->AsConst()->GetValue() & input2->AsConst()->GetValue();
         auto *newInstr = getInstructionBuilder(instr)->CreateCONST(instr->GetType(), value);
 
         input1->RemoveUser(instr);
@@ -26,8 +25,8 @@ bool ConstantFolding::ProcessSRA(BinaryRegInstruction *instr) {
     auto input1 = instr->GetInput(0);
     auto input2 = instr->GetInput(1);
     if (input1->IsConst() && input2->IsConst()) {
-        auto value = ToSigned(asConst(input1.GetInstruction())->GetValue(), instr->GetType()) >>\
-            asConst(input2.GetInstruction())->GetValue();
+        auto value = ToSigned(input1->AsConst()->GetValue(), instr->GetType()) >>\
+            input2->AsConst()->GetValue();
         auto *newInstr = getInstructionBuilder(instr)->CreateCONST(instr->GetType(), value);
 
         input1->RemoveUser(instr);
@@ -44,8 +43,7 @@ bool ConstantFolding::ProcessSUB(BinaryRegInstruction *instr) {
     auto input1 = instr->GetInput(0);
     auto input2 = instr->GetInput(1);
     if (input1->IsConst() && input2->IsConst()) {
-        auto value = asConst(input1.GetInstruction())->GetValue() -\
-            asConst(input2.GetInstruction())->GetValue();
+        auto value = input1->AsConst()->GetValue() - input2->AsConst()->GetValue();
         auto *newInstr = getInstructionBuilder(instr)->CreateCONST(instr->GetType(), value);
 
         input1->RemoveUser(instr);
@@ -65,12 +63,6 @@ void ConstantFolding::ReplaceWithConst(InstructionBase *instr, ConstantInstructi
     bblock->UnlinkInstruction(instr);
     ASSERT(bblock->GetGraph()->GetFirstBasicBlock());
     bblock->GetGraph()->GetFirstBasicBlock()->PushBackInstruction(targetConst);
-}
-
-/* static */
-ConstantInstruction *ConstantFolding::asConst(InstructionBase *instr) {
-    ASSERT((instr) && instr->IsConst());
-    return static_cast<ConstantInstruction *>(instr);
 }
 
 /* static */

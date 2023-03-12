@@ -2,6 +2,38 @@
 
 
 namespace ir::tests {
+std::pair<Graph *, std::vector<BasicBlock *>> TestGraphSamples::BuildCase0() {
+    /*
+       A
+       |
+       B
+      / \
+     /   \
+    C     D
+     \   /
+      \ /
+       E
+       |
+       F
+    */
+    auto *graph = GetGraph();
+    std::vector<BasicBlock *> bblocks(6);
+    for (auto &it : bblocks) {
+        it = graph->CreateEmptyBasicBlock();
+    }
+    graph->SetFirstBasicBlock(bblocks[0]);
+    graph->SetLastBasicBlock(bblocks[5]);
+
+    graph->ConnectBasicBlocks(bblocks[0], bblocks[1]);
+    graph->ConnectBasicBlocks(bblocks[1], bblocks[2]);
+    graph->ConnectBasicBlocks(bblocks[1], bblocks[3]);
+    graph->ConnectBasicBlocks(bblocks[2], bblocks[4]);
+    graph->ConnectBasicBlocks(bblocks[3], bblocks[4]);
+    graph->ConnectBasicBlocks(bblocks[4], bblocks[5]);
+
+    return {graph, bblocks};
+}
+
 std::pair<Graph *, std::vector<BasicBlock *>> TestGraphSamples::BuildCase1() {
     /*
        A

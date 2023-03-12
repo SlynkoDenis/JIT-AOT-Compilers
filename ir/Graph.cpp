@@ -46,6 +46,36 @@ void Graph::ConnectBasicBlocks(BasicBlock *lhs, BasicBlock *rhs) {
     ASSERT((lhs) && (rhs));
     lhs->AddSuccessor(rhs);
     rhs->AddPredecessor(lhs);
+    invalidateAfterChangedCFG();
+}
+
+void Graph::DisconnectBasicBlocks(BasicBlock *lhs, BasicBlock *rhs) {
+    ASSERT((lhs) && (rhs));
+    FixPHIAfterDisconnect(lhs, rhs);
+    lhs->RemoveSuccessor(rhs);
+    rhs->RemovePredecessor(lhs);
+    invalidateAfterChangedCFG();
+}
+
+void Graph::FixPHIAfterDisconnect(BasicBlock *phiSource, BasicBlock *phiTarget) {
+    ASSERT((phiSource) && (phiTarget) && phiTarget->HasPredecessor(phiSource));
+    auto predsCount = phiTarget->GetPredecessorsCount();
+    ASSERT(predsCount >= 1);
+    if (predsCount == 2) {
+        for (auto *phi : phiTarget->IteratePhi()) {
+            ASSERT(phi->GetInputsCount() == 2);
+            auto idx = phi->IndexOf(phiSource);
+            ASSERT(idx <= 1);
+            auto *remainingInput = phi->GetInput(1 - idx).GetInstruction();
+            ASSERT(remainingInput);
+            phi->ReplaceInputInUsers(remainingInput);
+            phiTarget->UnlinkInstruction(phi);
+        }
+    } else if (predsCount > 2) {
+        for (auto *phi : phiTarget->IteratePhi()) {
+            phi->RemovePhiInput(phiSource);
+        }
+    }
 }
 
 void Graph::AddBasicBlock(BasicBlock *bblock) {
@@ -53,6 +83,7 @@ void Graph::AddBasicBlock(BasicBlock *bblock) {
     bblock->SetId(bblocks.size());
     bblocks.push_back(bblock);
     bblock->SetGraph(this);
+    invalidateAfterChangedCFG();
 }
 
 void Graph::AddBasicBlockBefore(BasicBlock *before, BasicBlock *bblock) {
@@ -69,10 +100,12 @@ void Graph::AddBasicBlockBefore(BasicBlock *before, BasicBlock *bblock) {
     before->AddPredecessor(bblock);
 
     bblock->AddSuccessor(before);
+
+    invalidateAfterChangedCFG();
 }
 
 void Graph::UnlinkBasicBlock(BasicBlock *bblock) {
-    unlinkBasicBlockImpl(bblock);
+    UnlinkBasicBlockRaw(bblock);
     if (bblock != GetLastBasicBlock()) {
         removePredecessors(bblock);
         removeSuccessors(bblock);
@@ -93,7 +126,7 @@ void Graph::UnlinkBasicBlock(BasicBlock *bblock) {
     }
 }
 
-void Graph::unlinkBasicBlockImpl(BasicBlock *bblock) {
+void Graph::UnlinkBasicBlockRaw(BasicBlock *bblock) {
     ASSERT((bblock) && bblock->GetGraph() == this);
     auto id = bblock->GetId();
     ASSERT(id < bblocks.size() && bblocks[id] == bblock);
@@ -101,6 +134,8 @@ void Graph::unlinkBasicBlockImpl(BasicBlock *bblock) {
     bblock->SetId(BasicBlock::INVALID_ID);
     bblock->SetGraph(nullptr);
     ++unlinkedInstructionsCounter;
+
+    invalidateAfterChangedCFG();
 }
 
 void Graph::RemoveUnlinkedBlocks() {
@@ -116,25 +151,15 @@ void Graph::removePredecessors(BasicBlock *bblock) {
 
 void Graph::removeSuccessors(BasicBlock *bblock) {
     for (auto *b : bblock->GetSuccessors()) {
+        FixPHIAfterDisconnect(bblock, b);
         b->RemovePredecessor(bblock);
     }
     bblock->GetSuccessors().clear();
 }
 
-// defined here after full declaration of Graph's methods
-BasicBlock::BasicBlock(Graph *graph)
-    : id(INVALID_ID),
-      preds(graph->GetMemoryResource()),
-      succs(graph->GetMemoryResource()),
-      dominated(graph->GetMemoryResource()),
-      graph(graph)
-{}
-
-bool BasicBlock::IsFirstInGraph() const {
-    return GetGraph()->GetFirstBasicBlock() == this;
-}
-
-bool BasicBlock::IsLastInGraph() const {
-    return GetGraph()->GetLastBasicBlock() == this;
+void Graph::invalidateAfterChangedCFG() {
+    SetAnalysisValid<AnalysisFlag::DOM_TREE>(false);
+    SetAnalysisValid<AnalysisFlag::LOOP_ANALYSIS>(false);
+    SetAnalysisValid<AnalysisFlag::RPO>(false);
 }
 }   // namespace ir

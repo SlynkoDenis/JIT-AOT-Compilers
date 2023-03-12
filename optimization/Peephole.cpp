@@ -101,7 +101,7 @@ bool PeepholePass::ProcessSUB(InstructionBase *instr) {
 bool PeepholePass::tryConstantAND(BinaryRegInstruction *instr, Input checked, Input second) {
     if (checked->IsConst()) {
         ASSERT(checked->GetType() == instr->GetType());
-        auto *inputInstr = static_cast<ConstantInstruction *>(checked.GetInstruction());
+        auto *inputInstr = checked->AsConst();
         if (inputInstr->GetValue() == static_cast<ConstantInstruction::Type>(0)) {
             // case: v1 = v0 & 0 -> v1 = 0
             replaceWithoutNewInstr(instr, inputInstr);
@@ -224,7 +224,7 @@ bool PeepholePass::trySRAZero(BinaryRegInstruction *instr) {
     auto input1 = instr->GetInput(0);
     auto input2 = instr->GetInput(1);
     if (input1->IsConst()) {
-        auto *typed = static_cast<ConstantInstruction *>(input1.GetInstruction());
+        auto *typed = input1->AsConst();
         if (typed->GetValue() == 0) {
             replaceWithoutNewInstr(instr, typed);
             GetLogger(utils::LogPriority::INFO) << "Applied '0 >>> v' peephole";
@@ -232,7 +232,7 @@ bool PeepholePass::trySRAZero(BinaryRegInstruction *instr) {
         }
     }
     if (input2->IsConst()) {
-        auto *typed = static_cast<ConstantInstruction *>(input2.GetInstruction());
+        auto *typed = input2->AsConst();
         if (typed->GetValue() == 0) {
             replaceWithoutNewInstr(instr, input1.GetInstruction());
             GetLogger(utils::LogPriority::INFO) << "Applied 'v >>> 0' peephole";
@@ -346,7 +346,7 @@ bool PeepholePass::trySUBZero(BinaryRegInstruction *instr) {
     auto input1 = instr->GetInput(0);
     auto input2 = instr->GetInput(1);
     if (input1->IsConst()) {
-        auto *typed = static_cast<ConstantInstruction *>(input1.GetInstruction());
+        auto *typed = input1->AsConst();
         if (typed->GetValue() == 0) {
             auto *negInstr = graph->GetInstructionBuilder()->CreateNEG(input2->GetType(), input2);
             input1->RemoveUser(instr);
@@ -357,7 +357,7 @@ bool PeepholePass::trySUBZero(BinaryRegInstruction *instr) {
         }
     }
     if (input2->IsConst()) {
-        auto *typed = static_cast<ConstantInstruction *>(input2.GetInstruction());
+        auto *typed = input2->AsConst();
         if (typed->GetValue() == 0) {
             replaceWithoutNewInstr(instr, input1.GetInstruction());
             GetLogger(utils::LogPriority::INFO) << "Applied SUB: 'v - 0' peephole";

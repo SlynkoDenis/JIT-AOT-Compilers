@@ -25,7 +25,7 @@ public:
                 return true;
             }
             auto res = PassT(graph, args...).Run();
-            graph->SetAnalysisValid(PassT::SET_FLAG, true);
+            graph->SetAnalysisValid<PassT::SET_FLAG>(true);
             return res;
         }
         return PassT(graph, args...).Run();
@@ -33,7 +33,7 @@ public:
 
     template <AnalysisFlag... Flags>
     static void SetInvalid(Graph *graph) {
-        utils::expand_t{(graph->SetAnalysisValid(Flags, false), void(), 0)...};
+        utils::expand_t{(graph->SetAnalysisValid<Flags>(false), void(), 0)...};
     }
 };
 

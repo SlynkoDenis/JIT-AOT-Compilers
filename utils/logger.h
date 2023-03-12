@@ -20,6 +20,9 @@ public:
     NO_MOVE_SEMANTIC(Logger);
     virtual ~Logger() noexcept = default;
 
+    log4cpp::Category &GetLoggerRaw() {
+        return logger;
+    }
     log4cpp::CategoryStream GetLogger(LogPriority::PriorityLevel p) const {
         return logger << p;
     }
