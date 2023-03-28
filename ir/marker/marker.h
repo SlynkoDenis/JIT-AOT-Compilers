@@ -25,7 +25,7 @@ public:
     MarkerManager() = default;
     NO_COPY_SEMANTIC(MarkerManager);
     NO_MOVE_SEMANTIC(MarkerManager);
-    virtual ~MarkerManager() = default;
+    virtual DEFAULT_DTOR(MarkerManager);
 
     Marker GetNewMarker() {
         ASSERT(currentIndex < utils::to_underlying(MarkersConstants::MAX_VALUE));
@@ -63,23 +63,26 @@ public:
     Markable() = default;
     NO_COPY_SEMANTIC(Markable);
     NO_MOVE_SEMANTIC(Markable);
-    virtual ~Markable() noexcept = default;
+    virtual DEFAULT_DTOR(Markable);
 
     bool SetMarker(Marker mark) {
         auto value = mark >> utils::to_underlying(MarkersConstants::BIT_LENGTH);
         size_t index = mark & utils::to_underlying(MarkersConstants::INDEX_MASK);
-        bool wasSet = markers.at(index) != value;
-        markers.at(index) = value;
+        ASSERT(index < markers.size());
+        bool wasSet = markers[index] != value;
+        markers[index] = value;
         return wasSet;
     }
     bool IsMarkerSet(Marker mark) const {
         auto value = mark >> utils::to_underlying(MarkersConstants::BIT_LENGTH);
         size_t index = mark & utils::to_underlying(MarkersConstants::INDEX_MASK);
-        return markers.at(index) == value;
+        ASSERT(index < markers.size());
+        return markers[index] == value;
     }
     void ClearMarker(Marker mark) {
         size_t index = mark & utils::to_underlying(MarkersConstants::INDEX_MASK);
-        markers.at(index) = utils::to_underlying(MarkersConstants::UNDEF_VALUE);
+        ASSERT(index < markers.size());
+        markers[index] = utils::to_underlying(MarkersConstants::UNDEF_VALUE);
     }
 
 private:

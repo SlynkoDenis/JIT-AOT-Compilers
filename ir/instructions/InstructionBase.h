@@ -186,6 +186,9 @@ public:
     bool SatisfiesProperty(InstrProp prop) const {
         return GetProperties() & utils::to_underlying(prop);
     }
+    size_t GetLinearNumber() const {
+        return linearNumber;
+    }
 
     bool IsInputArgument() const {
         return GetOpcode() == Opcode::ARG;
@@ -234,6 +237,9 @@ public:
     void SetId(size_t newId) {
         id = newId;
     }
+    void SetLinearNumber(size_t number) {
+        linearNumber = number;
+    }
     template <typename T>
     constexpr inline void SetProperty(T prop) {
         properties |= prop;
@@ -270,6 +276,8 @@ private:
     BasicBlock *parent = nullptr;
 
     InstructionPropT properties = 0;
+
+    size_t linearNumber = 0;
 };
 
 template <typename T>

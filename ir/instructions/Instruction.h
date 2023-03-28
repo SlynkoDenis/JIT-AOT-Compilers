@@ -102,13 +102,16 @@ public:
         return InputsNum;
     }
     Input &GetInput(size_t idx) override {
-        return inputs.at(idx);
+        ASSERT(idx < inputs.size());
+        return inputs[idx];
     }
     const Input &GetInput(size_t idx) const override {
-        return inputs.at(idx);
+        ASSERT(idx < inputs.size());
+        return inputs[idx];
     }
     void SetInput(Input newInput, size_t idx) override {
-        inputs.at(idx) = newInput;
+        ASSERT(idx < inputs.size());
+        inputs[idx] = newInput;
         if (newInput.GetInstruction()) {
             newInput->AddUser(this);
         }
@@ -240,13 +243,16 @@ public:
         return inputs.size();
     }
     Input &GetInput(size_t idx) override {
-        return inputs.at(idx);
+        ASSERT(idx < inputs.size());
+        return inputs[idx];
     }
     const Input &GetInput(size_t idx) const override {
-        return inputs.at(idx);
+        ASSERT(idx < inputs.size());
+        return inputs[idx];
     }
     void SetInput(Input newInput, size_t idx) override {
-        inputs.at(idx) = newInput;
+        ASSERT(idx < inputs.size());
+        inputs[idx] = newInput;
         if (newInput.GetInstruction()) {
             newInput->AddUser(this);
         }
@@ -519,13 +525,16 @@ public:
         ASSERT(idx < sourceBBlocks.size());
         return sourceBBlocks[idx];
     }
-    void SetSourceBasicBlock(BasicBlock *bblock, size_t idx) {
-        ASSERT((bblock) && idx < sourceBBlocks.size());
-        sourceBBlocks[idx] = bblock;
+    void SetSourceBasicBlock(BasicBlock *inputSource, size_t idx) {
+        ASSERT((inputSource) && idx < sourceBBlocks.size());
+        sourceBBlocks[idx] = inputSource;
     }
-    size_t IndexOf(const BasicBlock *bblock) const {
-        ASSERT(bblock);
-        return std::find(sourceBBlocks.begin(), sourceBBlocks.end(), bblock) - sourceBBlocks.begin();
+    size_t IndexOf(const BasicBlock *inputSource) const {
+        ASSERT(inputSource);
+        return std::find(sourceBBlocks.begin(), sourceBBlocks.end(), inputSource) - sourceBBlocks.begin();
+    }
+    Input ResolveInput(BasicBlock *inputSource) {
+        return GetInput(IndexOf(inputSource));
     }
 
     void AddPhiInput(Input newInput, BasicBlock *inputSource) {

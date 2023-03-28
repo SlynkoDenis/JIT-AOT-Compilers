@@ -11,6 +11,7 @@ set(SOURCES
     GraphTest.cpp
     InliningTest.cpp
     InstructionsTest.cpp
+    LivenessAnalysisTest.cpp
     LoopAnalysisTest.cpp
     main.cpp
     PeepholesTest.cpp

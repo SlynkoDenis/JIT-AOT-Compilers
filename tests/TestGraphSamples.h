@@ -2,15 +2,23 @@
 #define JIT_AOT_COMPILERS_COURSE_TEST_GRAPH_SAMPLES_H_
 
 #include "CompilerTestBase.h"
+#include "LiveAnalysisStructs.h"
 
 
 namespace ir::tests {
 class TestGraphSamples : public CompilerTestBase {
 public:
-    std::pair<Graph *, std::vector<BasicBlock *>> BuildCase0();
-    std::pair<Graph *, std::vector<BasicBlock *>> BuildCase1();
-    std::pair<Graph *, std::vector<BasicBlock *>> BuildCase2();
-    std::pair<Graph *, std::vector<BasicBlock *>> BuildCase3();
+    using CFGInfoPair = std::pair<Graph *, std::vector<BasicBlock *>>;
+    using LivenessInfoTuple = std::tuple<Graph *, std::vector<BasicBlock *>, std::pmr::vector<LiveIntervals>>;
+
+    CFGInfoPair BuildCase0();
+    CFGInfoPair BuildCase1();
+    CFGInfoPair BuildCase2();
+    CFGInfoPair BuildCase3();
+    CFGInfoPair BuildCase4();
+
+    LivenessInfoTuple FillCase1();
+    LivenessInfoTuple FillCase4();
 };
 }   // namespace ir::tests
 

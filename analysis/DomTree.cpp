@@ -27,8 +27,8 @@ void DomTreeBuilder::dfsTraverse(BasicBlock *bblock) {
     ++lastNumber;
     ASSERT((bblock) && (lastNumber < static_cast<int>(getSize())));
 
-    auto id = bblock->GetId();
-    labels.at(id) = bblock;
+    ASSERT(bblock->GetId() < labels.size());
+    labels[bblock->GetId()] = bblock;
     setSemiDomNumber(bblock, lastNumber);
     setOrderedBlock(lastNumber, bblock);
 

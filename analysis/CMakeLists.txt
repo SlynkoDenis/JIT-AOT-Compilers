@@ -2,6 +2,8 @@ set(SOURCES
     DomTree.cpp
     DSU.cpp
     GraphChecker.cpp
+    LivenessAnalyzer.cpp
+    LiveAnalysisStructs.cpp
     LoopAnalyzer.cpp
     Traversals.cpp
     )
@@ -12,6 +14,8 @@ target_sources(analysis PUBLIC
     DomTree.h
     DSU.h
     GraphChecker.h
+    LivenessAnalyzer.h
+    LiveAnalysisStructs.h
     LoopAnalyzer.h
     Traversals.h
     )
