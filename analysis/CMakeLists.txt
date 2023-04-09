@@ -3,7 +3,6 @@ set(SOURCES
     DSU.cpp
     GraphChecker.cpp
     LinearOrdering.cpp
-    LiveAnalysisStructs.cpp
     LivenessAnalyzer.cpp
     LoopAnalyzer.cpp
     Traversals.cpp
@@ -16,7 +15,6 @@ target_sources(analysis PUBLIC
     DSU.h
     GraphChecker.h
     LinearOrdering.h
-    LiveAnalysisStructs.h
     LivenessAnalyzer.h
     LoopAnalyzer.h
     Traversals.h
@@ -24,6 +22,7 @@ target_sources(analysis PUBLIC
 
 target_include_directories(analysis PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/ir
     ${CMAKE_SOURCE_DIR}/utils
     )

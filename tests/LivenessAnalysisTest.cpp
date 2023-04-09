@@ -6,18 +6,18 @@ namespace ir::tests {
 class LivenessAnalysisTest : public TestGraphSamples {
 };
 
-template <typename AllocLhsT, typename AllocRhsT>
-static void checkLinearOrder(std::vector<LiveIntervals, AllocLhsT> &&expectedLinearOrder,
-                             const std::vector<LiveIntervals, AllocRhsT> &liveIntervals)
+template <typename AllocT>
+static void checkLinearOrder(std::vector<LiveInterval, AllocT> &&expectedLinearOrder,
+                             const LiveIntervals &liveIntervals)
 {
-    ASSERT_EQ(liveIntervals.size(), expectedLinearOrder.size());
-    for (int i = 0, end = liveIntervals.size(); i < end; ++i) {
-        ASSERT_EQ(liveIntervals[i].GetInstruction(), expectedLinearOrder[i].GetInstruction());
-        ASSERT_EQ(liveIntervals[i], expectedLinearOrder[i]);
+    ASSERT_EQ(liveIntervals.Size(), expectedLinearOrder.size());
+    for (int i = 0, end = liveIntervals.Size(); i < end; ++i) {
+        ASSERT_EQ(liveIntervals[i]->GetInstruction(), expectedLinearOrder[i].GetInstruction());
+        ASSERT_EQ(*(liveIntervals[i]), expectedLinearOrder[i]);
     }
 }
 
-TEST_F(LivenessAnalysisTest, TestAnalysis1) {
+TEST_F(LivenessAnalysisTest, TestAnalysis4) {
     /*
          B0
          |
@@ -32,13 +32,12 @@ TEST_F(LivenessAnalysisTest, TestAnalysis1) {
     */
     auto [graph, bblocks, expectedLinearOrder] = FillCase4();
 
-    auto pass = LivenessAnalyzer(graph);
-    pass.Run();
+    PassManager::Run<LivenessAnalyzer>(graph);
 
-    checkLinearOrder(std::move(expectedLinearOrder), pass.GetLiveIntervals());
+    checkLinearOrder(std::move(expectedLinearOrder), graph->GetLiveIntervals());
 }
 
-TEST_F(LivenessAnalysisTest, TestAnalysis2) {
+TEST_F(LivenessAnalysisTest, TestAnalysis1) {
     /*
        B0
        |
@@ -54,13 +53,12 @@ TEST_F(LivenessAnalysisTest, TestAnalysis2) {
     */
     auto [graph, bblocks, linearOrder] = FillCase1();
 
-    auto pass = LivenessAnalyzer(graph);
-    pass.Run();
+    PassManager::Run<LivenessAnalyzer>(graph);
 
-    checkLinearOrder(std::move(linearOrder), pass.GetLiveIntervals());
+    checkLinearOrder(std::move(linearOrder), graph->GetLiveIntervals());
 }
 
-TEST_F(LivenessAnalysisTest, TestAnalysis3) {
+TEST_F(LivenessAnalysisTest, TestAnalysis5) {
     /*
           B0
           |
@@ -82,9 +80,8 @@ TEST_F(LivenessAnalysisTest, TestAnalysis3) {
     */
     auto [graph, bblocks, linearOrder] = FillCase5();
 
-    auto pass = LivenessAnalyzer(graph);
-    pass.Run();
+    PassManager::Run<LivenessAnalyzer>(graph);
 
-    checkLinearOrder(std::move(linearOrder), pass.GetLiveIntervals());
+    checkLinearOrder(std::move(linearOrder), graph->GetLiveIntervals());
 }
 }   // namespace ir::tests

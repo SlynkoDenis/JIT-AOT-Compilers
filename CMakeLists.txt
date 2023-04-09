@@ -48,6 +48,7 @@ add_subdirectory(utils)
 add_subdirectory(ir)
 add_subdirectory(analysis)
 add_subdirectory(optimization)
+add_subdirectory(codegen)
 
 if(${CMAKE_BUILD_TYPE} MATCHES "Debug")
     add_git_submodule(third_party/googletest)
@@ -57,6 +58,8 @@ endif()
 target_link_libraries(fact PUBLIC
     ${log4cplus_LIB}
     analysis
+    codegen
     ir
+    optimization
     utils
     )

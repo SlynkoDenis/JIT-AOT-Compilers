@@ -9,7 +9,7 @@ namespace ir::tests {
 class TestGraphSamples : public CompilerTestBase {
 public:
     using CFGInfoPair = std::pair<Graph *, std::vector<BasicBlock *>>;
-    using LivenessInfoTuple = std::tuple<Graph *, std::vector<BasicBlock *>, std::pmr::vector<LiveIntervals>>;
+    using LivenessInfoTuple = std::tuple<Graph *, std::vector<BasicBlock *>, std::pmr::vector<LiveInterval>>;
 
     CFGInfoPair BuildCase0();
     CFGInfoPair BuildCase1();

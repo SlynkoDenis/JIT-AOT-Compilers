@@ -2,13 +2,15 @@
 #define JIT_AOT_COMPILERS_COURSE_LIVE_ANALYSIS_STRUCTS_H_
 
 #include <algorithm>
-#include "Graph.h"
+#include "instructions/InstructionBase.h"
+#include <limits>
 #include <unordered_set>
+#include "ValueLocation.h"
 
 
 namespace ir {
 // Live range of the instruction represented as half-opened interval [begin, end)
-class LiveRange {
+class LiveRange final {
 public:
     using RangeType = std::size_t;
 
@@ -24,37 +26,40 @@ public:
         ASSERT(b < end);
         begin = b;
     }
-    RangeType GetBegin() const {
+    constexpr RangeType GetBegin() const {
         return begin;
     }
-    RangeType GetEnd() const {
+    constexpr RangeType GetEnd() const {
         return end;
     }
 
     bool Includes(const LiveRange &other) const {
-        return begin <= other.begin && end >= other.end;
+        return GetBegin() <= other.GetBegin() && GetEnd() >= other.GetEnd();
     }
     bool Intersects(const LiveRange &other) const {
-        return (begin >= other.begin && begin < other.end)
-            || (other.begin >= begin && other.begin < end);
+        return (GetBegin() >= other.GetBegin() && GetBegin() < other.GetEnd())
+            || (other.GetBegin() >= GetBegin() && other.GetBegin() < GetEnd());
     }
     LiveRange Union(const LiveRange &other) const {
         ASSERT(Intersects(other));
-        return {std::min(begin, other.begin), std::max(end, other.end)};
+        return {std::min(GetBegin(), other.GetBegin()), std::max(end, other.GetEnd())};
     }
 
     constexpr bool LeftAdjacent(const LiveRange &other) const {
-        return end == other.begin;
+        return GetEnd() == other.GetBegin();
     }
     constexpr bool operator<(const LiveRange &other) const {
-        return end <= other.begin;
+        return GetEnd() <= other.GetBegin();
     }
     constexpr bool operator<=(const LiveRange &other) const {
-        return end <= other.end;
+        return GetEnd() <= other.GetEnd();
     }
     constexpr bool operator==(const LiveRange &other) const {
-        return begin == other.begin && end == other.end;
+        return GetBegin() == other.GetBegin() && GetEnd() == other.GetEnd();
     }
+
+public:
+    static constexpr RangeType INVALID_RANGE = std::numeric_limits<RangeType>::max();
 
 private:
     RangeType begin;
@@ -66,40 +71,36 @@ inline std::ostream &operator<<(std::ostream &os, const LiveRange &rng) {
     return os;
 }
 
-class LiveIntervals {
+class LiveInterval {
 public:
     using allocator_type = std::pmr::polymorphic_allocator<std::byte>;
 
-    explicit LiveIntervals(const allocator_type &a) : ranges(a), liveNumber(0), instr(nullptr) {}
-    LiveIntervals(LiveRange::RangeType liveNum, InstructionBase *in, std::pmr::memory_resource *memResource)
+    explicit LiveInterval(const allocator_type &a) : ranges(a), liveNumber(0), instr(nullptr) {}
+    LiveInterval(LiveRange::RangeType liveNum, InstructionBase *in, std::pmr::memory_resource *memResource)
         : ranges(memResource), liveNumber(liveNum), instr(in) {}
-    LiveIntervals(LiveRange::RangeType liveNum, InstructionBase *in, const allocator_type &a)
+    LiveInterval(LiveRange::RangeType liveNum, InstructionBase *in, const allocator_type &a)
         : ranges(a), liveNumber(liveNum), instr(in) {}
 
-    LiveIntervals(std::initializer_list<LiveRange> init, InstructionBase *in)
-        : ranges(init, in->GetBasicBlock()->GetGraph()->GetMemoryResource()),
-          liveNumber(init.begin()->GetBegin()),
-          instr(in)
-    {}
-    LiveIntervals(std::initializer_list<LiveRange> init, InstructionBase *in, const allocator_type &a)
+    LiveInterval(std::initializer_list<LiveRange> init, InstructionBase *in);
+    LiveInterval(std::initializer_list<LiveRange> init, InstructionBase *in, const allocator_type &a)
         : ranges(init, a), liveNumber(init.begin()->GetBegin()), instr(in) {}
-    LiveIntervals() = delete;
+    LiveInterval() = delete;
 
-    NO_COPY_SEMANTIC(LiveIntervals);
-    LiveIntervals(const LiveIntervals &other, const allocator_type &a)
+    NO_COPY_SEMANTIC(LiveInterval);
+    LiveInterval(const LiveInterval &other, const allocator_type &a)
         : ranges(other.ranges, a),
           liveNumber(other.liveNumber),
           instr(other.instr)
     {}
 
-    NO_MOVE_SEMANTIC(LiveIntervals);
-    LiveIntervals(LiveIntervals &&other, const allocator_type &a)
+    NO_MOVE_SEMANTIC(LiveInterval);
+    LiveInterval(LiveInterval &&other, const allocator_type &a)
         : ranges(std::move(other.ranges), a),
           liveNumber(other.liveNumber),
           instr(other.instr)
     {}
 
-    virtual DEFAULT_DTOR(LiveIntervals);
+    virtual DEFAULT_DTOR(LiveInterval);
 
     LiveRange::RangeType GetLiveNumber() const {
         return liveNumber;
@@ -112,14 +113,27 @@ public:
         return instr;
     }
 
+    const codegen::ValueLocation &GetLocation() const {
+        return loc;
+    }
+    void SetLocation(codegen::ValueLocation newLoc) {
+        loc = newLoc;
+    }
+
     LiveRange GetUpperRange() const {
         if (ranges.empty()) {
             return {0, 0};
         }
         return {ranges.back().GetBegin(), ranges.front().GetEnd()};
     }
+    LiveRange::RangeType GetBegin() const {
+        return GetUpperRange().GetBegin();
+    }
+    LiveRange::RangeType GetEnd() const {
+        return GetUpperRange().GetEnd();
+    }
 
-    bool operator==(const LiveIntervals &other) const {
+    bool operator==(const LiveInterval &other) const {
         if (ranges.size() != other.ranges.size()) {
             return false;
         }
@@ -136,6 +150,7 @@ public:
     void AddRange(LiveRange::RangeType begin, LiveRange::RangeType end) {
         AddRange({begin, end});
     }
+
     void AddRange(const LiveRange &rng);
 
     auto begin() {
@@ -159,9 +174,67 @@ private:
     std::pmr::vector<LiveRange> ranges;
     LiveRange::RangeType liveNumber;
     InstructionBase *instr;
+    codegen::ValueLocation loc;
 };
 
-inline std::ostream &operator<<(std::ostream &os, const LiveIntervals &intervals) {
+class LiveIntervals {
+public:
+    LiveIntervals(std::pmr::memory_resource *memResource) : liveIntervals(memResource) {}
+
+    LiveIntervals() = delete;
+    NO_COPY_SEMANTIC(LiveIntervals);
+    NO_MOVE_SEMANTIC(LiveIntervals);
+    virtual DEFAULT_DTOR(LiveIntervals);
+
+    LiveInterval *AddLiveInterval(LiveRange::RangeType liveNum, InstructionBase *instr);
+
+    LiveInterval *GetLiveIntervals(const InstructionBase *instr) {
+        ASSERT((instr) && instr->GetLinearNumber() < Size());
+        auto *res = liveIntervals[instr->GetLinearNumber()];
+        ASSERT(res->GetInstruction() == instr);
+        return res;
+    }
+    const LiveInterval *GetLiveIntervals(const InstructionBase *instr) const {
+        ASSERT((instr) && instr->GetLinearNumber() < Size());
+        const auto *res = liveIntervals[instr->GetLinearNumber()];
+        ASSERT(res->GetInstruction() == instr);
+        return res;
+    }
+
+    size_t Size() const {
+        return liveIntervals.size();
+    }
+
+    void Clear() {
+        liveIntervals.clear();
+    }
+
+public:
+    LiveInterval *operator[](int idx) {
+        return liveIntervals[idx];
+    }
+    const LiveInterval *operator[](int idx) const {
+        return liveIntervals[idx];
+    }
+
+    auto begin() {
+        return liveIntervals.rbegin();
+    }
+    auto end() {
+        return liveIntervals.rend();
+    }
+    auto begin() const {
+        return liveIntervals.rbegin();
+    }
+    auto end() const {
+        return liveIntervals.rend();
+    }
+
+private:
+    std::pmr::vector<LiveInterval *> liveIntervals;
+};
+
+inline std::ostream &operator<<(std::ostream &os, const LiveInterval &intervals) {
     ASSERT(intervals.GetInstruction());
     os << '#' << intervals.GetInstruction()->GetId() << '\t';
     for (const auto &iter : intervals) {

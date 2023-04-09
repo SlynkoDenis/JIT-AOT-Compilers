@@ -9,8 +9,14 @@ namespace ir {
 class LinearOrdering final : public PassBase {
 public:
     explicit LinearOrdering(Graph *graph) : PassBase(graph) {}
+    NO_COPY_SEMANTIC(LinearOrdering);
+    NO_MOVE_SEMANTIC(LinearOrdering);
+    ~LinearOrdering() noexcept override = default;
 
     bool Run() override;
+
+public:
+    static constexpr AnalysisFlag SET_FLAG = AnalysisFlag::LINEAR_ORDERING;
 
 private:
     void orderBlocks(std::pmr::vector<BasicBlock *> &newOrder);

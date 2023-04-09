@@ -59,12 +59,18 @@ void Graph::DisconnectBasicBlocks(BasicBlock *lhs, BasicBlock *rhs) {
 
 void Graph::InsertBetween(BasicBlock *bblock, BasicBlock *pred, BasicBlock *succ) {
     ASSERT((bblock) && (pred) && (succ));
-    ASSERT((bblock->GetLastInstruction())
-           && bblock->GetLastInstruction()->GetOpcode() == Opcode::JMP);
     pred->ReplaceSuccessor(succ, bblock);
     bblock->AddPredecessor(pred);
     succ->ReplacePredecessor(pred, bblock);
     bblock->AddSuccessor(succ);
+
+    // replace basic blocks in PHIs
+    if (succ->GetFirstPhiInstruction()) {
+        ASSERT(succ->GetPredecessorsCount() > 1);
+        for (auto *phi : succ->IteratePhi()) {
+            phi->ReplaceSourceBasicBlock(pred, bblock);
+        }
+    }
 }
 
 void Graph::FixPHIAfterDisconnect(BasicBlock *phiSource, BasicBlock *phiTarget) {
@@ -171,5 +177,6 @@ void Graph::invalidateAfterChangedCFG() {
     SetAnalysisValid<AnalysisFlag::DOM_TREE>(false);
     SetAnalysisValid<AnalysisFlag::LOOP_ANALYSIS>(false);
     SetAnalysisValid<AnalysisFlag::RPO>(false);
+    SetAnalysisValid<AnalysisFlag::LINEAR_ORDERING>(false);
 }
 }   // namespace ir

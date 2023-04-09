@@ -259,7 +259,7 @@ TestGraphSamples::LivenessInfoTuple TestGraphSamples::FillCase1() {
     auto *ret = instrBuilder->CreateRET(type, phi);
     instrBuilder->PushBackInstruction(bblocks[3], phi, ret);
 
-    std::pmr::vector<LiveIntervals> linearOrder{
+    std::pmr::vector<LiveInterval> linearOrder{
         {{{30, 32}, {26, 28}, {2, 22}}, arg0},
         {{{4, 24}}, arg1},
         {{{6, 12}}, constZero},
@@ -367,7 +367,7 @@ TestGraphSamples::LivenessInfoTuple TestGraphSamples::FillCase4() {
         bblocks[3],
         add, retvoid);
 
-    std::pmr::vector<LiveIntervals> linearOrder{
+    std::pmr::vector<LiveInterval> linearOrder{
         {{{2, 18}}, constOne},
         {{{4, 8}}, constTen},
         {{{20, 22}, {6, 14}}, constTwenty},
@@ -438,7 +438,7 @@ TestGraphSamples::LivenessInfoTuple TestGraphSamples::FillCase5() {
     auto *ret9 = instrBuilder->CreateRET(type, subi1);
     instrBuilder->PushBackInstruction(bblocks[9], ret9);
 
-    std::pmr::vector<LiveIntervals> linearOrder{
+    std::pmr::vector<LiveInterval> linearOrder{
         {{{2, 16}}, arg0},
         {{{4, 20}}, arg1},
         {{{30, 32}, {6, 26}}, arg2},

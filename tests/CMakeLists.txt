@@ -12,6 +12,7 @@ set(SOURCES
     InliningTest.cpp
     InstructionsTest.cpp
     LinearOrderingTest.cpp
+    LinearScanRegAllocTest.cpp
     LivenessAnalysisTest.cpp
     LoopAnalysisTest.cpp
     main.cpp
@@ -25,4 +26,4 @@ add_executable(${BINARY} ${SOURCES})
 
 add_test(NAME ${BINARY} COMMAND ${BINARY})
 
-target_link_libraries(${BINARY} PUBLIC analysis ir gtest optimization utils)
+target_link_libraries(${BINARY} PUBLIC analysis ir gtest optimization codegen utils)

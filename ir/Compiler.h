@@ -11,8 +11,12 @@
 namespace ir {
 class Compiler : public CompilerBase {
 public:
-    Compiler() : memResource(), functionsGraphs(&memResource) {}
+    explicit Compiler(codegen::ArchInfoBase *arch)
+        : memResource(), functionsGraphs(&memResource), arch(arch) {}
 
+    codegen::ArchInfoBase *GetArch() const {
+        return arch;
+    }
     Graph *CreateNewGraph() override {
         auto *instrBuilder = utils::template New<InstructionBuilder>(&memResource, &memResource);
         return CreateNewGraph(instrBuilder);
@@ -47,6 +51,8 @@ private:
     std::pmr::vector<Graph *> functionsGraphs;
 
     CompilerOptions options;
+
+    codegen::ArchInfoBase *arch;
 };
 }   // namespace ir
 

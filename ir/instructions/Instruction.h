@@ -3,8 +3,10 @@
 
 #include "AllocatorUtils.h"
 #include <array>
+#include "CompilerBase.h"
 #include "Concepts.h"
 #include <cstdint>
+#include <functional>
 #include "InstructionBase.h"
 #include "Input.h"
 #include "macros.h"
@@ -15,7 +17,6 @@
 
 
 namespace ir {
-using FunctionId = size_t;
 static inline constexpr FunctionId INVALID_FUNCTION_ID = static_cast<FunctionId>(-1);
 
 enum class CondCode {
@@ -83,6 +84,16 @@ public:
     virtual void RemoveUserFromInputs() {
         for (size_t i = 0, end = GetInputsCount(); i < end; ++i) {
             GetInput(i)->RemoveUser(this);
+        }
+    }
+    virtual void ForEachInput(std::function<void(Input&)> function) {
+        for (size_t i = 0, end = GetInputsCount(); i < end; ++i) {
+            std::invoke(function, GetInput(i));
+        }
+    }
+    virtual void ForEachInput(std::function<void(const Input&)> function) const {
+        for (size_t i = 0, end = GetInputsCount(); i < end; ++i) {
+            std::invoke(function, GetInput(i));
         }
     }
 
@@ -191,6 +202,12 @@ public:
     void ReplaceInput(const Input &oldInput, Input newInput) override {
         ASSERT(input == oldInput);
         input = newInput;
+    }
+    void ForEachInput(std::function<void(Input&)> function) override {
+        std::invoke(function, input);
+    }
+    void ForEachInput(std::function<void(const Input&)> function) const override {
+        std::invoke(function, input);
     }
 
 private:
@@ -549,6 +566,10 @@ public:
         ASSERT((inputSource) && idx < sourceBBlocks.size());
         sourceBBlocks[idx] = inputSource;
     }
+    void ReplaceSourceBasicBlock(BasicBlock *inputSource, BasicBlock *newSource) {
+        ASSERT((inputSource) && (newSource));
+        sourceBBlocks[IndexOf(inputSource)] = newSource;
+    }
     size_t IndexOf(const BasicBlock *inputSource) const {
         ASSERT(inputSource);
         return std::find(sourceBBlocks.begin(), sourceBBlocks.end(), inputSource) - sourceBBlocks.begin();
@@ -574,6 +595,9 @@ public:
     }
 
     PhiInstruction *Copy(BasicBlock *targetBBlock) const override;
+
+protected:
+    void dumpImpl(log4cpp::CategoryStream &stream) const override;
 
 private:
     std::pmr::vector<BasicBlock *> sourceBBlocks;

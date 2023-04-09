@@ -11,10 +11,19 @@ bool EmptyBlocksRemoval::RemoveIfEmpty(BasicBlock *bblock) {
     }
     BasicBlock *successorToSet = nullptr;
     if (!bblock->HasNoSuccessors()) {
-        auto succs = bblock->GetSuccessors();
+        auto &succs = bblock->GetSuccessors();
         ASSERT(succs.size() == 1);
         successorToSet = succs[0];
         successorToSet->RemovePredecessor(bblock);
+
+        if (successorToSet->GetFirstPhiInstruction()) {
+            auto &preds = bblock->GetPredecessors();
+            ASSERT(preds.size() == 1);
+            // relink PHI source basic blocks if there are any
+            for (auto *phi : successorToSet->IteratePhi()) {
+                phi->ReplaceSourceBasicBlock(bblock, preds[0]);
+            }
+        }
     }
     for (auto *pred : bblock->GetPredecessors()) {
         ASSERT(pred);

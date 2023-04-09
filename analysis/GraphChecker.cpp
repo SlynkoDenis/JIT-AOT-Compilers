@@ -48,60 +48,36 @@ void GraphChecker::VerifyControlAndDataFlowGraphs(const BasicBlock *bblock) {
         if (blockNotFirst) {
             ASSERT(!instr->IsConst() && instr->GetOpcode() != Opcode::ARG);
         }
-
-        if (bblock->GetFirstPhiInstruction()) {
-            if (instr != bblock->GetFirstPhiInstruction()) {
-                ASSERT(instr->GetPrevInstruction() != nullptr);
-            }
-        } else if (instr != bblock->GetFirstInstruction()) {
-            ASSERT(instr->GetPrevInstruction() != nullptr);
+        verifyBlockStructure(bblock, instr);
+        if (instr->IsPhi()) {
+            VerifyPhiBasicBlocks(instr->AsPhi());
         }
-
-        if (instr == bblock->GetLastInstruction()
-            || (bblock->GetLastInstruction() == nullptr
-                && instr == bblock->GetLastPhiInstruction()))
-        {
-            ASSERT(instr->GetNextInstruction() == nullptr);
-        } else {
-            ASSERT(instr->GetNextInstruction() != nullptr);
-        }
-
-        if (instr->HasInputs()) {
-            const auto *typed = static_cast<const InputsInstruction *>(instr);
-            auto found = false;
-            for (size_t i = 0, end_idx = typed->GetInputsCount(); i < end_idx; ++i) {
-                const auto &input = typed->GetInput(i);
-                ASSERT((input.GetInstruction()) && (input->GetBasicBlock()));
-                ASSERT(input->GetBasicBlock()->GetGraph() == bblock->GetGraph());
-
-                auto currUsers = input->GetUsers();
-                auto iter = std::find(currUsers.begin(), currUsers.end(), instr);
-                if (iter != currUsers.end()) {
-                    found = true;
-                    break;
-                }
-            }
-            ASSERT(found == true);
-        }
-
-        auto inputUsers = instr->GetUsers();
-        for (auto &&user : inputUsers) {
-            ASSERT(user->HasInputs() == true);
-            auto *typed = static_cast<const InputsInstruction *>(user);
-            bool found = false;
-            for (size_t i = 0, end_idx = typed->GetInputsCount(); i < end_idx; ++i) {
-                if (typed->GetInput(i) == instr) {
-                    found = true;
-                    break;
-                }
-            }
-            ASSERT(found == true);
-        }
+        verifyDFG(instr);
 
         ++counter;
         instr = instr->GetNextInstruction();
     }
     ASSERT(bblock->GetSize() == counter);
+}
+
+/* static */
+void GraphChecker::VerifyPhiBasicBlocks(const PhiInstruction *phi) {
+    ASSERT(phi);
+    auto *bblock = phi->GetBasicBlock();
+    ASSERT(bblock);
+    const auto &preds = bblock->GetPredecessors();
+    const auto &sources = phi->GetSourceBasicBlocks();
+    ASSERT(sources.size() == phi->GetInputsCount());
+    ASSERT(sources.size() == preds.size());
+
+    std::pmr::vector<bool> sourcesMask(
+        sources.size(), false, bblock->GetGraph()->GetMemoryResource());
+    for (const auto *pred : preds) {
+        auto it = std::find(sources.begin(), sources.end(), pred);
+        ASSERT(it != sources.end());
+        sourcesMask[it - sources.begin()] = true;
+    }
+    ASSERT(std::all_of(sourcesMask.begin(), sourcesMask.end(), [](auto i){ return i == true; }));
 }
 
 /* static */
@@ -119,5 +95,65 @@ bool GraphChecker::sameBasicBlocks(const std::pmr::vector<BasicBlock *> &lhs,
         ASSERT(sortedLhs[i] == sortedRhs[i]);
     }
     return true;
+}
+
+/* static */
+void GraphChecker::verifyBlockStructure(const BasicBlock *bblock, const InstructionBase *instr) {
+    ASSERT((bblock) && (instr));
+
+    if (bblock->GetFirstPhiInstruction()) {
+        if (instr != bblock->GetFirstPhiInstruction()) {
+            ASSERT(instr->GetPrevInstruction() != nullptr);
+        }
+    } else if (instr != bblock->GetFirstInstruction()) {
+        ASSERT(instr->GetPrevInstruction() != nullptr);
+    }
+
+    if (instr == bblock->GetLastInstruction()
+        || (bblock->GetLastInstruction() == nullptr && instr == bblock->GetLastPhiInstruction()))
+    {
+        ASSERT(instr->GetNextInstruction() == nullptr);
+    } else {
+        ASSERT(instr->GetNextInstruction() != nullptr);
+    }
+}
+
+/* static */
+void GraphChecker::verifyDFG(const InstructionBase *instr) {
+    ASSERT(instr);
+
+    if (instr->HasInputs()) {
+        const auto *graph = instr->GetBasicBlock()->GetGraph();
+        const auto *typed = static_cast<const InputsInstruction *>(instr);
+        auto found = false;
+
+        for (size_t i = 0, end_idx = typed->GetInputsCount(); i < end_idx; ++i) {
+            const auto &input = typed->GetInput(i);
+            ASSERT((input.GetInstruction()) && (input->GetBasicBlock()));
+            ASSERT(input->GetBasicBlock()->GetGraph() == graph);
+
+            auto currUsers = input->GetUsers();
+            auto iter = std::find(currUsers.begin(), currUsers.end(), instr);
+            if (iter != currUsers.end()) {
+                found = true;
+                break;
+            }
+        }
+        ASSERT(found == true);
+    }
+
+    auto inputUsers = instr->GetUsers();
+    for (auto &&user : inputUsers) {
+        ASSERT(user->HasInputs() == true);
+        auto *typed = static_cast<const InputsInstruction *>(user);
+        bool found = false;
+        for (size_t i = 0, end_idx = typed->GetInputsCount(); i < end_idx; ++i) {
+            if (typed->GetInput(i) == instr) {
+                found = true;
+                break;
+            }
+        }
+        ASSERT(found == true);
+    }
 }
 }   // namespace ir
