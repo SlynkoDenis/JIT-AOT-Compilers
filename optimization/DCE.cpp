@@ -35,7 +35,7 @@ void DCEPass::markAlive(InstructionBase *instr) {
         << "Marking live instruction " << instr->GetId() << ' ' << instr->GetOpcodeName();
     auto wasSet = instr->SetMarker(aliveMarker);
     if (instr->HasInputs() && wasSet) {
-        auto *inputInstr = static_cast<InputsInstruction*>(instr);
+        auto *inputInstr = instr->AsInputsInstruction();
         for (size_t i = 0, end = inputInstr->GetInputsCount(); i < end; ++i) {
             markAlive(inputInstr->GetInput(i).GetInstruction());
         }

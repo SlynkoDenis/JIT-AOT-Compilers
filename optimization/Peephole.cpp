@@ -9,8 +9,7 @@ bool PeepholePass::Run() {
     PassManager::Run<RPO>(graph);
     bool applied = false;
     for (auto &bblock : graph->GetRPO()) {
-        for (auto *instr = bblock->GetFirstInstruction(); instr != nullptr;
-             instr = instr->GetNextInstruction()) {
+        for (auto *instr : *bblock) {
             switch (instr->GetOpcode()) {
             case Opcode::AND:
                 applied |= ProcessAND(instr);

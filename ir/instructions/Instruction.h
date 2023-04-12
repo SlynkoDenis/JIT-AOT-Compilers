@@ -74,6 +74,7 @@ protected:
     void dumpImpl(log4cpp::CategoryStream &stream) const override {
         InstructionBase::dumpImpl(stream);
         for (size_t i = 0, end = GetInputsCount(); i < end; ++i) {
+            ASSERT(GetInput(i).GetInstruction());
             stream << " #" << GetInput(i)->GetId();
         }
     }
@@ -600,17 +601,41 @@ public:
     LengthInstruction *Copy(BasicBlock *targetBBlock) const override;
 };
 
-class NewArrayInstruction : public InstructionBase, public ImmediateMixin<uint64_t>, public TypeIdMixin {
+class NewArrayInstruction : public FixedInputsInstruction<1>,
+                            public TypeIdMixin
+{
 public:
-    NewArrayInstruction(uint64_t length, TypeId typeId, std::pmr::memory_resource *memResource)
-        : InstructionBase(Opcode::NEW_ARRAY, OperandType::REF, memResource),
+    NewArrayInstruction(Input length, TypeId typeId, std::pmr::memory_resource *memResource)
+        : FixedInputsInstruction<1>(Opcode::NEW_ARRAY, OperandType::REF, length, memResource),
+          TypeIdMixin(typeId)
+    {
+        ASSERT(!length.GetInstruction() || IsIntegerType(length->GetType()));
+    }
+
+    NewArrayInstruction *Copy(BasicBlock *targetBBlock) const override;
+
+protected:
+    void dumpImpl(log4cpp::CategoryStream &stream) const override {
+        InstructionBase::dumpImpl(stream);
+        ASSERT(GetInput(0).GetInstruction());
+        stream << ' ' << GetTypeId() << " len(#" << GetInput(0)->GetId() << ')';
+    }
+};
+
+class NewArrayImmInstruction : public InstructionBase,
+                               public ImmediateMixin<uint64_t>,
+                               public TypeIdMixin
+{
+public:
+    NewArrayImmInstruction(uint64_t length, TypeId typeId, std::pmr::memory_resource *memResource)
+        : InstructionBase(Opcode::NEW_ARRAY_IMM, OperandType::REF, memResource),
           ImmediateMixin<uint64_t>(length),
           TypeIdMixin(typeId)
     {
         ASSERT(length > 0);
     }
 
-    NewArrayInstruction *Copy(BasicBlock *targetBBlock) const override;
+    NewArrayImmInstruction *Copy(BasicBlock *targetBBlock) const override;
 
 protected:
     void dumpImpl(log4cpp::CategoryStream &stream) const override {
@@ -640,7 +665,7 @@ public:
     {
         // TODO: must somehow validate return type over underlying
         ASSERT(!array.GetInstruction() || array->GetType() == OperandType::REF);
-        ASSERT(!idx.GetInstruction() || idx->GetType() == OperandType::U64);
+        ASSERT(!idx.GetInstruction() || IsIntegerType(idx->GetType()));
     }
 
     LoadArrayInstruction *Copy(BasicBlock *targetBBlock) const override;
@@ -668,7 +693,7 @@ public:
         : FixedInputsInstruction<3>(Opcode::STORE_ARRAY, OperandType::VOID, memResource, array, storedValue, idx)
     {
         ASSERT(!array.GetInstruction() || array->GetType() == OperandType::REF);
-        ASSERT(!idx.GetInstruction() || idx->GetType() == OperandType::U64);
+        ASSERT(!idx.GetInstruction() || IsIntegerType(idx->GetType()));
     }
 
     StoreArrayInstruction *Copy(BasicBlock *targetBBlock) const override;
@@ -689,6 +714,23 @@ public:
     }
 
     StoreImmInstruction *Copy(BasicBlock *targetBBlock) const override;
+};
+
+class BoundsCheckInstruction : public FixedInputsInstruction<2> {
+public:
+    BoundsCheckInstruction(Input arr, Input idx, std::pmr::memory_resource *memResource)
+        : FixedInputsInstruction<2>(
+            Opcode::BOUNDS_CHECK,
+            OperandType::INVALID,
+            memResource,
+            arr,
+            idx)
+    {
+        ASSERT(!arr.GetInstruction() || arr->GetType() == OperandType::REF);
+        ASSERT(!idx.GetInstruction() || IsIntegerType(idx->GetType()));
+    }
+
+    BoundsCheckInstruction *Copy(BasicBlock *targetBBlock) const override;
 };
 }   // namespace ir
 

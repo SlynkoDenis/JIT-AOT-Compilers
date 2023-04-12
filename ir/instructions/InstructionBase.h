@@ -15,6 +15,7 @@ namespace ir {
 class BasicBlock;
 class ConstantInstruction;
 class Input;
+class InputsInstruction;
 class PhiInstruction;
 
 // Opcodes & Conditional Codes
@@ -55,13 +56,18 @@ class PhiInstruction;
     DEF(ARG)                \
     DEF(LEN)                \
     DEF(NEW_ARRAY)          \
+    DEF(NEW_ARRAY_IMM)      \
     DEF(NEW_OBJECT)         \
     DEF(LOAD_ARRAY)         \
     DEF(LOAD_ARRAY_IMM)     \
     DEF(LOAD_OBJECT)        \
     DEF(STORE_ARRAY)        \
     DEF(STORE_ARRAY_IMM)    \
-    DEF(STORE_OBJECT)
+    DEF(STORE_OBJECT)       \
+    DEF(NULL_CHECK)         \
+    DEF(ZERO_CHECK)         \
+    DEF(NEGATIVE_CHECK)     \
+    DEF(BOUNDS_CHECK)
 
 enum class Opcode {
 #define OPCODE_DEF(name, ...) name,
@@ -208,6 +214,10 @@ public:
     const ConstantInstruction *AsConst() const;
     PhiInstruction *AsPhi();
     const PhiInstruction *AsPhi() const;
+    InputsInstruction *AsInputsInstruction();
+    const InputsInstruction *AsInputsInstruction() const;
+
+    bool Dominates(const InstructionBase *other) const;
 
     void SetPrevInstruction(InstructionBase *inst) {
         prev = inst;
@@ -229,8 +239,8 @@ public:
         properties |= prop;
     }
     void UnlinkFromParent();
-    void InsertBefore(InstructionBase *inst);
-    void InsertAfter(InstructionBase *inst);
+    void InsertBefore(InstructionBase *before);
+    void InsertAfter(InstructionBase *after);
     void ReplaceInputInUsers(InstructionBase *newInput);
 
     virtual InstructionBase *Copy(BasicBlock *targetBBlock) const = 0;
@@ -245,6 +255,8 @@ protected:
         stream << '#' << GetId() << '.' << getTypeName(GetType())
                << "\t\t" << GetOpcodeName() << "\t\t";
     }
+
+    bool isEarlierInBasicBlock(const InstructionBase *other) const;
 
 private:
     size_t id;

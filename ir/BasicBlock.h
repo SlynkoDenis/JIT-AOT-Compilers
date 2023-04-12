@@ -102,7 +102,8 @@ public:
     const std::pmr::vector<BasicBlock *> &GetDominatedBlocks() const {
         return dominated;
     }
-    bool Dominates(const BasicBlock *bblock) const;
+    // Indicated whether this block dominates over the other.
+    bool Dominates(const BasicBlock *other) const;
 
     Loop *GetLoop() {
         return loop;
@@ -266,11 +267,40 @@ public:
         T &bblock;
     };
 
-    auto IteratePhi() {
+    auto IteratePhi() & {
         return PhiIterationFacade(*this);
     }
-    auto IteratePhi() const {
+    auto IteratePhi() const & {
         return PhiIterationFacade(*this);
+    }
+
+    template <typename T>
+    requires std::is_same_v<std::remove_cv_t<T>, BasicBlock>
+    class NonPhiIterationFacade {
+    public:
+        NonPhiIterationFacade(T &bblock) : bblock(bblock) {}
+
+        auto begin() {
+            return Iterator{bblock.GetFirstInstruction()};
+        }
+        auto begin() const {
+            return Iterator{bblock.GetFirstInstruction()};
+        }
+        auto end() {
+            return Iterator<decltype(bblock.GetLastInstruction())>{nullptr};
+        }
+        auto end() const {
+            return Iterator<decltype(bblock.GetLastInstruction())>{nullptr};
+        }
+    private:
+        T &bblock;
+    };
+
+    auto IterateNonPhi() & {
+        return NonPhiIterationFacade(*this);
+    }
+    auto IterateNonPhi() const & {
+        return NonPhiIterationFacade(*this);
     }
 
 public:

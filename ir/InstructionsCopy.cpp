@@ -44,10 +44,12 @@ OVERRIDE_COPY_METHOD(CallInstruction, CALL, GetType(), GetCallTarget())
 OVERRIDE_COPY_METHOD(PhiInstruction, PHI, GetType())
 OVERRIDE_COPY_METHOD(InputArgumentInstruction, ARG, GetType())
 OVERRIDE_COPY_METHOD(LengthInstruction, LEN, nullptr);
-OVERRIDE_COPY_METHOD(NewArrayInstruction, NEW_ARRAY, GetValue(), GetTypeId());
+OVERRIDE_COPY_METHOD(NewArrayInstruction, NEW_ARRAY, nullptr, GetTypeId());
+OVERRIDE_COPY_METHOD(NewArrayImmInstruction, NEW_ARRAY_IMM, GetValue(), GetTypeId());
 OVERRIDE_COPY_METHOD(NewObjectInstruction, NEW_OBJECT, GetTypeId());
 OVERRIDE_COPY_METHOD(LoadArrayInstruction, LOAD_ARRAY, GetType(), nullptr, nullptr);
 OVERRIDE_COPY_METHOD(StoreArrayInstruction, STORE_ARRAY, nullptr, nullptr, nullptr);
+OVERRIDE_COPY_METHOD(BoundsCheckInstruction, BOUNDS_CHECK, nullptr, nullptr);
 
 #undef OVERRIDE_COPY_METHOD_FIXED
 #undef OVERRIDE_COPY_METHOD

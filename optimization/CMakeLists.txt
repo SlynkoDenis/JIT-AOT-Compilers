@@ -1,5 +1,6 @@
 set(SOURCES
     BranchElimination.cpp
+    CheckElimination.cpp
     ConstantFolding.cpp
     DCE.cpp
     EmptyBlocksRemoval.cpp
@@ -11,6 +12,7 @@ add_library(optimization STATIC ${SOURCES})
 
 target_sources(optimization PUBLIC
     BranchElimination.h
+    CheckElimination.h
     ConstantFolding.h
     DCE.h
     EmptyBlocksRemoval.h
