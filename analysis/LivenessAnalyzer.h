@@ -30,30 +30,22 @@ public:
 private:
     void resetStructs();
 
-    // Lineary orderes basic blocks, such that:
-    // * all predecessors of a block are located before this block
-    // * all blocks that are part of the same loop are contiguous
-    // (C. Wimmer, "Linear Scan Register Allocation on SSA Form", 2010)
-    void orderBlocks();
-    void addIntoQueue(std::pmr::list<BasicBlock *> &remainedBlocks, BasicBlock *bblock);
-    bool unvisitedForwardEdgesExist(BasicBlock *bblock, Marker visitedMarker);
+    void initBlocksInfo();
 
     // Globally orderes instructions in linear order.
     LiveRange::RangeType orderInstructions(BasicBlock *bblock);
 
-    void calculateLiveRanges(BlockInfo &info);
-    void calculateInitialLiveSet(BlockInfo &info) const;
+    void calculateLiveRanges(BasicBlock::IdType blockId);
+    void calculateInitialLiveSet(BasicBlock *bblock, BlockInfo &info) const;
 
     BlockInfo &getBlockInfo(BasicBlock *bblock) {
         ASSERT((bblock) && bblock->GetId() < linearOrderedBlocks.size());
         auto &res = linearOrderedBlocks[bblock->GetId()];
-        ASSERT(res.GetBlock());
         return res;
     }
     const BlockInfo &getBlockInfo(const BasicBlock *bblock) const {
         ASSERT((bblock) && bblock->GetId() < linearOrderedBlocks.size());
         auto &res = linearOrderedBlocks[bblock->GetId()];
-        ASSERT(res.GetBlock());
         return res;
     }
 

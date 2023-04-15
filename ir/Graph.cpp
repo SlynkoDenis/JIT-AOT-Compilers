@@ -57,6 +57,16 @@ void Graph::DisconnectBasicBlocks(BasicBlock *lhs, BasicBlock *rhs) {
     invalidateAfterChangedCFG();
 }
 
+void Graph::InsertBetween(BasicBlock *bblock, BasicBlock *pred, BasicBlock *succ) {
+    ASSERT((bblock) && (pred) && (succ));
+    ASSERT((bblock->GetLastInstruction())
+           && bblock->GetLastInstruction()->GetOpcode() == Opcode::JMP);
+    pred->ReplaceSuccessor(succ, bblock);
+    bblock->AddPredecessor(pred);
+    succ->ReplacePredecessor(pred, bblock);
+    bblock->AddSuccessor(succ);
+}
+
 void Graph::FixPHIAfterDisconnect(BasicBlock *phiSource, BasicBlock *phiTarget) {
     ASSERT((phiSource) && (phiTarget) && phiTarget->HasPredecessor(phiSource));
     auto predsCount = phiTarget->GetPredecessorsCount();

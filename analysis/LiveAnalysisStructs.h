@@ -228,43 +228,22 @@ class BlockInfo {
 public:
     using allocator_type = LiveSet::allocator_type;
 
-    explicit BlockInfo(const allocator_type &a) : bblock(nullptr), liveRange(0, 0), liveSet(a) {}
-    BlockInfo(BasicBlock *b, LiveRange range)
-        : bblock(b),
-          liveRange(range),
-          liveSet(b->GetGraph()->GetMemoryResource())
-    {}
-    BlockInfo(BasicBlock *b, LiveRange range, const allocator_type &a)
-        : bblock(b),
-          liveRange(range),
-          liveSet(a)
-    {}
+    explicit BlockInfo(const allocator_type &a) : liveRange(0, 0), liveIn(a) {}
+    BlockInfo(LiveRange range, const allocator_type &a) : liveRange(range), liveIn(a) {}
 
     DEFAULT_COPY_SEMANTIC(BlockInfo);
     BlockInfo(const BlockInfo &other, const allocator_type &a)
-        : bblock(other.bblock),
-          liveRange(other.liveRange),
-          liveSet(other.liveSet, a)
+        : liveRange(other.liveRange),
+          liveIn(other.liveIn, a)
     {}
 
     DEFAULT_MOVE_SEMANTIC(BlockInfo);
     BlockInfo(BlockInfo &&other, const allocator_type &a)
-        : bblock(other.bblock),
-          liveRange(other.liveRange),
-          liveSet(std::move(other.liveSet), a)
+        : liveRange(other.liveRange),
+          liveIn(std::move(other.liveIn), a)
     {}
 
     DEFAULT_DTOR(BlockInfo);
-
-    BasicBlock *GetBlock() {
-        return bblock;
-    }
-    const BasicBlock *GetBlock() const {
-        return bblock;
-    }
-    void SetBlock(BasicBlock *b) {
-        bblock = b;
-    }
 
     LiveRange GetRange() {
         return liveRange;
@@ -276,21 +255,20 @@ public:
         liveRange = range;
     }
 
-    LiveSet &GetLiveSet() {
-        return liveSet;
+    LiveSet &GetLiveIn() {
+        return liveIn;
     }
-    const LiveSet &GetLiveSet() const {
-        return liveSet;
+    const LiveSet &GetLiveIn() const {
+        return liveIn;
     }
 
     allocator_type get_allocator() const noexcept {
-        return liveSet.get_allocator();
+        return liveIn.get_allocator();
     }
 
 private:
-    BasicBlock *bblock;
     LiveRange liveRange;
-    LiveSet liveSet;
+    LiveSet liveIn;
 };
 }   // namespace ir
 

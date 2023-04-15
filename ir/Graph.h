@@ -13,6 +13,8 @@
 namespace ir {
 class CompilerBase;
 class InstructionBuilder;
+class LinearOrdering;
+class LivenessAnalyzer;
 class Loop;
 
 class Graph : public MarkerManager, public AnalysisValidityManager {
@@ -110,6 +112,7 @@ public:
         loopTreeRoot = loop;
     }
 
+    // Applies the function to each basic block, in order.
     // Assume either no side-effects are applied on basic blocks or user knows what he does.
     template <typename FunctionType>
     requires UnaryFunctionType<FunctionType, BasicBlock *, void>
@@ -119,6 +122,8 @@ public:
             std::views::all(bblocks) | std::views::filter(nonNullPredicate),
             function);
     }
+
+    // Applies the function to each basic block, in order.
     template <typename FunctionType>
     requires UnaryFunctionType<FunctionType, const BasicBlock *, void>
     void ForEachBasicBlock(FunctionType function) const {
@@ -134,6 +139,7 @@ public:
     BasicBlock *CreateEmptyBasicBlock(bool isTerminal = false);
     void ConnectBasicBlocks(BasicBlock *lhs, BasicBlock *rhs);
     void DisconnectBasicBlocks(BasicBlock *lhs, BasicBlock *rhs);
+    void InsertBetween(BasicBlock *bblock, BasicBlock *pred, BasicBlock *succ);
     void FixPHIAfterDisconnect(BasicBlock *phiSource, BasicBlock *phiTarget);
     void AddBasicBlock(BasicBlock *bblock);
     void AddBasicBlockBefore(BasicBlock *before, BasicBlock *bblock);
@@ -149,6 +155,10 @@ public:
 
 public:
     static constexpr IdType INVALID_ID = static_cast<IdType>(-1);
+
+    // the classes needs access to `bblocks` field
+    friend class LinearOrdering;
+    friend class LivenessAnalyzer;
 
 private:
     void removePredecessors(BasicBlock *bblock);

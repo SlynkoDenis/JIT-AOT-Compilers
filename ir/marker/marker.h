@@ -27,7 +27,8 @@ public:
     NO_MOVE_SEMANTIC(MarkerManager);
     virtual DEFAULT_DTOR(MarkerManager);
 
-    Marker GetNewMarker() {
+    // TODO: implement shared_ptr-like marker behavior
+    Marker GetNewMarker() const {
         ASSERT(currentIndex < utils::to_underlying(MarkersConstants::MAX_VALUE));
         ++currentIndex;
         for (uint32_t i = 0; i < markersSlots.size(); ++i) {
@@ -41,7 +42,7 @@ public:
         UNREACHABLE("free marker slot not found");
         return 0;
     }
-    void ReleaseMarker(Marker mark) {
+    void ReleaseMarker(Marker mark) const {
         size_t index = mark & utils::to_underlying(MarkersConstants::INDEX_MASK);
         markersSlots[index] = false;
     }
@@ -54,8 +55,8 @@ public:
     }
 
 private:
-    size_t currentIndex = 0;
-    std::bitset<utils::to_underlying(MarkersConstants::MAX_MARKERS)> markersSlots{false};
+    mutable size_t currentIndex = 0;
+    mutable std::bitset<utils::to_underlying(MarkersConstants::MAX_MARKERS)> markersSlots{false};
 };
 
 class Markable {
@@ -65,7 +66,7 @@ public:
     NO_MOVE_SEMANTIC(Markable);
     virtual DEFAULT_DTOR(Markable);
 
-    bool SetMarker(Marker mark) {
+    bool SetMarker(Marker mark) const {
         auto value = mark >> utils::to_underlying(MarkersConstants::BIT_LENGTH);
         size_t index = mark & utils::to_underlying(MarkersConstants::INDEX_MASK);
         ASSERT(index < markers.size());
@@ -79,14 +80,14 @@ public:
         ASSERT(index < markers.size());
         return markers[index] == value;
     }
-    void ClearMarker(Marker mark) {
+    void ClearMarker(Marker mark) const {
         size_t index = mark & utils::to_underlying(MarkersConstants::INDEX_MASK);
         ASSERT(index < markers.size());
         markers[index] = utils::to_underlying(MarkersConstants::UNDEF_VALUE);
     }
 
 private:
-    std::array<Marker, utils::to_underlying(MarkersConstants::MAX_MARKERS)>
+    mutable std::array<Marker, utils::to_underlying(MarkersConstants::MAX_MARKERS)>
         markers{utils::to_underlying(MarkersConstants::UNDEF_VALUE)};
 };
 }   // namespace ir

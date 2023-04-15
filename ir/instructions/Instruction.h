@@ -22,16 +22,32 @@ enum class CondCode {
     EQ,
     NE,
     LT,
+    LE,
     GE,
+    GT,
     NUM_CODES
 };
+
+constexpr inline CondCode inverseCondCode(CondCode cc) {
+    std::array<CondCode, static_cast<size_t>(CondCode::NUM_CODES)> inversedCodes{
+        CondCode::NE,
+        CondCode::EQ,
+        CondCode::GT,
+        CondCode::GE,
+        CondCode::LE,
+        CondCode::LT
+    };
+    return inversedCodes[static_cast<size_t>(cc)];
+}
 
 constexpr inline const char *getCondCodeName(CondCode cc) {
     std::array<const char *, static_cast<size_t>(CondCode::NUM_CODES)> names{
         "EQ",
         "NE",
         "LT",
-        "GE"
+        "LE",
+        "GE",
+        "GT"
     };
     return names[static_cast<size_t>(cc)];
 }
@@ -308,6 +324,9 @@ public:
     void SetCondCode(CondCode cc) {
         ccode = cc;
     }
+    void InverseCondCode() {
+        ccode = inverseCondCode(ccode);
+    }
 
 private:
     CondCode ccode;
@@ -390,6 +409,7 @@ public:
     {}
 
     CompareInstruction *Copy(BasicBlock *targetBBlock) const override;
+    void Inverse();
 
 protected:
     void dumpImpl(log4cpp::CategoryStream &stream) const override {

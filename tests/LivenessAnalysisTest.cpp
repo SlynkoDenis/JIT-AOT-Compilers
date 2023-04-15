@@ -4,8 +4,6 @@
 
 namespace ir::tests {
 class LivenessAnalysisTest : public TestGraphSamples {
-public:
-    static constexpr OperandType TYPE = OperandType::U64;
 };
 
 template <typename AllocLhsT, typename AllocRhsT>
@@ -21,16 +19,16 @@ static void checkLinearOrder(std::vector<LiveIntervals, AllocLhsT> &&expectedLin
 
 TEST_F(LivenessAnalysisTest, TestAnalysis1) {
     /*
-         A
+         B0
          |
          V
-    ---->B
+    ---->B1
     |   / \
     |  /   \
-    --C     D
+    --B2    B3
             |
             V
-            E
+            B4
     */
     auto [graph, bblocks, expectedLinearOrder] = FillCase4();
 
@@ -42,21 +40,48 @@ TEST_F(LivenessAnalysisTest, TestAnalysis1) {
 
 TEST_F(LivenessAnalysisTest, TestAnalysis2) {
     /*
-       A
+       B0
        |
-       B
+       B1
       / \
      /   \
-    C     F
+    B2   B5
     |    / \
-    |   E   \
-    |  /    |
-    | /     |
-    D<------G
+    |   B4  \
+    |  /     |
+    | /      |
+    B3<------B6
     */
     auto [graph, bblocks, linearOrder] = FillCase1();
 
-    DumpGraphRPO(graph);
+    auto pass = LivenessAnalyzer(graph);
+    pass.Run();
+
+    checkLinearOrder(std::move(linearOrder), pass.GetLiveIntervals());
+}
+
+TEST_F(LivenessAnalysisTest, TestAnalysis3) {
+    /*
+          B0
+          |
+          B1<-------
+          |        |
+          B2<----  |
+         / \    |  |
+        /   \   |  |
+       B3   B4  |  |
+      / \   /   |  |
+     /   \ /    |  |
+    B5    B6    |  |
+          |     |  |
+          B7-----  |
+          |        |
+          B8--------
+          |
+          B9
+    */
+    auto [graph, bblocks, linearOrder] = FillCase5();
+
     auto pass = LivenessAnalyzer(graph);
     pass.Run();
 

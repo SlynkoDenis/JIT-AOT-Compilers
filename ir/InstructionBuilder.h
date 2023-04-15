@@ -285,12 +285,12 @@ public:
     {
         CREATE_INST_WITH_PROP(PhiInstruction, InstrProp::INPUT, type, inputs, sources);
     }
-    template <typename Ins, typename Sources>
+    template <typename Sources>
     PhiInstruction *CreatePHI(
         OperandType type,
-        std::initializer_list<Ins> inputs,
+        std::initializer_list<InstructionBase *> inputs,
         std::initializer_list<Sources> sources)
-    requires std::is_same_v<std::remove_cv_t<Sources>, BasicBlock *> && AllowedInputType<Ins>
+    requires std::is_same_v<std::remove_cv_t<Sources>, BasicBlock *>
     {
         CREATE_INST_WITH_PROP(PhiInstruction, InstrProp::INPUT, type, inputs, sources);
     }

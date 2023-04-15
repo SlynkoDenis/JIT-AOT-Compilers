@@ -16,9 +16,12 @@ public:
     CFGInfoPair BuildCase2();
     CFGInfoPair BuildCase3();
     CFGInfoPair BuildCase4();
+    CFGInfoPair BuildCase5();
 
     LivenessInfoTuple FillCase1();
+    LivenessInfoTuple FillCase2();
     LivenessInfoTuple FillCase4();
+    LivenessInfoTuple FillCase5();
 };
 }   // namespace ir::tests
 
