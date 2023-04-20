@@ -18,7 +18,7 @@ public:
     }
     NO_COPY_SEMANTIC(Logger);
     NO_MOVE_SEMANTIC(Logger);
-    virtual ~Logger() noexcept = default;
+    virtual DEFAULT_DTOR(Logger);
 
     log4cpp::Category &GetLoggerRaw() {
         return logger;

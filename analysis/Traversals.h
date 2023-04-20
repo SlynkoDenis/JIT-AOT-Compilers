@@ -4,7 +4,6 @@
 #include "BasicBlock.h"
 #include <functional>
 #include "PassBase.h"
-#include <unordered_set>
 #include <vector>
 
 
@@ -36,15 +35,15 @@ public:
             return;
         }
 
-        DFO helper(graph->GetMemoryResource());
+        DFO helper(graph);
         helper.doTraverse(graph->GetFirstBasicBlock(), callback);
         if constexpr (DoSafe) {
-            ASSERT(helper.visited.size() == graph->GetBasicBlocksCount());
+            ASSERT(helper.visitedCounter == graph->GetBasicBlocksCount());
         }
     }
 
 private:
-    DFO(std::pmr::memory_resource *memResource) : visited(memResource) {}
+    DFO(const Graph *graph) : markerMgr(graph) {}
     DEFAULT_COPY_SEMANTIC(DFO);
     DEFAULT_MOVE_SEMANTIC(DFO);
     DEFAULT_DTOR(DFO);
@@ -53,19 +52,31 @@ private:
     void doTraverse(BBlockT *bblock, CallbackT callback)
     requires std::is_same_v<std::remove_cv_t<BBlockT>, BasicBlock>
     {
+        visitedCounter = 0;
+        auto visited = markerMgr->GetNewMarker();
+        traverseImpl(bblock, visited, callback);
+        markerMgr->ReleaseMarker(visited);
+    }
+
+    template <typename BBlockT, ValidCallback CallbackT>
+    void traverseImpl(BBlockT *bblock, Marker visited, CallbackT callback)
+    requires std::is_same_v<std::remove_cv_t<BBlockT>, BasicBlock>
+    {
         ASSERT(bblock);
-        visited.insert(bblock->GetId());
+        ++visitedCounter;
+        bblock->SetMarker(visited);
         for (auto *succ : bblock->GetSuccessors()) {
             ASSERT(succ->HasPredecessor(bblock));
-            if (!visited.contains(succ->GetId())) {
-                doTraverse(succ, callback);
+            if (!succ->IsMarkerSet(visited)) {
+                traverseImpl(succ, visited, callback);
             }
         }
         callback(bblock);
     }
 
 private:
-    std::pmr::unordered_set<size_t> visited;
+    const MarkerManager *markerMgr;
+    size_t visitedCounter;
 };
 
 // concepts and helpers

@@ -36,6 +36,7 @@ public:
 
     CompareInstruction *EndsWithConditionalJump();
     const CompareInstruction *EndsWithConditionalJump() const;
+    void InverseConditionalBranch();
 
     size_t GetPredecessorsCount() const {
         return preds.size();

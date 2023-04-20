@@ -45,6 +45,22 @@ private:
         ASSERT(id < universum.size());
         return universum[id];
     }
+    size_t getSemiDominator(BasicBlock *bblock) const {
+        ASSERT((bblock) && bblock->GetId() < sdoms.size());
+        return sdoms[bblock->GetId()];
+    }
+    BasicBlock *getLabel(BasicBlock *bblock) {
+        ASSERT((bblock) && bblock->GetId() < labels.size());
+        return labels[bblock->GetId()];
+    }
+    const BasicBlock *getLabel(BasicBlock *bblock) const {
+        ASSERT((bblock) && bblock->GetId() < labels.size());
+        return labels[bblock->GetId()];
+    }
+    void setLabel(BasicBlock *bblock, BasicBlock *lbl) {
+        ASSERT((lbl) && (bblock) && bblock->GetId() < labels.size());
+        labels[bblock->GetId()] = lbl;
+    }
     void setUniversum(size_t id, BasicBlock *bblock) {
         ASSERT(id < universum.size());
         universum[id] = bblock;

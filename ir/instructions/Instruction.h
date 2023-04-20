@@ -22,16 +22,32 @@ enum class CondCode {
     EQ,
     NE,
     LT,
+    LE,
     GE,
+    GT,
     NUM_CODES
 };
+
+constexpr inline CondCode inverseCondCode(CondCode cc) {
+    std::array<CondCode, static_cast<size_t>(CondCode::NUM_CODES)> inversedCodes{
+        CondCode::NE,
+        CondCode::EQ,
+        CondCode::GT,
+        CondCode::GE,
+        CondCode::LE,
+        CondCode::LT
+    };
+    return inversedCodes[static_cast<size_t>(cc)];
+}
 
 constexpr inline const char *getCondCodeName(CondCode cc) {
     std::array<const char *, static_cast<size_t>(CondCode::NUM_CODES)> names{
         "EQ",
         "NE",
         "LT",
-        "GE"
+        "LE",
+        "GE",
+        "GT"
     };
     return names[static_cast<size_t>(cc)];
 }
@@ -102,13 +118,16 @@ public:
         return InputsNum;
     }
     Input &GetInput(size_t idx) override {
-        return inputs.at(idx);
+        ASSERT(idx < inputs.size());
+        return inputs[idx];
     }
     const Input &GetInput(size_t idx) const override {
-        return inputs.at(idx);
+        ASSERT(idx < inputs.size());
+        return inputs[idx];
     }
     void SetInput(Input newInput, size_t idx) override {
-        inputs.at(idx) = newInput;
+        ASSERT(idx < inputs.size());
+        inputs[idx] = newInput;
         if (newInput.GetInstruction()) {
             newInput->AddUser(this);
         }
@@ -240,13 +259,16 @@ public:
         return inputs.size();
     }
     Input &GetInput(size_t idx) override {
-        return inputs.at(idx);
+        ASSERT(idx < inputs.size());
+        return inputs[idx];
     }
     const Input &GetInput(size_t idx) const override {
-        return inputs.at(idx);
+        ASSERT(idx < inputs.size());
+        return inputs[idx];
     }
     void SetInput(Input newInput, size_t idx) override {
-        inputs.at(idx) = newInput;
+        ASSERT(idx < inputs.size());
+        inputs[idx] = newInput;
         if (newInput.GetInstruction()) {
             newInput->AddUser(this);
         }
@@ -301,6 +323,9 @@ public:
     }
     void SetCondCode(CondCode cc) {
         ccode = cc;
+    }
+    void InverseCondCode() {
+        ccode = inverseCondCode(ccode);
     }
 
 private:
@@ -384,6 +409,7 @@ public:
     {}
 
     CompareInstruction *Copy(BasicBlock *targetBBlock) const override;
+    void Inverse();
 
 protected:
     void dumpImpl(log4cpp::CategoryStream &stream) const override {
@@ -519,13 +545,16 @@ public:
         ASSERT(idx < sourceBBlocks.size());
         return sourceBBlocks[idx];
     }
-    void SetSourceBasicBlock(BasicBlock *bblock, size_t idx) {
-        ASSERT((bblock) && idx < sourceBBlocks.size());
-        sourceBBlocks[idx] = bblock;
+    void SetSourceBasicBlock(BasicBlock *inputSource, size_t idx) {
+        ASSERT((inputSource) && idx < sourceBBlocks.size());
+        sourceBBlocks[idx] = inputSource;
     }
-    size_t IndexOf(const BasicBlock *bblock) const {
-        ASSERT(bblock);
-        return std::find(sourceBBlocks.begin(), sourceBBlocks.end(), bblock) - sourceBBlocks.begin();
+    size_t IndexOf(const BasicBlock *inputSource) const {
+        ASSERT(inputSource);
+        return std::find(sourceBBlocks.begin(), sourceBBlocks.end(), inputSource) - sourceBBlocks.begin();
+    }
+    Input ResolveInput(BasicBlock *inputSource) {
+        return GetInput(IndexOf(inputSource));
     }
 
     void AddPhiInput(Input newInput, BasicBlock *inputSource) {

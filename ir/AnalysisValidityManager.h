@@ -20,7 +20,7 @@ public:
     AnalysisValidityManager() = default;
     DEFAULT_COPY_SEMANTIC(AnalysisValidityManager);
     DEFAULT_MOVE_SEMANTIC(AnalysisValidityManager);
-    virtual ~AnalysisValidityManager() noexcept = default;
+    virtual DEFAULT_DTOR(AnalysisValidityManager);
 
     bool IsAnalysisValid(AnalysisFlag a) const {
         return mask[utils::to_underlying(a)];

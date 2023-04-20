@@ -92,6 +92,17 @@ public:
     bool IsRoot() const {
         return isRoot;
     }
+    bool IsIn(const Loop *other) const {
+        ASSERT(other);
+        auto *loop = GetOuterLoop();
+        while (loop != nullptr) {
+            if (loop == other) {
+                return true;
+            }
+            loop = loop->GetOuterLoop();
+        }
+        return false;
+    }
 
     NO_NEW_DELETE;
 

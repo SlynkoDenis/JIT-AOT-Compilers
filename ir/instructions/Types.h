@@ -17,7 +17,7 @@ public:
     TypeId(TypeIdType id) : id(id) {}
     DEFAULT_COPY_SEMANTIC(TypeId);
     DEFAULT_MOVE_CTOR(TypeId);
-    virtual ~TypeId() noexcept = default;
+    virtual DEFAULT_DTOR(TypeId);
 
     operator TypeIdType() const {
         return id;

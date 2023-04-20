@@ -44,7 +44,7 @@ public:
     }
     NO_COPY_SEMANTIC(PassBase);
     NO_MOVE_SEMANTIC(PassBase);
-    virtual ~PassBase() noexcept = default;
+    virtual DEFAULT_DTOR(PassBase);
 
     virtual bool Run() = 0;
 

@@ -3,6 +3,12 @@
 
 
 namespace ir {
+void CompareInstruction::Inverse() {
+    InverseCondCode();
+    // TODO: check correctness
+    std::tie(GetInput(0), GetInput(1)) = std::make_tuple(GetInput(1), GetInput(0));
+}
+
 BasicBlock *JumpInstruction::GetDestination() {
     auto *bblock = GetBasicBlock();
     ASSERT(bblock);

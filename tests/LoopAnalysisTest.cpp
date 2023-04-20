@@ -191,62 +191,51 @@ TEST_F(LoopAnalysisTest, TestLoops5) {
 
 TEST_F(LoopAnalysisTest, TestLoops6) {
     /*
-          A<--------
+          B0
+          |
+          B1<-------
           |        |
-          B<-----  |
+          B2<----  |
          / \    |  |
         /   \   |  |
-       C     D  |  |
+       B3   B4  |  |
       / \   /   |  |
      /   \ /    |  |
-    E     F     |  |
+    B5    B6    |  |
           |     |  |
-          G------  |
+          B7-----  |
           |        |
-          H---------
+          B8--------
+          |
+          B9
     */
-    auto *graph = GetGraph();
-    std::vector<BasicBlock *> bblocks(8);
-    for (auto &it : bblocks) {
-        it = graph->CreateEmptyBasicBlock();
-    }
-    graph->SetFirstBasicBlock(bblocks[0]);
-    graph->ConnectBasicBlocks(bblocks[0], bblocks[1]);
-    graph->ConnectBasicBlocks(bblocks[1], bblocks[2]);
-    graph->ConnectBasicBlocks(bblocks[1], bblocks[3]);
-    graph->ConnectBasicBlocks(bblocks[2], bblocks[4]);
-    graph->ConnectBasicBlocks(bblocks[2], bblocks[5]);
-    graph->ConnectBasicBlocks(bblocks[3], bblocks[5]);
-    graph->ConnectBasicBlocks(bblocks[5], bblocks[6]);
-    graph->ConnectBasicBlocks(bblocks[6], bblocks[7]);
-    graph->ConnectBasicBlocks(bblocks[6], bblocks[1]);
-    graph->ConnectBasicBlocks(bblocks[7], bblocks[0]);
+    auto [graph, bblocks] = BuildCase5();
 
     RunPass();
 
     auto *rootLoop = graph->GetLoopTree();
     ASSERT_TRUE(rootLoop->IsRoot());
     ASSERT_EQ(rootLoop->GetOuterLoop(), nullptr);
-    ASSERT_EQ(rootLoop->GetBasicBlocks().size(), 1);
+    ASSERT_EQ(rootLoop->GetBasicBlocks().size(), 3);
     ASSERT_EQ(rootLoop->GetInnerLoops().size(), 1);
 
     auto *loop = rootLoop->GetInnerLoops()[0];
     ASSERT_EQ(loop->GetOuterLoop(), rootLoop);
     ASSERT_FALSE(loop->IsRoot());
-    ASSERT_EQ(loop->GetHeader(), bblocks[0]);
+    ASSERT_EQ(loop->GetHeader(), bblocks[1]);
     ASSERT_EQ(loop->GetInnerLoops().size(), 1);
     ASSERT_EQ(loop->GetBackEdges().size(), 1);
-    ASSERT_EQ(loop->GetBackEdges()[0], bblocks[7]);
+    ASSERT_EQ(loop->GetBackEdges()[0], bblocks[8]);
     ASSERT_EQ(loop->GetBasicBlocks().size(), 2);
     ASSERT_FALSE(loop->IsIrreducible());
 
     loop = loop->GetInnerLoops()[0];
     ASSERT_EQ(loop->GetOuterLoop(), rootLoop->GetInnerLoops()[0]);
     ASSERT_FALSE(loop->IsRoot());
-    ASSERT_EQ(loop->GetHeader(), bblocks[1]);
+    ASSERT_EQ(loop->GetHeader(), bblocks[2]);
     ASSERT_TRUE(loop->GetInnerLoops().empty());
     ASSERT_EQ(loop->GetBackEdges().size(), 1);
-    ASSERT_EQ(loop->GetBackEdges()[0], bblocks[6]);
+    ASSERT_EQ(loop->GetBackEdges()[0], bblocks[7]);
     ASSERT_EQ(loop->GetBasicBlocks().size(), 5);
     ASSERT_FALSE(loop->IsIrreducible());
 }

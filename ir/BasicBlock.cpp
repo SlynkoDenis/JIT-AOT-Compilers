@@ -58,6 +58,13 @@ const CompareInstruction *BasicBlock::EndsWithConditionalJump() const {
     return endsWithConditionalJump(this);
 }
 
+void BasicBlock::InverseConditionalBranch() {
+    auto *cmp = EndsWithConditionalJump();
+    ASSERT(cmp != nullptr);
+    cmp->Inverse();
+    std::tie(succs[0], succs[1]) = std::make_tuple(succs[1], succs[0]);
+}
+
 bool BasicBlock::IsLoopHeader() const {
     return (loop != nullptr) && loop->GetHeader() == this;
 }
