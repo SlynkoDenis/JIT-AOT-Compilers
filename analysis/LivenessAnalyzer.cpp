@@ -21,8 +21,10 @@ bool LivenessAnalyzer::Run() {
 void LivenessAnalyzer::resetStructs() {
     linearOrderedBlocks.reserve(graph->GetBasicBlocksCount());
     linearOrderedBlocks.clear();
+
+    graph->GetLiveIntervals().Clear();
+
     rangeBegin = 0;
-    linearNumber = 0;
 }
 
 void LivenessAnalyzer::initBlocksInfo() {
@@ -33,29 +35,27 @@ void LivenessAnalyzer::initBlocksInfo() {
         rangeBegin = rangeEnd;
     });
     ASSERT(linearOrderedBlocks.size() == graph->GetBasicBlocksCount());
-    ASSERT(liveIntervals.size() == linearNumber);
 }
 
 LiveRange::RangeType LivenessAnalyzer::orderInstructions(BasicBlock *bblock) {
     ASSERT(bblock);
-
+    auto &liveIntervals = graph->GetLiveIntervals();
     auto range = rangeBegin;
     for (auto *instr : bblock->IteratePhi()) {
-        instr->SetLinearNumber(linearNumber++);
-        liveIntervals.emplace_back(range, instr);
+        liveIntervals.AddLiveInterval(range, instr);
     }
     for (auto *instr : bblock->IterateNonPhi()) {
-        instr->SetLinearNumber(linearNumber++);
-        range += LiveIntervals::LIVE_RANGE_STEP;
-        liveIntervals.emplace_back(range, instr);
+        range += LiveInterval::LIVE_RANGE_STEP;
+        liveIntervals.AddLiveInterval(range, instr);
     }
-    return range + LiveIntervals::LIVE_RANGE_STEP;
+    return range + LiveInterval::LIVE_RANGE_STEP;
 }
 
 void LivenessAnalyzer::calculateLiveRanges(BasicBlock::IdType blockId) {
-    auto *bblock = graph->bblocks[blockId];
+    auto *bblock = graph->FindBasicBlock(blockId);
     ASSERT(bblock);
 
+    auto &liveIntervals = graph->GetLiveIntervals();
     auto &info = linearOrderedBlocks[blockId];
     auto blockRange = info.GetRange();
     auto &liveSet = info.GetLiveIn();
@@ -63,7 +63,7 @@ void LivenessAnalyzer::calculateLiveRanges(BasicBlock::IdType blockId) {
     calculateInitialLiveSet(bblock, info);
 
     for (auto *instr : liveSet) {
-        getLiveIntervals(instr).AddRange(blockRange);
+        liveIntervals.GetLiveIntervals(instr)->AddRange(blockRange);
     }
 
     auto blockRangeBegin = blockRange.GetBegin();
@@ -72,10 +72,9 @@ void LivenessAnalyzer::calculateLiveRanges(BasicBlock::IdType blockId) {
          instr != nullptr && !instr->IsPhi();
          instr = instr->GetPrevInstruction())
     {
-        auto &intervals = getLiveIntervals(instr);
-        auto liveNumber = intervals.GetLiveNumber();
-
-        intervals.SetBegin(liveNumber);
+        auto *intervals = liveIntervals.GetLiveIntervals(instr);
+        auto liveNumber = intervals->GetLiveNumber();
+        intervals->SetBegin(liveNumber);
         liveSet.Remove(instr);
 
         if (!instr->HasInputs()) {
@@ -84,8 +83,8 @@ void LivenessAnalyzer::calculateLiveRanges(BasicBlock::IdType blockId) {
         auto *withInputs = instr->AsInputsInstruction();
         for (size_t i = 0, end = withInputs->GetInputsCount(); i < end; ++i) {
             auto *input = withInputs->GetInput(i).GetInstruction();
-            getLiveIntervals(input).AddRange(blockRangeBegin, liveNumber);
             liveSet.Add(input);
+            liveIntervals.GetLiveIntervals(input)->AddRange(blockRangeBegin, liveNumber);
         }
     }
 

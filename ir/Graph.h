@@ -5,6 +5,7 @@
 #include <algorithm>
 #include "AllocatorUtils.h"
 #include "BasicBlock.h"
+#include "LiveAnalysisStructs.h"
 #include "macros.h"
 #include "marker/marker.h"
 #include <ranges>
@@ -29,6 +30,7 @@ public:
           rpoBlocks(mem),
           loopTreeRoot(nullptr),
           instrBuilder(instrBuilder),
+          liveIntervals(mem),
           memResource(mem)
     {
         ASSERT(compiler);
@@ -79,6 +81,16 @@ public:
     bool IsEmpty() const {
         return GetBasicBlocksCount() == 0;
     }
+    // O(1) complexity.
+    BasicBlock *FindBasicBlock(BasicBlock::IdType id) {
+        ASSERT(id < bblocks.size());
+        return bblocks[id];
+    }
+    // O(1) complexity.
+    const BasicBlock *FindBasicBlock(BasicBlock::IdType id) const {
+        ASSERT(id < bblocks.size());
+        return bblocks[id];
+    }
 
     auto GetRPO() const {
         ASSERT(IsAnalysisValid(AnalysisFlag::RPO));
@@ -97,6 +109,13 @@ public:
 
     InstructionBuilder *GetInstructionBuilder() {
         return instrBuilder;
+    }
+
+    LiveIntervals &GetLiveIntervals() {
+        return liveIntervals;
+    }
+    const LiveIntervals &GetLiveIntervals() const {
+        return liveIntervals;
     }
 
     void SetFirstBasicBlock(BasicBlock *bblock) {
@@ -133,7 +152,7 @@ public:
             function);
     }
 
-    // O(NumberOfBasicBlocks) complexity
+    // O(NumberOfBasicBlocks) complexity.
     size_t CountInstructions() const;
 
     BasicBlock *CreateEmptyBasicBlock(bool isTerminal = false);
@@ -158,7 +177,6 @@ public:
 
     // the classes needs access to `bblocks` field
     friend class LinearOrdering;
-    friend class LivenessAnalyzer;
 
 private:
     void removePredecessors(BasicBlock *bblock);
@@ -182,6 +200,8 @@ private:
     Loop *loopTreeRoot;
 
     InstructionBuilder *instrBuilder;
+
+    LiveIntervals liveIntervals;
 
     mutable std::pmr::memory_resource *memResource;
 };

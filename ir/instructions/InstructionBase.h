@@ -67,7 +67,8 @@ class PhiInstruction;
     DEF(NULL_CHECK)         \
     DEF(ZERO_CHECK)         \
     DEF(NEGATIVE_CHECK)     \
-    DEF(BOUNDS_CHECK)
+    DEF(BOUNDS_CHECK)       \
+    DEF(MOVE)
 
 enum class Opcode {
 #define OPCODE_DEF(name, ...) name,

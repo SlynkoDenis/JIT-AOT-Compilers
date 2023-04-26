@@ -18,10 +18,14 @@ public:
 
     static void VerifyDomTree(Graph *graph);
     static void VerifyControlAndDataFlowGraphs(const BasicBlock *bblock);
+    static void VerifyPhiBasicBlocks(const PhiInstruction *phi);
 
 private:
     static bool sameBasicBlocks(const std::pmr::vector<BasicBlock *> &lhs,
                                 const std::pmr::vector<BasicBlock *> &rhs);
+
+    static void verifyBlockStructure(const BasicBlock *bblock, const InstructionBase *instr);
+    static void verifyDFG(const InstructionBase *instr);
 };
 }   // namespace ir
 

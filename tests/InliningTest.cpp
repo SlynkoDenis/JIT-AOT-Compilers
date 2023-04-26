@@ -1,8 +1,6 @@
-#include "Graph.h"
+#include "CompilerTestBase.h"
 #include "Inlining.h"
-#include "TestGraphSamples.h"
 #include "Traversals.h"
-#include <vector>
 
 
 namespace ir::tests {

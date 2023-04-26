@@ -23,6 +23,7 @@ target_sources(optimization PUBLIC
 target_include_directories(optimization PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_SOURCE_DIR}/analysis
+    ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/ir
     ${CMAKE_SOURCE_DIR}/utils
     )

@@ -1,12 +1,16 @@
 #ifndef JIT_AOT_COMPILERS_COURSE_COMPILER_BASE_H_
 #define JIT_AOT_COMPILERS_COURSE_COMPILER_BASE_H_
 
+#include "ArchInfoBase.h"
 #include "CompilerOptions.h"
-#include "Graph.h"
-#include "InstructionBuilder.h"
 
 
 namespace ir {
+class Graph;
+class InstructionBuilder;
+
+using FunctionId = size_t;
+
 class CompilerBase {
 public:
     CompilerBase() = default;
@@ -14,6 +18,7 @@ public:
     NO_MOVE_SEMANTIC(CompilerBase);
     virtual DEFAULT_DTOR(CompilerBase);
 
+    virtual codegen::ArchInfoBase *GetArch() const = 0;
     virtual Graph *CreateNewGraph() = 0;
     virtual Graph *CopyGraph(const Graph *source, InstructionBuilder *instrBuilder) = 0;
     virtual Graph *Optimize(Graph *graph) = 0;

@@ -15,8 +15,7 @@ namespace ir {
 // in order to prevent dangling pointers.
 class InstructionBuilder {
 public:
-    explicit InstructionBuilder(std::pmr::memory_resource *memResource)
-        : allocator(memResource), instrs(memResource)
+    explicit InstructionBuilder(std::pmr::memory_resource *memResource) : allocator(memResource)
     {
         ASSERT(memResource);
     }
@@ -26,9 +25,7 @@ public:
 
     void AttachInstruction(InstructionBase *inst) {
         ASSERT((inst) && (inst->GetId() == InstructionBase::INVALID_ID));
-        ASSERT(std::find(instrs.begin(), instrs.end(), inst) == instrs.end());
-        instrs.push_back(inst);
-        inst->SetId(instrs.size());
+        inst->SetId(currentId++);
     }
 
     static void PushBackInstruction(BasicBlock *bblock, InstructionBase *instr) {
@@ -59,23 +56,20 @@ public:
         PushForwardInstruction(bblock, reminder...);
     }
 
-#define CREATE_FIXED_INST(name)                                                         \
+#define CREATE_FIXED_INST(name)                                                 \
     auto *inst = utils::template New<name>(allocator, allocator.resource());    \
-    instrs.push_back(inst);                                                             \
-    inst->SetId(instrs.size());                                                         \
+    inst->SetId(currentId++);                                                   \
     return inst
 
-#define CREATE_INST(name, ...)                                                                      \
+#define CREATE_INST(name, ...)                                                              \
     auto *inst = utils::template New<name>(allocator, __VA_ARGS__, allocator.resource());   \
-    instrs.push_back(inst);                                                                         \
-    inst->SetId(instrs.size());                                                                     \
+    inst->SetId(currentId++);                                                               \
     return inst
 
-#define CREATE_INST_WITH_PROP(name, prop, ...)                                                      \
+#define CREATE_INST_WITH_PROP(name, prop, ...)                                              \
     auto *inst = utils::template New<name>(allocator, __VA_ARGS__, allocator.resource());   \
-    instrs.push_back(inst);                                                                         \
-    inst->SetId(instrs.size());                                                                     \
-    inst->SetProperty(prop);                                                                        \
+    inst->SetId(currentId++);                                                               \
+    inst->SetProperty(prop);                                                                \
     return inst
 
 #define CREATE_ARITHM(opcode)                                                                   \
@@ -326,6 +320,15 @@ public:
     BoundsCheckInstruction *CreateBOUNDS_CHECK(Input arr, Input idx) {
         CREATE_INST_WITH_PROP(BoundsCheckInstruction, INPUT_SIDE_EFFECTS, arr, idx);
     }
+    // Utility instruction to fix PHIs data flow before codegen.
+    UnaryRegInstruction *CreateMOVE(Input input) {
+        CREATE_INST_WITH_PROP(
+            UnaryRegInstruction,
+            InstrProp::INPUT,
+            Opcode::MOVE,
+            input->GetType(),
+            input);
+    }
 
 #undef CREATE_FIXED_INST
 #undef CREATE_INST
@@ -348,7 +351,7 @@ private:
 private:
     std::pmr::polymorphic_allocator<> allocator;
 
-    std::pmr::vector<InstructionBase *> instrs;
+    InstructionBase::IdType currentId = 0;
 };
 }   // namespace ir
 

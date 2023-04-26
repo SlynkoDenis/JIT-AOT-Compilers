@@ -1,6 +1,7 @@
 #ifndef JIT_AOT_COMPILERS_COURSE_COMPILER_TEST_BASE_H_
 #define JIT_AOT_COMPILERS_COURSE_COMPILER_TEST_BASE_H_
 
+#include "default/DefaultArch.h"
 #include "Compiler.h"
 #include "GraphChecker.h"
 #include "gtest/gtest.h"
@@ -11,6 +12,8 @@
 namespace ir::tests {
 class CompilerTestBase : public ::testing::Test {
 public:
+    CompilerTestBase() : compiler(codegen::DefaultArch::GetInstance()) {}
+
     void SetUp() override {
         graph = compiler.CreateNewGraph();
     }

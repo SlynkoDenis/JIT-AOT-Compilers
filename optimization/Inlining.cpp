@@ -1,4 +1,3 @@
-#include "CompilerBase.h"
 #include "EmptyBlocksRemoval.h"
 #include "GraphChecker.h"
 #include "Inlining.h"
@@ -128,7 +127,7 @@ void InliningPass::propagateReturnValue(CallInstruction *call,
 
             auto *retInstr = static_cast<RetInstruction *>(instr);
             auto phiInput = retInstr->GetInput(0);
-            phiReturnValue->AddPhiInput(phiInput, phiInput->GetBasicBlock());
+            phiReturnValue->AddPhiInput(phiInput, pred);
             phiInput->RemoveUser(retInstr);
             pred->UnlinkInstruction(retInstr);
         }
