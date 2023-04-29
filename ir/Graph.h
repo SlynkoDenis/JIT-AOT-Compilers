@@ -1,13 +1,13 @@
 #ifndef JIT_AOT_COMPILERS_COURSE_GRAPH_H_
 #define JIT_AOT_COMPILERS_COURSE_GRAPH_H_
 
-#include "AnalysisValidityManager.h"
 #include <algorithm>
 #include "AllocatorUtils.h"
 #include "BasicBlock.h"
 #include "LiveAnalysisStructs.h"
 #include "macros.h"
 #include "marker/marker.h"
+#include "passes/AnalysisValidityManager.h"
 #include <ranges>
 
 

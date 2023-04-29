@@ -9,7 +9,7 @@
 
 
 namespace ir {
-// Live range of the instruction represented as half-opened interval [begin, end)
+// Live range of the instruction represented as opened interval [begin, end]
 class LiveRange final {
 public:
     using RangeType = std::size_t;
@@ -25,6 +25,10 @@ public:
     void SetBegin(RangeType b) {
         ASSERT(b < end);
         begin = b;
+    }
+    void SetEnd(RangeType b) {
+        ASSERT(begin < b);
+        end = b;
     }
     constexpr RangeType GetBegin() const {
         return begin;
@@ -152,6 +156,12 @@ public:
     }
 
     void AddRange(const LiveRange &rng);
+
+    void AddLoopRange(LiveRange::RangeType begin, LiveRange::RangeType end) {
+        AddLoopRange({begin, end});
+    }
+
+    void AddLoopRange(const LiveRange &rng);
 
     auto begin() {
         return ranges.rbegin();

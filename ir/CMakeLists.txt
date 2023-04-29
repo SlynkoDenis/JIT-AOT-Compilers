@@ -2,7 +2,7 @@ set(SOURCES
     BasicBlock.cpp
     Compiler.cpp
     Graph.cpp
-    GraphCopyHelper.cpp
+    graph_copy/GraphCopyHelper.cpp
     Instruction.cpp
     InstructionBase.cpp
     InstructionsCopy.cpp
@@ -12,23 +12,24 @@ set(SOURCES
 add_library(ir STATIC ${SOURCES})
 
 target_sources(ir PUBLIC
-    AnalysisValidityManager.h
     BasicBlock.h
     Compiler.h
     Concepts.h
     Graph.h
-    GraphCopyHelper.h
-    GraphTranslationHelper.h
+    graph_copy/GraphCopyHelper.h
+    graph_copy/GraphTranslationHelper.h
     InstructionBuilder.h
     LiveAnalysisStructs.h
     Loop.h
-    PassBase.h
     marker/marker.h
     instructions/Input.h
     instructions/Instruction.h
     instructions/InstructionBase.h
     instructions/Types.h
     instructions/Users.h
+    passes/AnalysisValidityManager.h
+    passes/InstructionsVisitor.h
+    passes/PassBase.h
     )
 
 target_include_directories(ir PUBLIC

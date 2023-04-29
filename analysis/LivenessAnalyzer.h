@@ -3,7 +3,7 @@
 
 #include <list>
 #include "LiveAnalysisStructs.h"
-#include "PassBase.h"
+#include "passes/PassBase.h"
 
 
 namespace ir {
@@ -29,6 +29,7 @@ private:
 
     void calculateLiveRanges(BasicBlock::IdType blockId);
     void calculateInitialLiveSet(BasicBlock *bblock, BlockInfo &info) const;
+    LiveRange::RangeType calculateLiveRangeEnd(Loop *loop) const;
 
     BlockInfo &getBlockInfo(BasicBlock *bblock) {
         ASSERT((bblock) && bblock->GetId() < linearOrderedBlocks.size());

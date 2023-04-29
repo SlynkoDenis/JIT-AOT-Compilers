@@ -34,8 +34,7 @@ void GraphChecker::VerifyDomTree(Graph *graph) {
 void GraphChecker::VerifyControlAndDataFlowGraphs(const BasicBlock *bblock) {
     // TODO: verify Loop Analysis
     ASSERT(bblock != nullptr);
-    const InstructionBase *instr = bblock->GetFirstPhiInstruction();
-    instr = instr ? instr : bblock->GetFirstInstruction();
+    const InstructionBase *instr = bblock->GetStartingInstruction();
     if (!instr) {
         ASSERT(bblock->GetLastPhiInstruction() == nullptr);
         ASSERT(bblock->GetLastInstruction() == nullptr);
@@ -123,9 +122,9 @@ void GraphChecker::verifyDFG(const InstructionBase *instr) {
     ASSERT(instr);
 
     if (instr->HasInputs()) {
-        const auto *graph = instr->GetBasicBlock()->GetGraph();
+        [[maybe_unused]] const auto *graph = instr->GetBasicBlock()->GetGraph();
         const auto *typed = static_cast<const InputsInstruction *>(instr);
-        auto found = false;
+        [[maybe_unused]] auto found = false;
 
         for (size_t i = 0, end_idx = typed->GetInputsCount(); i < end_idx; ++i) {
             const auto &input = typed->GetInput(i);
@@ -146,7 +145,7 @@ void GraphChecker::verifyDFG(const InstructionBase *instr) {
     for (auto &&user : inputUsers) {
         ASSERT(user->HasInputs() == true);
         auto *typed = static_cast<const InputsInstruction *>(user);
-        bool found = false;
+        [[maybe_unused]] bool found = false;
         for (size_t i = 0, end_idx = typed->GetInputsCount(); i < end_idx; ++i) {
             if (typed->GetInput(i) == instr) {
                 found = true;

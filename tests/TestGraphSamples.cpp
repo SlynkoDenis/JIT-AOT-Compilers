@@ -368,9 +368,9 @@ TestGraphSamples::LivenessInfoTuple TestGraphSamples::FillCase4() {
         add, retvoid);
 
     std::pmr::vector<LiveInterval> linearOrder{
-        {{{2, 18}}, constOne},
+        {{{2, 20}}, constOne},
         {{{4, 8}}, constTen},
-        {{{20, 22}, {6, 14}}, constTwenty},
+        {{{6, 22}}, constTwenty},
         {{{20, 22}, {8, 16}}, phi1},
         {{{8, 18}}, phi2},
         {{{10, 12}}, cmpEq},
@@ -440,14 +440,14 @@ TestGraphSamples::LivenessInfoTuple TestGraphSamples::FillCase5() {
 
     std::pmr::vector<LiveInterval> linearOrder{
         {{{2, 16}}, arg0},
-        {{{4, 20}}, arg1},
-        {{{30, 32}, {6, 26}}, arg2},
-        {{{8, 44}}, constZero},
-        {{{10, 46}}, constOne},
-        {{{12, 52}}, constTen},
+        {{{4, 56}}, arg1},
+        {{{6, 56}}, arg2},
+        {{{8, 56}}, constZero},
+        {{{10, 56}}, constOne},
+        {{{12, 56}}, constTen},
         {{{14, 16}}, constTwenty},
         {{{16, 18}}, phi1},
-        {{{62, 64}, {18, 56}}, subi1},
+        {{{62, 64}, {18, 50}}, subi1},
         {{{30, 34}, {20, 28}}, phi2},
         {{{22, 24}}, cmp2},
         {{{24, 26}}, jcmp2},

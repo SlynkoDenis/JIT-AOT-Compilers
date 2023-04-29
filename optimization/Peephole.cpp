@@ -1,3 +1,4 @@
+#include "ConstantFolding.h"
 #include "InstructionBuilder.h"
 #include <limits>
 #include "Peephole.h"
@@ -7,94 +8,90 @@
 namespace ir {
 bool PeepholePass::Run() {
     PassManager::Run<RPO>(graph);
-    bool applied = false;
+    applied = false;
+
     for (auto &bblock : graph->GetRPO()) {
-        for (auto *instr : *bblock) {
-            switch (instr->GetOpcode()) {
-            case Opcode::AND:
-                applied |= ProcessAND(instr);
-                break;
-            case Opcode::SRA:
-                applied |= ProcessSRA(instr);
-                break;
-            case Opcode::SUB:
-                applied |= ProcessSUB(instr);
-                break;
-            default:
-                break;
-            }
-        }
+        Visit(bblock);
     }
     return applied;
 }
 
-bool PeepholePass::ProcessAND(InstructionBase *instr) {
+void PeepholePass::visitAND(InstructionBase *instr) {
     ASSERT(instr->GetOpcode() == Opcode::AND);
     BinaryRegInstruction *typed = static_cast<BinaryRegInstruction *>(instr);
 
-    if (foldingPass.ProcessAND(typed)) {
+    if (ConstantFolding::ProcessAND(typed)) {
         GetLogger(utils::LogPriority::INFO) << "Folded AND instruction";
-        return true;
+        applied = true;
+        return;
     }
 
     if (tryANDRepeatedArgs(typed)) {
-        return true;
+        applied = true;
+        return;
     }
     if (tryANDAfterNOT(typed)) {
-        return true;
+        applied = true;
+        return;
     }
-    // TODO: replace according to IDs order
     auto input1 = typed->GetInput(0);
     auto input2 = typed->GetInput(1);
     if (tryConstantAND(typed, input1, input2)) {
-        return true;
+        applied = true;
+        return;
     }
     if (tryConstantAND(typed, input2, input1)) {
-        return true;
+        applied = true;
+        return;
     }
-    return false;
 }
 
-bool PeepholePass::ProcessSRA(InstructionBase *instr) {
+void PeepholePass::visitSRA(InstructionBase *instr) {
     ASSERT(instr->GetOpcode() == Opcode::SRA);
     BinaryRegInstruction *typed = static_cast<BinaryRegInstruction *>(instr);
 
-    if (foldingPass.ProcessSRA(typed)) {
+    if (ConstantFolding::ProcessSRA(typed)) {
         GetLogger(utils::LogPriority::INFO) << "Folded SRA instruction";
-        return true;
+        applied = true;
+        return;
     }
 
     if (trySRAZero(typed)) {
-        return true;
+        applied = true;
+        return;
     }
     // if (trySequencedSRA(typed)) {
+    //     applied = true;
     //     return;
     // }
-    return false;
 }
 
-bool PeepholePass::ProcessSUB(InstructionBase *instr) {
+void PeepholePass::visitSUB(InstructionBase *instr) {
     ASSERT(instr->GetOpcode() == Opcode::SUB);
     BinaryRegInstruction *typed = static_cast<BinaryRegInstruction *>(instr);
 
-    if (foldingPass.ProcessSUB(typed)) {
+    if (ConstantFolding::ProcessSUB(typed)) {
         GetLogger(utils::LogPriority::INFO) << "Folded SUB instruction";
-        return true;
+        applied = true;
+        return;
     }
 
     if (trySUBRepeatedArgs(typed)) {
-        return true;
+        applied = true;
+        return;
     }
     if (trySUBZero(typed)) {
-        return true;
+        applied = true;
+        return;
     }
     if (trySUBAfterADD(typed)) {
-        return true;
+        applied = true;
+        return;
     }
     if (trySUBAfterNEG(typed, typed->GetInput(1), typed->GetInput(0))) {
-        return true;
+        applied = true;
+        return;
     }
-    return false;
 }
 
 bool PeepholePass::tryConstantAND(BinaryRegInstruction *instr, Input checked, Input second) {
@@ -251,7 +248,6 @@ bool PeepholePass::trySUBAfterNEG(BinaryRegInstruction *instr, Input checked, In
         auto *typedInput = static_cast<UnaryRegInstruction *>(checked.GetInstruction());
 
         auto positiveValueInput = typedInput->GetInput();
-        // TODO: replace according to IDs order
         auto *newInstr = graph->GetInstructionBuilder()->CreateADD(instr->GetType(), positiveValueInput, second);
         positiveValueInput->AddUser(newInstr);
 

@@ -6,6 +6,7 @@
 namespace ir {
 // TODO: can remove more branches,
 // e.g. falling under the same conditions as previously encountered
+// TODO: merge sequenced basic blocks if possible
 bool BranchElimination::Run() {
     bool domTreeValid = graph->IsAnalysisValid(AnalysisFlag::DOM_TREE);
 

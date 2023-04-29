@@ -1,9 +1,8 @@
 #ifndef JIT_AOT_COMPILERS_COURSE_DCE_H_
 #define JIT_AOT_COMPILERS_COURSE_DCE_H_
 
-#include "Graph.h"
 #include "logger.h"
-#include "PassBase.h"
+#include "passes/PassBase.h"
 
 
 namespace ir {

@@ -100,7 +100,7 @@ bool LinearScanRegAlloc::resolvePhis(BasicBlock *bblock) {
     ASSERT(predecessors.size() > 1);
 
     auto insertedNew = false;
-    for (auto *pred : bblock->GetPredecessors()) {
+    for (auto *pred : predecessors) {
         ASSERT(pred);
 
         BasicBlock *insertInto = pred;

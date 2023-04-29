@@ -2,7 +2,7 @@
 #define JIT_AOT_COMPILERS_COURSE_LOOP_ANALYZER_H_
 
 #include "Loop.h"
-#include "PassBase.h"
+#include "passes/PassBase.h"
 #include <vector>
 
 

@@ -3,7 +3,7 @@
 
 #include "BasicBlock.h"
 #include <functional>
-#include "PassBase.h"
+#include "passes/PassBase.h"
 #include <vector>
 
 

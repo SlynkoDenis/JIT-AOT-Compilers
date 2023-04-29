@@ -56,13 +56,8 @@ public:
         PushForwardInstruction(bblock, reminder...);
     }
 
-#define CREATE_FIXED_INST(name)                                                 \
-    auto *inst = utils::template New<name>(allocator, allocator.resource());    \
-    inst->SetId(currentId++);                                                   \
-    return inst
-
 #define CREATE_INST(name, ...)                                                              \
-    auto *inst = utils::template New<name>(allocator, __VA_ARGS__, allocator.resource());   \
+    auto *inst = utils::template New<name>(allocator, __VA_ARGS__ __VA_OPT__(,) allocator.resource());   \
     inst->SetId(currentId++);                                                               \
     return inst
 
@@ -160,7 +155,7 @@ public:
             in2);
     }
     CondJumpInstruction *CreateJCMP() {
-        CREATE_FIXED_INST(CondJumpInstruction);
+        CREATE_INST(CondJumpInstruction);
     }
     JumpInstruction *CreateJMP() {
         CREATE_INST(JumpInstruction, Opcode::JMP);
@@ -173,7 +168,7 @@ public:
             input);
     }
     RetVoidInstruction *CreateRETVOID() {
-        CREATE_FIXED_INST(RetVoidInstruction);
+        CREATE_INST(RetVoidInstruction);
     }
 
     CallInstruction *CreateCALL(OperandType type, FunctionId target) {
@@ -330,7 +325,6 @@ public:
             input);
     }
 
-#undef CREATE_FIXED_INST
 #undef CREATE_INST
 #undef CREATE_INST_WITH_PROP
 #undef CREATE_ARITHM

@@ -4,7 +4,7 @@
 #include <list>
 #include "LiveAnalysisStructs.h"
 #include "logger.h"
-#include "PassBase.h"
+#include "passes/PassBase.h"
 #include "RegMap.h"
 
 

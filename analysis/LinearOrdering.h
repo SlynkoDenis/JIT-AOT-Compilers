@@ -2,7 +2,7 @@
 #define JIT_AOT_COMPILERS_COURSE_LINEAR_ORDERING_H_
 
 #include <list>
-#include "PassBase.h"
+#include "passes/PassBase.h"
 
 
 namespace ir {

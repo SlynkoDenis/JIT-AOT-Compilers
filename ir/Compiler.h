@@ -23,10 +23,7 @@ public:
     }
     Graph *CreateNewGraph(InstructionBuilder *instrBuilder);
     Graph *CopyGraph(const Graph *source, InstructionBuilder *instrBuilder) override;
-    Graph *Optimize(Graph *graph) override {
-        // TODO: run optimizations here
-        return graph;
-    }
+    Graph *Optimize(Graph *graph) override;
     Graph *GetFunction(FunctionId functionId) override {
         if (functionId >= functionsGraphs.size()) {
             return nullptr;

@@ -1,7 +1,7 @@
 #ifndef JIT_AOT_COMPILERS_COURSE_CHECK_ELIMINATION_H_
 #define JIT_AOT_COMPILERS_COURSE_CHECK_ELIMINATION_H_
 
-#include "PassBase.h"
+#include "passes/PassBase.h"
 
 
 namespace ir {

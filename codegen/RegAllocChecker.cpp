@@ -19,9 +19,9 @@ void RegAllocChecker::verifyPhiInputs(const PhiInstruction *phi) {
     auto &liveIntervals = phi->GetBasicBlock()->GetGraph()->GetLiveIntervals();
 
     GraphChecker::VerifyPhiBasicBlocks(phi);
-    const auto &loc = liveIntervals.GetLiveIntervals(phi)->GetLocation();
+    [[maybe_unused]] const auto &loc = liveIntervals.GetLiveIntervals(phi)->GetLocation();
     for (size_t i = 0, end = phi->GetInputsCount(); i < end; ++i) {
-        const auto *input = phi->GetInput(i).GetInstruction();
+        [[maybe_unused]] const auto *input = phi->GetInput(i).GetInstruction();
         ASSERT(liveIntervals.GetLiveIntervals(input)->GetLocation() == loc);
     }
 }

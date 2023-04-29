@@ -1,5 +1,5 @@
 #include "Compiler.h"
-#include "GraphCopyHelper.h"
+#include "graph_copy/GraphCopyHelper.h"
 #include "Loop.h"
 
 
@@ -16,5 +16,10 @@ Graph *Compiler::CreateNewGraph(InstructionBuilder *instrBuilder) {
 Graph *Compiler::CopyGraph(const Graph *source, InstructionBuilder *instrBuilder) {
     ASSERT((source) && (instrBuilder));
     return GraphCopyHelper::CreateCopy(source, CreateNewGraph(instrBuilder));
+}
+
+Graph *Compiler::Optimize(Graph *graph) {
+    // TODO: run optimizations here
+    return graph;
 }
 }   // namespace ir

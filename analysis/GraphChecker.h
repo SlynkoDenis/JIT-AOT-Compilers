@@ -1,7 +1,7 @@
 #ifndef JIT_AOT_COMPILERS_COURSE_GRAPH_CHECKER_H_
 #define JIT_AOT_COMPILERS_COURSE_GRAPH_CHECKER_H_
 
-#include "PassBase.h"
+#include "passes/PassBase.h"
 #include "Traversals.h"
 #include <vector>
 

@@ -1,6 +1,6 @@
 #include "BasicBlock.h"
 #include "Graph.h"
-#include "GraphTranslationHelper.h"
+#include "graph_copy/GraphTranslationHelper.h"
 #include "Loop.h"
 
 

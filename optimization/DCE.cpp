@@ -47,7 +47,7 @@ void DCEPass::markDead(InstructionBase *instr) {
     GetLogger(utils::LogPriority::INFO)
         << "Removing dead instruction " << instr->GetId() << ' ' << instr->GetOpcodeName();
     deadInstrs.push_back(instr);
-    // TODO: handle PHI case?
+    // TODO: handle PHI case
 }
 
 void DCEPass::removeDead() {

@@ -154,7 +154,6 @@ public:
         return inputs;
     }
     auto GetInputs() const {
-        // TODO: return array?
         return std::span{inputs};
     }
 
@@ -184,22 +183,22 @@ public:
     const Input &GetInput() const {
         return input;
     }
-    Input &GetInput(size_t idx) override {
+    Input &GetInput([[maybe_unused]] size_t idx) override {
         ASSERT(idx == 0);
         return input;
     }
-    const Input &GetInput(size_t idx) const override {
+    const Input &GetInput([[maybe_unused]] size_t idx) const override {
         ASSERT(idx == 0);
         return input;
     }
-    void SetInput(Input newInput, size_t idx) override {
+    void SetInput(Input newInput, [[maybe_unused]] size_t idx) override {
         ASSERT(idx == 0);
         input = newInput;
         if (input.GetInstruction()) {
             input->AddUser(this);
         }
     }
-    void ReplaceInput(const Input &oldInput, Input newInput) override {
+    void ReplaceInput([[maybe_unused]] const Input &oldInput, Input newInput) override {
         ASSERT(input == oldInput);
         input = newInput;
     }

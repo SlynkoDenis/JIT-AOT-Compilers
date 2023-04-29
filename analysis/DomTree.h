@@ -3,7 +3,7 @@
 
 #include "AllocatorUtils.h"
 #include "DSU.h"
-#include "PassBase.h"
+#include "passes/PassBase.h"
 #include <vector>
 
 

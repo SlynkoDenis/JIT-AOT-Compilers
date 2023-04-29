@@ -3,7 +3,7 @@
 
 #include "CompilerBase.h"
 #include "logger.h"
-#include "PassBase.h"
+#include "passes/PassBase.h"
 
 
 namespace ir {

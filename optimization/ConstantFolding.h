@@ -15,9 +15,9 @@ public:
     NO_MOVE_SEMANTIC(ConstantFolding);
     virtual DEFAULT_DTOR(ConstantFolding);
 
-    virtual bool ProcessAND(BinaryRegInstruction *instr);
-    virtual bool ProcessSRA(BinaryRegInstruction *instr);
-    virtual bool ProcessSUB(BinaryRegInstruction *instr);
+    static bool ProcessAND(BinaryRegInstruction *instr);
+    static bool ProcessSRA(BinaryRegInstruction *instr);
+    static bool ProcessSUB(BinaryRegInstruction *instr);
 
     static void ReplaceWithConst(InstructionBase *instr, ConstantInstruction *targetConst);
 

@@ -66,6 +66,14 @@ public:
     const std::pmr::vector<BasicBlock *> &GetSuccessors() const {
         return succs;
     }
+    // Returns starting instruction, which is either PHI or regular instruction.
+    InstructionBase *GetStartingInstruction() {
+        return firstPhi != nullptr ? firstPhi : firstInst;
+    }
+    // Returns starting instruction, which is either PHI or regular instruction.
+    const InstructionBase *GetStartingInstruction() const {
+        return firstPhi != nullptr ? firstPhi : firstInst;
+    }
     InstructionBase *GetFirstInstruction() {
         return firstInst;
     }

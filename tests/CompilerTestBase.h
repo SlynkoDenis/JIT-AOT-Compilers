@@ -6,7 +6,7 @@
 #include "GraphChecker.h"
 #include "gtest/gtest.h"
 #include "InstructionBuilder.h"
-#include "PassBase.h"
+#include "passes/PassBase.h"
 
 
 namespace ir::tests {

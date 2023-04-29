@@ -92,9 +92,12 @@ void LivenessAnalyzer::calculateLiveRanges(BasicBlock::IdType blockId) {
         liveSet.Remove(phi);
     }
 
+    // instructions must be for the entire loop & all nested loops
     if (bblock->IsLoopHeader()) {
-        auto *loopInfo = bblock->GetLoop();
-        ASSERT(loopInfo);
+        auto loopEnd = calculateLiveRangeEnd(bblock->GetLoop());
+        for (auto *instr : liveSet) {
+            liveIntervals.GetLiveIntervals(instr)->AddLoopRange(blockRange.GetBegin(), loopEnd);
+        }
     }
 }
 
@@ -107,5 +110,17 @@ void LivenessAnalyzer::calculateInitialLiveSet(BasicBlock *bblock, BlockInfo &in
             liveSet.Add(phi->ResolveInput(bblock).GetInstruction());
         }
     }
+}
+
+LiveRange::RangeType LivenessAnalyzer::calculateLiveRangeEnd(Loop *loop) const {
+    ASSERT(loop);
+    LiveRange::RangeType loopEnd = 0;
+    for (auto *l : loop->GetInnerLoops()) {
+        loopEnd = std::max(loopEnd, calculateLiveRangeEnd(l));
+    }
+    for (auto *backEdge : loop->GetBackEdges()) {
+        loopEnd = std::max(loopEnd, getBlockInfo(backEdge).GetRange().GetEnd());
+    }
+    return loopEnd;
 }
 }   // namespace ir

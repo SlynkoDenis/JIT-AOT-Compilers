@@ -2,7 +2,7 @@
 #define JIT_AOT_COMPILERS_COURSE_EMPTY_BLOCKS_REMOVAL_H_
 
 #include "logger.h"
-#include "PassBase.h"
+#include "passes/PassBase.h"
 
 
 namespace ir {

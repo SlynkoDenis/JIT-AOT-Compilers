@@ -2,14 +2,14 @@
 #define JIT_AOT_COMPILERS_COURSE_PEEPHOLE_H_
 
 #include "AllocatorUtils.h"
-#include "ConstantFolding.h"
 #include "Graph.h"
 #include "logger.h"
-#include "PassBase.h"
+#include "passes/InstructionsVisitor.h"
+#include "passes/PassBase.h"
 
 
 namespace ir {
-class PeepholePass : public PassBase, public utils::Logger {
+class PeepholePass : public PassBase, public utils::Logger, public InstructionsVisitor<PeepholePass> {
 public:
     explicit PeepholePass(Graph *graph)
         : PassBase(graph), utils::Logger(log4cpp::Category::getInstance(GetName())) {}
@@ -21,9 +21,9 @@ public:
         return PASS_NAME;
     }
 
-    bool ProcessAND(InstructionBase *instr);
-    bool ProcessSRA(InstructionBase *instr);
-    bool ProcessSUB(InstructionBase *instr);
+    void visitAND(InstructionBase *instr);
+    void visitSRA(InstructionBase *instr);
+    void visitSUB(InstructionBase *instr);
 
 private:
     bool tryConstantAND(BinaryRegInstruction *instr, Input checked, Input second);
@@ -42,7 +42,7 @@ private:
     static constexpr const char *PASS_NAME = "peephole";
 
 private:
-    ConstantFolding foldingPass;
+    bool applied = false;
 };
 }   // namespace ir
 
