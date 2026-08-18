@@ -1,7 +1,9 @@
 #ifndef JIT_AOT_COMPILERS_COURSE_ARCH_INFO_BASE_H_
 #define JIT_AOT_COMPILERS_COURSE_ARCH_INFO_BASE_H_
 
+#include <cstdint>
 #include <limits>
+
 #include "macros.h"
 
 

@@ -2,6 +2,8 @@
 #define JIT_AOT_COMPILERS_COURSE_ANALYSIS_VALIDITY_MANAGER_H_
 
 #include <bitset>
+#include <cstdint>
+
 #include "helpers.h"
 #include "macros.h"
 
