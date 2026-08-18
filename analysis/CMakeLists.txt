@@ -9,6 +9,7 @@ set(SOURCES
     )
 
 add_library(analysis STATIC ${SOURCES})
+enable_project_warnings(analysis)
 
 target_sources(analysis PUBLIC
     DomTree.h

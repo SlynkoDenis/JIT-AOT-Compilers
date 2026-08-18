@@ -20,8 +20,8 @@ public:
           labels(labels),
           sdoms(sdoms)
     {}
-    DEFAULT_COPY_SEMANTIC(DSU);
-    DEFAULT_MOVE_SEMANTIC(DSU);
+    NO_COPY_SEMANTIC(DSU);
+    NO_MOVE_SEMANTIC(DSU);
     DEFAULT_DTOR(DSU);
 
     BasicBlock *Find(BasicBlock *bblock);

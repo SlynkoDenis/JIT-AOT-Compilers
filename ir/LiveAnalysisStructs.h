@@ -304,13 +304,13 @@ public:
     explicit BlockInfo(const allocator_type &a) : liveRange(0, 0), liveIn(a) {}
     BlockInfo(LiveRange range, const allocator_type &a) : liveRange(range), liveIn(a) {}
 
-    DEFAULT_COPY_SEMANTIC(BlockInfo);
+    NO_COPY_SEMANTIC(BlockInfo);
     BlockInfo(const BlockInfo &other, const allocator_type &a)
         : liveRange(other.liveRange),
           liveIn(other.liveIn, a)
     {}
 
-    DEFAULT_MOVE_SEMANTIC(BlockInfo);
+    NO_MOVE_SEMANTIC(BlockInfo);
     BlockInfo(BlockInfo &&other, const allocator_type &a)
         : liveRange(other.liveRange),
           liveIn(std::move(other.liveIn), a)

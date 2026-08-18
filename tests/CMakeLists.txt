@@ -23,7 +23,8 @@ set(SOURCES
     )
 
 add_executable(${BINARY} ${SOURCES})
+enable_project_warnings(${BINARY})
 
 add_test(NAME ${BINARY} COMMAND ${BINARY})
 
-target_link_libraries(${BINARY} PUBLIC analysis ir gtest optimization codegen utils)
+target_link_libraries(${BINARY} PUBLIC analysis ir gtest optimization code_generation utils)

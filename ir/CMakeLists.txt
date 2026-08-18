@@ -10,6 +10,7 @@ set(SOURCES
     )
 
 add_library(ir STATIC ${SOURCES})
+enable_project_warnings(ir)
 
 target_sources(ir PUBLIC
     AnalysisValidityManager.h

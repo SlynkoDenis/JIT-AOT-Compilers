@@ -21,8 +21,10 @@ public:
         ASSERT(regsCount <= MAX_REGS_COUNT);
     }
     RegMap() = delete;
-    DEFAULT_COPY_SEMANTIC(RegMap);
-    DEFAULT_MOVE_SEMANTIC(RegMap);
+    DEFAULT_COPY_CTOR(RegMap);
+    NO_COPY_OPERATOR(RegMap);
+    DEFAULT_MOVE_CTOR(RegMap);
+    NO_MOVE_OPERATOR(RegMap);
     virtual DEFAULT_DTOR(RegMap);
 
     bool IsFull() const {

@@ -101,7 +101,7 @@ public:
     ~RPO() noexcept override = default;
 
     bool Run() override {
-        graph->SetRPO(std::move(DoRPO(graph)));
+        graph->SetRPO(DoRPO(graph));
         return true;
     }
 

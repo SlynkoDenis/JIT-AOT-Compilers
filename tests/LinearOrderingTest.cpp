@@ -73,7 +73,7 @@ TEST_F(LinearOrderingTest, TestAnalysis1) {
 
     PassManager::Run<LinearOrdering>(graph);
 
-    checkLinearOrder(std::move(extractLinearOrder(graph)), std::move(bblocks));
+    checkLinearOrder(extractLinearOrder(graph), std::move(bblocks));
 }
 
 TEST_F(LinearOrderingTest, TestAnalysis2) {
@@ -95,7 +95,7 @@ TEST_F(LinearOrderingTest, TestAnalysis2) {
     PassManager::Run<LinearOrdering>(graph);
 
     checkLinearOrder(
-        std::move(extractLinearOrder(graph)),
+        extractLinearOrder(graph),
         std::vector<const BasicBlock *>{bblocks[0],
             bblocks[1],
             bblocks[5],
@@ -135,7 +135,7 @@ TEST_F(LinearOrderingTest, TestAnalysis3) {
     PassManager::Run<LinearOrdering>(graph);
 
     checkLinearOrder(
-        std::move(extractLinearOrder(graph)),
+        extractLinearOrder(graph),
         std::vector<const BasicBlock *>{bblocks[0],
             bblocks[1],
             bblocks[9],
@@ -174,7 +174,7 @@ TEST_F(LinearOrderingTest, TestAnalysis4) {
     PassManager::Run<LinearOrdering>(graph);
 
     checkLinearOrder(
-        std::move(extractLinearOrder(graph)),
+        extractLinearOrder(graph),
         std::vector<const BasicBlock *>{bblocks[0],
             bblocks[1],
             bblocks[2],

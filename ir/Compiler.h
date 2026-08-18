@@ -14,7 +14,7 @@ public:
     explicit Compiler(codegen::ArchInfoBase *arch)
         : memResource(), functionsGraphs(&memResource), arch(arch) {}
 
-    codegen::ArchInfoBase *GetArch() const {
+    codegen::ArchInfoBase *GetArch() const override {
         return arch;
     }
     Graph *CreateNewGraph() override {

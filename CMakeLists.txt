@@ -1,7 +1,9 @@
-cmake_minimum_required(VERSION 3.22)
-project(JIT_AOT)
+cmake_minimum_required(VERSION 4.4.2)
+project(JIT_AOT LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 26)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 function(add_git_submodule dir)
     # add a Git submodule directory to CMake, assuming the
@@ -32,11 +34,14 @@ if(NOT ${CMAKE_BUILD_TYPE} MATCHES "Debug")
     add_definitions(-DNDEBUG)
 endif()
 
-add_link_options("-fuse-ld=lld")
+add_link_options($<$<LINK_LANGUAGE:CXX>:-fuse-ld=lld>)
 
-set(CMAKE_CXX_FLAGS "-Wall -Wextra -Werror -fconcepts-diagnostics-depth=3")
-set(CMAKE_CXX_FLAGS_DEBUG "-g")
-set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+function(enable_project_warnings target)
+    target_compile_options(${target} PRIVATE -Wall -Wextra -Werror)
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        target_compile_options(${target} PRIVATE -fconcepts-diagnostics-depth=3)
+    endif()
+endfunction()
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
@@ -44,6 +49,7 @@ find_package(log4cplus REQUIRED)
 include_directories(${log4cplus_INCLUDE_DIR})
 
 add_executable(fact main.cpp)
+enable_project_warnings(fact)
 add_subdirectory(utils)
 add_subdirectory(ir)
 add_subdirectory(analysis)
@@ -51,6 +57,7 @@ add_subdirectory(optimization)
 add_subdirectory(codegen)
 
 if(${CMAKE_BUILD_TYPE} MATCHES "Debug")
+    enable_testing()
     add_git_submodule(third_party/googletest)
     add_subdirectory(tests)
 endif()
@@ -58,7 +65,7 @@ endif()
 target_link_libraries(fact PUBLIC
     ${log4cplus_LIB}
     analysis
-    codegen
+    code_generation
     ir
     optimization
     utils

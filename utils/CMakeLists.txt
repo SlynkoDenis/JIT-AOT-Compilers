@@ -3,6 +3,7 @@ set(SOURCES
     logger.cpp)
 
 add_library(utils STATIC ${SOURCES})
+enable_project_warnings(utils)
 
 target_sources(utils PUBLIC
     AllocatorUtils.h

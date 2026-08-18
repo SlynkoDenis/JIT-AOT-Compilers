@@ -6,8 +6,7 @@
 
 namespace ir {
 bool GraphChecker::Run() {
-    auto *g = graph;
-    graph->ForEachBasicBlock([g](const BasicBlock *bblock) {
+    graph->ForEachBasicBlock([](const BasicBlock *bblock) {
         VerifyControlAndDataFlowGraphs(bblock);
     });
     DFO::Traverse(graph, []([[maybe_unused]] const BasicBlock *bblock) {

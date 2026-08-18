@@ -633,7 +633,7 @@ public:
     CallInstruction *Copy(BasicBlock *targetBBlock) const override;
 
 protected:
-    void dumpImpl(log4cpp::CategoryStream &stream) const {
+    void dumpImpl(log4cpp::CategoryStream &stream) const override {
         InputsInstruction::dumpImpl(stream);
         stream << " (to " << GetCallTarget() << ')';
     }

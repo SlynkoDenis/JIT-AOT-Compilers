@@ -6,9 +6,18 @@ Install dependencies by running `sudo ./scripts/install_deps.sh`
 
 ### Build
 
-Run:
-- `git submodule update --init --recursive`
-- `mkdir build && cd build`
-- `cmake -DCMAKE_BUILD_TYPE=Debug $PATH_TO_SOURCES_ROOT_DIR && make`
+The project uses C++26, Clang 22, LLD 22, and CMake 4.4.2. Configure and build it with the provided preset:
+
+```sh
+git submodule update --init --recursive
+/home/huawei/cmake-4.4.2-linux-x86_64/bin/cmake --preset clang-22-debug
+/home/huawei/cmake-4.4.2-linux-x86_64/bin/cmake --build --preset clang-22-debug
+```
+
+Run the tests with:
+
+```sh
+/home/huawei/cmake-4.4.2-linux-x86_64/bin/ctest --preset clang-22-debug
+```
 
 After build `build/bin` directory will contain two executables: one with tests and another with a program building an IR graph for factorial computation function.

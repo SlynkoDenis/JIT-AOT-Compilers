@@ -1,0 +1,36 @@
+{
+  "version": 10,
+  "cmakeMinimumRequired": {
+    "major": 4,
+    "minor": 4,
+    "patch": 2
+  },
+  "configurePresets": [
+    {
+      "name": "clang-22-debug",
+      "displayName": "Clang 22 debug",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/clang-22-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_C_COMPILER": "/usr/bin/clang-22",
+        "CMAKE_CXX_COMPILER": "/usr/bin/clang++-22"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "clang-22-debug",
+      "configurePreset": "clang-22-debug"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "clang-22-debug",
+      "configurePreset": "clang-22-debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
+  ]
+}

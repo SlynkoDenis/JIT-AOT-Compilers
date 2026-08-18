@@ -31,7 +31,7 @@ void LivenessAnalyzer::initBlocksInfo() {
     // graph's basic blocks are properly linearized after `LinearOrdering` pass
     graph->ForEachBasicBlock([this](BasicBlock *b) {
         auto rangeEnd = orderInstructions(b);
-        linearOrderedBlocks.emplace_back(std::move(LiveRange{rangeBegin, rangeEnd}));
+        linearOrderedBlocks.emplace_back(LiveRange{rangeBegin, rangeEnd});
         rangeBegin = rangeEnd;
     });
     ASSERT(linearOrderedBlocks.size() == graph->GetBasicBlocksCount());

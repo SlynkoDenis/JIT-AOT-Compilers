@@ -9,7 +9,7 @@
 
 namespace ir {
 class Graph;
-class GraphTranslationHelper;
+struct GraphTranslationHelper;
 class Loop;
 
 class BasicBlock : public Markable {

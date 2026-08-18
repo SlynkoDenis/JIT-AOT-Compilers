@@ -9,6 +9,7 @@ set(SOURCES
     )
 
 add_library(optimization STATIC ${SOURCES})
+enable_project_warnings(optimization)
 
 target_sources(optimization PUBLIC
     BranchElimination.h

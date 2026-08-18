@@ -109,7 +109,7 @@ Graph *EmptyBlocksRemovalTest::BuildTemplate(
 
 TEST_F(EmptyBlocksRemovalTest, TestUnreachableBlock) {
     auto *graph = BuildTemplate(
-        std::move(CreateInstructions(EmptyBlocksRemovalTest::InstructionCreationMode::FULL)));
+        CreateInstructions(EmptyBlocksRemovalTest::InstructionCreationMode::FULL));
     auto *unreachableBlock = graph->CreateEmptyBasicBlock();
     ASSERT_EQ(graph->GetBasicBlocksCount(), 9);
 
@@ -122,7 +122,7 @@ TEST_F(EmptyBlocksRemovalTest, TestUnreachableBlock) {
 
 TEST_F(EmptyBlocksRemovalTest, TestEmptySimpleBlock) {
     auto *graph = BuildTemplate(
-        std::move(CreateInstructions(EmptyBlocksRemovalTest::InstructionCreationMode::EMPTY_SIMPLE)));
+        CreateInstructions(EmptyBlocksRemovalTest::InstructionCreationMode::EMPTY_SIMPLE));
     auto *expectedDeletedBlock = graph
         ->GetLastBasicBlock()
         ->GetPredecessors()[0]
@@ -138,7 +138,7 @@ TEST_F(EmptyBlocksRemovalTest, TestEmptySimpleBlock) {
 
 TEST_F(EmptyBlocksRemovalTest, TestEmptyFirstBlock) {
     auto *graph = BuildTemplate(
-        std::move(CreateInstructions(EmptyBlocksRemovalTest::InstructionCreationMode::EMPTY_FIRST)));
+        CreateInstructions(EmptyBlocksRemovalTest::InstructionCreationMode::EMPTY_FIRST));
     auto *expectedDeletedBlock = graph->GetFirstBasicBlock()->GetSuccessors()[0];
     ASSERT_EQ(graph->GetBasicBlocksCount(), 8);
 
@@ -150,7 +150,7 @@ TEST_F(EmptyBlocksRemovalTest, TestEmptyFirstBlock) {
 
 TEST_F(EmptyBlocksRemovalTest, TestEmptyTrueBranchBlock) {
     auto *graph = BuildTemplate(
-        std::move(CreateInstructions(EmptyBlocksRemovalTest::InstructionCreationMode::EMPTY_TRUE_BRANCH)));
+        CreateInstructions(EmptyBlocksRemovalTest::InstructionCreationMode::EMPTY_TRUE_BRANCH));
     auto *expectedDeletedBlock = graph
         ->GetFirstBasicBlock()
         ->GetSuccessors()[0]

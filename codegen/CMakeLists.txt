@@ -4,16 +4,17 @@ set(SOURCES
     RegAllocChecker.cpp
     )
 
-add_library(codegen STATIC ${SOURCES})
+add_library(code_generation STATIC ${SOURCES})
+enable_project_warnings(code_generation)
 
-target_sources(codegen PUBLIC
+target_sources(code_generation PUBLIC
     default/DefaultArch.h
     LinearScanRegAlloc.h
     RegAllocChecker.h
     RegMap.h
     )
 
-target_include_directories(codegen PUBLIC
+target_include_directories(code_generation PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_SOURCE_DIR}/analysis
     ${CMAKE_SOURCE_DIR}/include
@@ -21,4 +22,4 @@ target_include_directories(codegen PUBLIC
     ${CMAKE_SOURCE_DIR}/utils
     )
 
-add_dependencies(codegen analysis)
+add_dependencies(code_generation analysis)
